@@ -691,7 +691,7 @@ Focused rich-text coverage pins validator semantics, zod parsing, mapper behavio
 **Files:** `src/components/forms/TenantEditForm.tsx`, `src/lib/actions/fetchTenantManifestFromRepo.ts`, `src/lib/github/siteRepoManifest.ts`
 
 #### Resolution
-The custom Tenant edit form now has a super-admin-only "Sync from repo" action for `siteManifest`. The button reads the tenant's configured `siteRepo`, fetches `siteManifest.json` from GitHub, falls back to `siteManifest.example.json`, validates the JSON against `manifestSchema`, and loads it into the existing manifest textarea.
+The custom Tenant edit form now has a super-admin-only "Sync from source" action for `siteManifest`. The button reads the tenant's configured `siteRepo`, fetches `siteManifest.json` from GitHub, falls back to `siteManifest.example.json`, validates the JSON against `manifestSchema`, and loads it into the existing manifest textarea.
 
 The sync is review-first: it marks the form dirty and does not PATCH the tenant until the operator presses Save. Private repos can be read when `GITHUB_TOKEN` or `GH_TOKEN` is present in the server environment; public repos work without a token.
 

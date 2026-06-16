@@ -14,6 +14,6 @@ describe("FE-23 tenant manifest repo sync UI", () => {
     expect(source).toContain('form.setValue("siteManifest"')
     expect(source).toContain("shouldDirty: true")
     expect(source).toContain('t("syncFromRepo")')
-    expect(read("src/locales/en.json")).toContain('"syncFromRepo": "Sync from repo"')
+    expect(read("src/locales/en.json")).toContain('"syncFromRepo": "Sync from source"')
   })
 })
