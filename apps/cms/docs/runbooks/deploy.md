@@ -80,6 +80,9 @@ POSTGRES_PASSWORD=<openssl rand -hex 24>
 PAYLOAD_SECRET=<openssl rand -hex 32>
 BETTER_AUTH_SECRET=<openssl rand -hex 32>
 BETTER_AUTH_ALLOWED_HOSTS=
+BETTER_AUTH_API_KEY=
+BETTER_AUTH_API_URL=
+BETTER_AUTH_KV_URL=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 MICROSOFT_CLIENT_ID=
@@ -100,6 +103,12 @@ registered. The login page only renders provider buttons for complete
 client-id/client-secret pairs. Normal tenant admin hosts are accepted
 dynamically from Payload tenants; use `BETTER_AUTH_ALLOWED_HOSTS` only for
 preview or non-tenant admin hosts.
+Set `BETTER_AUTH_API_KEY` only after connecting the existing SIAB app/project in
+the Better Auth Infrastructure dashboard. Leave `BETTER_AUTH_API_URL` and
+`BETTER_AUTH_KV_URL` blank unless the dashboard gives environment-specific
+overrides. This deploy path enables only the dashboard/audit `dash()` bridge;
+Better Auth Infrastructure transactional email, SMS, and Sentinel remain
+disabled until the paid plan and production setup are ready.
 
 Lock the file down:
 

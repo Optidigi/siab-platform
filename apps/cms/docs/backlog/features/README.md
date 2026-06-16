@@ -2060,8 +2060,11 @@ Next/Payload app.
 Before implementation/testing:
 
 - Enable/configure Better Auth Infrastructure for SIAB production.
-- Add `@better-auth/infra` and wire `BETTER_AUTH_API_KEY` /
-  `BETTER_AUTH_API_URL` where needed.
+- `@better-auth/infra` is already installed and `BETTER_AUTH_API_KEY` /
+  `BETTER_AUTH_API_URL` / `BETTER_AUTH_KV_URL` are wired for the free
+  dashboard/audit `dash()` bridge. Transactional email still requires the paid
+  Better Auth Infrastructure plan and sender setup before this OBS can move
+  forward.
 - Confirm the sender domain / displayed sender can be configured as
   `noreply@siteinabox.nl` for Better Auth Infra mail.
 - Confirm the exact template coverage for SIAB auth/user lifecycle mail:

@@ -1337,9 +1337,12 @@ production credentials and mail transport are configured.
 - Set a dedicated `BETTER_AUTH_SECRET` in production. `PAYLOAD_SECRET` fallback
   works for bootstrapping, but the long-term production shape should keep Better
   Auth's signing/encryption secret separate.
-- Decide whether the Better Auth dashboard/API key is operationally needed for
-  SIAB. If yes, store that credential in user/ops secret management, not repo
-  config, and document how operators use it.
+- Optional 2026-06-17 update: `@better-auth/infra` is wired behind
+  `BETTER_AUTH_API_KEY` for the free dashboard/audit `dash()` bridge. Connect
+  the existing SIAB project in the Better Auth Infrastructure dashboard and
+  store the key in user/ops secret management, not repo config. Leave
+  `BETTER_AUTH_API_URL` and `BETTER_AUTH_KV_URL` blank unless the dashboard
+  provides overrides.
 - Configure production email delivery for magic links through the selected
   mailer. This likely lands with OBS-100 if Cloudflare becomes the production
   transport; otherwise ensure the existing `RESEND_API_KEY`/`EMAIL_FROM` path
@@ -1359,6 +1362,8 @@ production credentials and mail transport are configured.
    tenants, and cross-tenant admin hosts fail closed.
 5. Fresh production boot logs are free of Better Auth base-url warnings and
    `/api/health` remains healthy after env changes.
+6. If `BETTER_AUTH_API_KEY` is configured, Better Auth Infrastructure dashboard
+   audit/activity events appear for test sign-ins.
 
 ### OBS-100 — Integrate Cloudflare mailer as the production email transport
 

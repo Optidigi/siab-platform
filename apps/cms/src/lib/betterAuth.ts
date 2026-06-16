@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth"
 import { Pool } from "pg"
 import { nextCookies } from "better-auth/next-js"
 import { magicLink } from "better-auth/plugins"
+import { getBetterAuthInfraPlugins } from "@/lib/betterAuthInfra"
 import { getEnabledSocialAuthProviders } from "@/lib/socialAuth/providers"
 import { resolvePayloadUserForMagicLink, resolvePayloadUserForSocialSignup } from "@/lib/socialAuth/payloadUser"
 import { getBetterAuthBaseURL, getTrustedSocialAuthOrigins } from "@/lib/socialAuth/hosts"
@@ -121,6 +122,7 @@ export const auth = betterAuth({
     },
   },
   plugins: [
+    ...getBetterAuthInfraPlugins(),
     magicLink({
       expiresIn: 300,
       rateLimit: { window: 60, max: 3 },

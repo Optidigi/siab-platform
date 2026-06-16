@@ -12,6 +12,9 @@ Set these in each environment that should expose provider buttons:
 ```bash
 BETTER_AUTH_SECRET=
 BETTER_AUTH_ALLOWED_HOSTS=
+BETTER_AUTH_API_KEY=
+BETTER_AUTH_API_URL=
+BETTER_AUTH_KV_URL=
 
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
@@ -31,6 +34,13 @@ for non-tenant or preview admin hosts that must accept provider callbacks.
 Better Auth is configured with its dynamic `baseURL` option for `admin.*`
 hosts so provider redirects are built from the incoming admin host; SIAB's
 Payload-backed host gate still runs before Better Auth handles the request.
+
+`BETTER_AUTH_API_KEY` is optional and enables the Better Auth Infrastructure
+`dash()` plugin for dashboard/audit visibility. Use the key from the existing
+SIAB project in the Better Auth dashboard. `BETTER_AUTH_API_URL` and
+`BETTER_AUTH_KV_URL` are optional overrides; leave them blank for Better Auth's
+default hosted endpoints. SIAB does not currently enable Better Auth
+Infrastructure transactional email, SMS, or Sentinel.
 
 Email magic links also require the normal app email transport:
 
@@ -99,3 +109,5 @@ those to generate the JWT before deployment.
    `/login`.
 7. Confirm a tenant user cannot complete login on a different tenant admin host.
 8. Confirm logout clears both Payload and Better Auth sessions.
+9. If `BETTER_AUTH_API_KEY` is set, confirm the Better Auth Infrastructure
+   dashboard receives sign-in/audit events for successful test logins.
