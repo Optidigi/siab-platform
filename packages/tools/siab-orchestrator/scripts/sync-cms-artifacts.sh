@@ -12,11 +12,12 @@ set -eu
 ENGINE="${CONTAINER_ENGINE:-docker}"
 IMAGE=""
 TENANT_DIR=""
+ARTIFACT_DIR=""
 SKIP_PULL=0
 
 usage() {
   cat >&2 <<'EOF'
-usage: scripts/sync-cms-artifacts.sh --image <image> --tenant-dir <path> [--engine docker|podman] [--skip-pull]
+usage: scripts/sync-cms-artifacts.sh --image <image> --tenant-dir <path> [--artifact-dir <path>] [--engine docker|podman] [--skip-pull]
 
 Examples:
   scripts/sync-cms-artifacts.sh \
@@ -35,6 +36,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --tenant-dir)
       TENANT_DIR="${2:-}"
+      shift 2
+      ;;
+    --artifact-dir)
+      ARTIFACT_DIR="${2:-}"
       shift 2
       ;;
     --engine)
@@ -68,6 +73,7 @@ if ! command -v "$ENGINE" >/dev/null 2>&1; then
 fi
 
 TMP_DIR="$(mktemp -d)"
+ARTIFACT_TMP="$TMP_DIR/artifacts"
 CID=""
 cleanup() {
   if [ -n "$CID" ]; then
@@ -82,22 +88,56 @@ if [ "$SKIP_PULL" -eq 0 ]; then
 fi
 
 CID="$("$ENGINE" create "$IMAGE")"
-"$ENGINE" cp "$CID:/app/dist/cms/." "$TMP_DIR/"
 
-if [ ! -f "$TMP_DIR/cms-editor.css" ]; then
-  echo "image did not contain /app/dist/cms/cms-editor.css: $IMAGE" >&2
+IMAGE_BASENAME="${IMAGE##*/}"
+IMAGE_BASENAME="${IMAGE_BASENAME%%:*}"
+IMAGE_BASENAME="${IMAGE_BASENAME%%@*}"
+SITE_SLUG=""
+case "$IMAGE_BASENAME" in
+  siteinabox-site-*)
+    SITE_SLUG="${IMAGE_BASENAME#siteinabox-site-}"
+    ;;
+esac
+
+mkdir -p "$ARTIFACT_TMP"
+ARTIFACT_CANDIDATES=""
+if [ -n "$ARTIFACT_DIR" ]; then
+  ARTIFACT_CANDIDATES="$ARTIFACT_DIR"
+fi
+ARTIFACT_CANDIDATES="$ARTIFACT_CANDIDATES /app/dist/cms"
+if [ -n "$SITE_SLUG" ]; then
+  ARTIFACT_CANDIDATES="$ARTIFACT_CANDIDATES /repo/sites/$SITE_SLUG/dist/cms"
+fi
+ARTIFACT_CANDIDATES="$ARTIFACT_CANDIDATES /repo/packages/site-template/dist/cms"
+
+FOUND_ARTIFACT_DIR=""
+for candidate in $ARTIFACT_CANDIDATES; do
+  rm -rf "$ARTIFACT_TMP"
+  mkdir -p "$ARTIFACT_TMP"
+  if "$ENGINE" cp "$CID:$candidate/." "$ARTIFACT_TMP/" >/dev/null 2>&1; then
+    if [ -f "$ARTIFACT_TMP/cms-editor.css" ]; then
+      FOUND_ARTIFACT_DIR="$candidate"
+      break
+    fi
+  fi
+done
+
+if [ -z "$FOUND_ARTIFACT_DIR" ]; then
+  echo "image did not contain cms-editor.css in any known artifact path: $IMAGE" >&2
+  echo "checked:$ARTIFACT_CANDIDATES" >&2
   exit 1
 fi
 
 mkdir -p "$TENANT_DIR"
-cp -f "$TMP_DIR/cms-editor.css" "$TENANT_DIR/cms-editor.css"
+cp -f "$ARTIFACT_TMP/cms-editor.css" "$TENANT_DIR/cms-editor.css"
 
-if [ -d "$TMP_DIR/files" ]; then
+if [ -d "$ARTIFACT_TMP/files" ]; then
   mkdir -p "$TENANT_DIR/files"
-  cp -R "$TMP_DIR/files/." "$TENANT_DIR/files/"
+  cp -R "$ARTIFACT_TMP/files/." "$TENANT_DIR/files/"
 fi
 
 echo "synced CMS artifacts from $IMAGE"
+echo "  from:  $FOUND_ARTIFACT_DIR"
 echo "  css:   $TENANT_DIR/cms-editor.css"
 if [ -d "$TENANT_DIR/files" ]; then
   echo "  files: $TENANT_DIR/files/"
