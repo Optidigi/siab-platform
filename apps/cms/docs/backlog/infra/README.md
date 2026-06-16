@@ -1277,6 +1277,30 @@ deleted after any final manual archival preference:
 `Optidigi/siab-site-orchestrator`, `Optidigi/siab-payload-orchestrator`,
 `Optidigi/site-amicare-zorg`, and `Optidigi/site-amblast`.
 
+#### Final namespace rename — 2026-06-16
+The monorepo itself was renamed from `Optidigi/siab-platform` to
+`Optidigi/siteinabox`, and the root package/repo docs now use `siteinabox` as
+the canonical name.
+
+Final image names are:
+
+- `ghcr.io/optidigi/siteinabox-cms:latest`
+- `ghcr.io/optidigi/siteinabox-site:latest`
+- `ghcr.io/optidigi/siteinabox-site-ami-care:latest`
+- `ghcr.io/optidigi/siteinabox-site-amblast:latest`
+
+Production was updated to match:
+
+- VPS stack root moved from `/srv/saas/infra/stacks/siab-platform` to
+  `/srv/saas/infra/stacks/siteinabox`.
+- Docker Compose metadata for `siab-payload`, `siteinabox`, `ami-care`, and
+  `amblast` now points at the new stack paths.
+- Old local VPS images for `ghcr.io/optidigi/siab-platform-*` were removed.
+- Public smoke checks returned HTTP 200 for
+  `https://admin.siteinabox.nl/api/health`,
+  `https://admin.ami-care.nl/api/health`, `https://siteinabox.nl/`,
+  `https://ami-care.nl/healthz`, and `https://amblast.siteinabox.nl/`.
+
 #### Acceptance criteria
 1. The monorepo is the source of truth for CMS, public site, intake,
    site-template, generated site source, shared packages, orchestration tools,
