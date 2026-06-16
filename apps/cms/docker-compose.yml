@@ -1,5 +1,5 @@
 # Production compose for siab-payload.
-# Deploy path on VPS: /srv/saas/infra/stacks/siab-payload/compose.yml
+# Deploy path on VPS: /srv/saas/infra/stacks/siab-platform/apps/cms/compose.yml
 # Pulls image from ghcr.io. Postgres lives alongside on the internal network.
 # Reverse proxying handled by the shared Traefik edge on the external proxy network.
 services:

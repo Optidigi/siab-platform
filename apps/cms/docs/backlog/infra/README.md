@@ -1256,10 +1256,26 @@ The VPS stack namespace was tightened so all deployable SIAB apps live under
   `ghcr.io/optidigi/siab-platform-site-amblast:latest`.
 - Removed the imported per-site `.github/workflows/` files because GitHub only
   runs workflows from the repository root.
+- Published and smoke-started both tenant images from the monorepo, switched
+  the VPS tenant stacks to those image names, pulled/recreated the tenant
+  containers, and removed the old local tenant images from the VPS.
+- Pulled/recreated the CMS stack from `ghcr.io/optidigi/siab-platform-cms:latest`.
+- Confirmed live containers are healthy and now point at:
+  `ghcr.io/optidigi/siab-platform-cms:latest`,
+  `ghcr.io/optidigi/siab-platform-site:latest`,
+  `ghcr.io/optidigi/siab-platform-site-ami-care:latest`, and
+  `ghcr.io/optidigi/siab-platform-site-amblast:latest`.
+- External smoke checks returned HTTP 200 for
+  `https://admin.siteinabox.nl/api/health`,
+  `https://admin.ami-care.nl/api/health`, `https://siteinabox.nl/`,
+  `https://ami-care.nl/healthz`, and `https://amblast.siteinabox.nl/`.
 
-After the tenant image workflows publish successfully and the VPS tenant stacks
-are switched to those two image names, the old tenant site repositories are no
-longer needed for builds or deployment.
+The old GitHub repositories are obsolete for builds/deployments and can be
+deleted after any final manual archival preference:
+`Optidigi/siab-payload`, `Optidigi/site-siteinabox`,
+`Optidigi/siab-site-template`, `Optidigi/siab-site-themes`,
+`Optidigi/siab-site-orchestrator`, `Optidigi/siab-payload-orchestrator`,
+`Optidigi/site-amicare-zorg`, and `Optidigi/site-amblast`.
 
 #### Acceptance criteria
 1. The monorepo is the source of truth for CMS, public site, intake,
