@@ -8,6 +8,7 @@ Monorepo shell for the SIAB platform.
 apps/
   cms/              # Payload CMS app, formerly siab-payload
   site/             # public siteinabox.nl site, formerly site-siteinabox
+  intake/           # reserved future intake app
 
 packages/
   site-template/    # generated-site baseline, formerly siab-site-template
@@ -18,6 +19,9 @@ packages/
       workflows/    # separate sitegen and CMS conversion workflows
       scripts/      # CMS conversion helpers
       runbooks/
+
+sites/
+  # intended home for generated/client sites once migrated
 ```
 
 ## Deployment Contract
@@ -26,7 +30,9 @@ The first monorepo migration preserves production behavior:
 
 - `apps/cms` still publishes `ghcr.io/optidigi/siab-payload:latest`.
 - `apps/site` still publishes `ghcr.io/optidigi/site-siteinabox:latest`.
-- Existing generated/client sites remain separate repos/images for now.
+- Generated/client sites are intended to move under `sites/`, while their
+  existing production image names and VPS stack entries remain stable until
+  each site is migrated deliberately.
 - Existing VPS stack paths and tenant data paths are not moved in this step.
 - Traefik remains the edge proxy; routing stays compose-label based.
 

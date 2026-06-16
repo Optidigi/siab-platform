@@ -677,20 +677,18 @@ siab-platform/
     cms/              # current siab-payload
     site/             # current site-siteinabox public marketing/funnel entry
     intake/           # customer-facing wizard + generated lead preview
-    site-template/    # current siab-site-template generated-site baseline
 
   packages/
+    site-template/    # current siab-site-template generated-site baseline
     site-contracts/   # manifest, block, theme, intake/provisioning schemas
     site-runtime/     # generated-site runtime helpers
     site-blocks/      # shared generated-site block renderers
     site-themes/      # current siab-site-themes, made real
     ui/               # future shared app UI only when duplication proves it
     tools/
-      site-orchestrator/
-      cms-orchestrator/
+      siab-orchestrator/
 
-  sites/              # generated/client sites if/when moved into the monorepo
-  infra/
+  sites/              # intended generated/client site source home
   docs/
 ```
 
@@ -966,8 +964,7 @@ siab-platform/
         scripts/
         runbooks/
 
-  sites/                       # optional later home for generated/client sites
-  infra/                       # desired future source for compose/ops docs
+  sites/                       # intended home for generated/client sites
   docs/
 ```
 
@@ -979,9 +976,9 @@ First migration scope should be deliberately narrower than the final platform:
 4. Move `siab-site-themes` to `packages/site-themes`.
 5. Consolidate the two orchestrators into `packages/tools/siab-orchestrator`
    while preserving `/new-site` and `/add-cms <slug>` as separate workflows.
-6. Leave generated/client site repos (`site-amblast`, `site-amicare-zorg`) in
-   their current separate repos/images for the first migration unless a
-   specific operator decision moves them under `sites/`.
+6. Move generated/client site source under `sites/` deliberately, while keeping
+   their existing image names and VPS stack entries stable until each migration
+   is validated.
 7. Add `apps/intake` after the moved repo builds and command smoke tests pass.
 
 Expected VPS/deploy end shape after the first migration:
@@ -1028,9 +1025,9 @@ Future deploy changes, after the first migration is stable:
 - Add `apps/intake` as a separate deployable image and separate Traefik-routed
   stack, likely on `start.siteinabox.nl` unless fresh route research chooses
   another host.
-- Bring infra stack definitions under `infra/` as source-of-truth files only
-  after the app/image migration is stable; then sync them to the existing VPS
-  stack paths.
+- Keep infra stack definitions out of this monorepo for now. The current
+  server/ops infra source remains external to `siab-platform`; revisit only if
+  the platform repo becomes the deliberate deploy-stack source of truth.
 
 #### TL;DR implementation plan
 1. Create the `siab-platform` monorepo shell and workspace tooling without
@@ -1050,8 +1047,9 @@ Future deploy changes, after the first migration is stable:
    template, generated sites, and tools share schema language.
 7. Extract `site-runtime`, `site-blocks`, and `site-themes` only after contracts
    are stable and duplication is proven.
-8. Bring infra definitions under the platform repo while preserving the current
-   one-container-per-app/site deployment model.
+8. Keep deploy-stack source-of-truth outside `siab-platform` for now; if this
+   changes later, preserve the current one-container-per-app/site deployment
+   model and stable tenant data paths.
 9. Later, replace the AI/runbook orchestrator packages with a programmatic
    platform worker/service for provisioning, artifact sync, proxy registration,
    monitoring registration, and deploy/redeploy flows.
@@ -1098,9 +1096,8 @@ changed by this checkpoint.
 #### Update — 2026-06-16 (remaining monorepo hardening)
 Follow-up implementation completed the remaining non-deploying scaffold work:
 
-- Added monorepo-level `docs/`, `infra/`, `infra/stacks/siab-platform/`, and
-  `sites/` README files to document ownership boundaries and the preferred
-  future VPS namespace without moving live stacks.
+- Added monorepo-level `docs/` and `sites/` README files to document ownership
+  boundaries without moving live stacks.
 - Added reserved `apps/intake` package and README. It is intentionally a
   non-deploying placeholder for now; root scripts expose `intake:build` and
   `intake:test` as no-op checks until the real intake app is implemented.
@@ -1112,6 +1109,10 @@ Follow-up implementation completed the remaining non-deploying scaffold work:
 - Attempted a fresh read-only SSH pull of the live stack files before adding
   compose templates, but the SSH command hung before producing output and was
   cancelled. No compose templates were added from incomplete remote data.
+- Follow-up operator correction confirmed generated/client sites are intended
+  to move under `sites/`. The placeholder `infra/` directory was removed because
+  it had no real stack files and would imply an unconfirmed infra source-of-truth
+  change.
 
 Additional validation:
 
@@ -1124,7 +1125,8 @@ Additional validation:
 
 #### Acceptance criteria
 1. The monorepo is the source of truth for CMS, public site, intake,
-   site-template, shared packages, orchestration tools, docs, and infra.
+   site-template, generated site source, shared packages, orchestration tools,
+   and platform docs.
 2. Production deploys still use isolated containers for CMS, public site,
    intake, and generated tenant sites.
 3. Existing domains and admin hosts continue to route correctly after migration.

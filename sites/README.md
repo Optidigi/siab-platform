@@ -1,9 +1,19 @@
 # Generated Sites
 
-Generated/client site repositories stay separate for now.
+Generated/client site repositories are intended to move here.
 
 Current production sites such as `site-amblast` and `site-amicare-zorg` keep
-their own repos, images, and VPS stack entries during the first monorepo
-migration. This directory is reserved for a future explicit decision to bring
-generated site source into the monorepo.
+their existing image names and VPS stack entries until each site is migrated
+deliberately. Moving source into this directory must not imply a same-step
+production deploy, data-path change, or image-name change.
 
+Expected shape:
+
+```txt
+sites/
+  amblast/
+  ami-care/
+```
+
+Generated sites should continue to consume the shared contracts from
+`packages/site-template`, `packages/site-themes`, and the `/add-cms` workflow.
