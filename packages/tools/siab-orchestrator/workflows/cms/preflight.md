@@ -5,9 +5,9 @@ This document gives you the context you need to run the sitegen-cms workflow saf
 ## Environment readiness (run this first)
 
 The command wrapper should already have verified `gh` authentication. If this
-file is opened directly, verify it before reading further. Phase 2 needs it for
-`gh repo clone`, Phase 9 for `gh run watch` and `gh api`. If this fails, stop
-and tell the operator to run `gh auth login` before retrying.
+file is opened directly, verify it before reading further. The publish phase
+needs it for `gh run watch` and `gh api`. If this fails, stop and tell the
+operator to run `gh auth login` before retrying.
 
 ```bash
 gh auth status >/dev/null 2>&1 || { echo "FATAL: gh is not authenticated. Run 'gh auth login' (or check 'gh auth status' for details) before retrying."; exit 1; }
@@ -16,11 +16,12 @@ gh auth status >/dev/null 2>&1 || { echo "FATAL: gh is not authenticated. Run 'g
 ## Purpose
 
 Take an existing static Astro landing-page site (built and deployed by the
-`/new-site` workflow, living at `optidigi/site-<slug>`) and transform it into a
-CMS-backed site driven by a self-hosted Payload v3 instance. After the run:
+`/new-site` workflow, living at `sites/<slug>` in the monorepo) and transform
+it into a CMS-backed site driven by a self-hosted Payload v3 instance. After
+the run:
 
 - A Payload tenant exists for this site.
-- Editorial content (page text, media, brand info, NAP, socials) lives in Payload only — the markdown files in the site repo are deleted as part of the conversion.
+- Editorial content (page text, media, brand info, NAP, socials) lives in Payload only — the markdown files in the site package are deleted as part of the conversion.
 - The site is Astro SSR (Node), reading per-tenant JSON from a mounted volume at request time.
 - Editor changes in Payload are visible on next request — no GHA runs, no GitHub PATs, no webhook bridge.
 - One editor account is created with email `admin@optidigi.nl` (operator updates to client email after end-to-end verification).
@@ -32,11 +33,11 @@ Payload and see the change on the live site".
 ## The deploy chain end-to-end
 
 ```
-optidigi/site-<slug> (existing, static)
+sites/<slug> (existing, static)
         │
         │ /add-cms <slug>
         ▼
-this orchestrator clones it to packages/tools/siab-orchestrator/site-<slug>/
+this orchestrator works against the monorepo site package
         │
         ├─→ POST tenant + pages + media + siteSettings to Payload (admin.siteinabox.nl)
         │       │
@@ -45,13 +46,13 @@ this orchestrator clones it to packages/tools/siab-orchestrator/site-<slug>/
         │       ▼
         │   (parallel workstream owns this hook + the disk layout)
         │
-        └─→ converts ./site-<slug>/ from static to Astro SSR + Node runtime
+        └─→ converts sites/<slug>/ from static to Astro SSR + Node runtime
                 │
-                │ commits to local main (NOT pushed yet)
+                │ commits to monorepo main only after sign-off
                 │
                 │ operator approves sign-off gate
                 ▼
-        git push origin main → GHA publish.yml → ghcr.io/optidigi/site-<slug>:latest
+        git push origin main → root GHA workflow → ghcr.io/optidigi/siab-platform-site-<slug>:latest
                 │
                 │ operator updates VPS compose to add the volume mount,
                 │ env vars, network, and Traefik labels, then
@@ -72,7 +73,8 @@ this orchestrator clones it to packages/tools/siab-orchestrator/site-<slug>/
 
 ## Tool inventory
 
-- `gh` — authenticated on this device. Used for `gh repo clone`, `gh run watch`, `gh api`. Verify with `gh auth status`.
+- `gh` — authenticated on this device. Used for `gh run watch` and `gh api`.
+  Verify with `gh auth status`.
 - `git` — used for clone, commit, push. Direct commits to `main` of the cloned site; push only at sign-off gate.
 - `pnpm` — package manager for Astro builds. `pnpm install`, `pnpm build`.
 - `node` ≥ 20. Required for the converted SSR site to build.
@@ -83,25 +85,28 @@ this orchestrator clones it to packages/tools/siab-orchestrator/site-<slug>/
 
 ## Subagents (dispatch via the Agent tool)
 
-- **`payload-seeder`** — Phase 4. Input: site repo path, tenant ID, Payload URL + token, parsed siteSettings, page list. Output: posts every page (with media auto-migrated and markdown sliced into richText blocks per H2), posts siteSettings, returns a markdown report. Tools: `Read`, `Bash`. Hard rule: never modifies the site repo.
+- **`payload-seeder`** — Phase 4. Input: site package path, tenant ID, Payload URL + token, parsed siteSettings, page list. Output: posts every page (with media auto-migrated and markdown sliced into richText blocks per H2), posts siteSettings, returns a markdown report. Tools: `Read`, `Bash`. Hard rule: never modifies the site package.
 
-- **`site-converter`** — Phase 5. Input: site repo path, tenant ID, primary domain. Output: SSR conversion surgery (astro.config.mjs, package.json, Dockerfile, page routes, BaseLayout, SEO components, deletes content collection, adds src/lib/cms.ts + middleware + healthz + Blocks renderer). One git commit per logical group. Tools: `Read`, `Write`, `Edit`, `Bash`. Hard rule: never pushes; never modifies non-content components.
+- **`site-converter`** — Phase 5. Input: site package path, tenant ID, primary domain. Output: SSR conversion surgery (astro.config.mjs, package.json, Dockerfile, page routes, BaseLayout, SEO components, deletes content collection, adds src/lib/cms.ts + middleware + healthz + Blocks renderer). Tools: `Read`, `Write`, `Edit`, `Bash`. Hard rule: never pushes; never modifies non-content components.
 
-- **`cms-reviewer`** — Phase 7. Uses `code-reviewer` agent type as base, with sitegen-cms-specific context. Input: site repo path, intake summary, conversion report. Output: blocking + non-blocking findings. Tools: `Read`, `Bash`, `Grep`, `Glob`. Hard rule: never modifies the site.
+- **`cms-reviewer`** — Phase 7. Uses `code-reviewer` agent type as base, with sitegen-cms-specific context. Input: site package path, intake summary, conversion report. Output: blocking + non-blocking findings. Tools: `Read`, `Bash`, `Grep`, `Glob`. Hard rule: never modifies the site.
 
 See full contracts in `workflows/cms/agents/*.md`.
 
 ## Repo locations & permissions
 
-- Org: `optidigi`. The site repo already exists from the prior `/new-site` run.
-- Image registry: `ghcr.io/optidigi/site-<slug>` — same as before. The new image (with SSR runtime) replaces `:latest` after sign-off push triggers GHA.
+- Org: `optidigi`. The generated site already exists under `sites/<slug>` in
+  this monorepo from the prior `/new-site` run.
+- Image registry: `ghcr.io/optidigi/siab-platform-site-<slug>` — same tenant
+  package as before. The new image (with SSR runtime) replaces `:latest` after
+  sign-off push triggers GHA.
 - Payload instance: at the URL in `.env`'s `PAYLOAD_API_URL` (operator-configured, typically `https://admin.<your-domain>`, e.g. `https://admin.siteinabox.nl`).
 - Per-tenant data dir on VPS: operator-supplied at intake (typically under `/srv/data/saas/siab-payload/tenants/<tenantId>/`).
 - VPS-side `docker compose pull && up -d` plus the volume-mount edit are server-side. Don't SSH; you can help the user diagnose.
 
 ## Anti-patterns (don't do these)
 
-- Don't push to `optidigi/site-<slug>` `main` until Phase 9 sign-off gate.
+- Don't push monorepo `main` until Phase 9 sign-off gate.
 - Don't try to "re-run" `/add-cms` on an already-CMS-ified site. The Phase 2 idempotency check bails. Operator must manually revert (`git reset --hard origin/main`) and delete the Payload tenant first.
 - Don't delete the Payload tenant on any kind of failure. Operator decides.
 - Don't strip the SEO baseline files from `public/`. They're preserved through conversion.

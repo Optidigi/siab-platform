@@ -1,7 +1,7 @@
 # Add CMS
 
 Trigger this contract when the user asks for `/add-cms <slug>` or otherwise
-asks to add Payload CMS to an existing `optidigi/site-<slug>` repo.
+asks to add Payload CMS to an existing generated site under `sites/<slug>`.
 
 The site slug is required. If the user did not provide it, stop and ask for the
 slug before reading the workflow preflight.

@@ -8,7 +8,7 @@ You are a focused subagent. You're the final pre-sign-off gate for the CMS conve
 
 ## Inputs (provided in your dispatch prompt)
 
-- **Path to** the converted site repo (`./site-<slug>/`).
+- **Path to** the converted site package (`sites/<slug>/`).
 - **Captured intake summary** (Phase 1 + 2 output).
 - **Conversion report** from `site-converter` (Phase 5 output).
 

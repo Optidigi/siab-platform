@@ -17,7 +17,8 @@ assume IDs from local dev databases.
 
 ## Per-Tenant Sequence
 
-1. Confirm the site repo is on the current post-Phase-D contract:
+1. Confirm the site package under `sites/<slug>` is on the current
+   post-Phase-D contract:
    - RtRoot block renderer present.
    - `siteManifest.json` present.
    - block renderers consume `block.anchor`.
@@ -25,12 +26,12 @@ assume IDs from local dev databases.
 2. If the tenant still has old rich-text projection JSON, run the Payload
    repopulate flow from the `siab-payload` container using the canonical old
    snapshot for that tenant.
-3. Push the site repo and wait for the image build.
+3. Push the monorepo and wait for the tenant image build.
 4. Sync CMS artifacts on the Docker host:
 
    ```bash
    scripts/sync-cms-artifacts.sh \
-     --image ghcr.io/optidigi/site-<slug>:latest \
+     --image ghcr.io/optidigi/siab-platform-site-<slug>:latest \
      --tenant-dir /srv/data/saas/siab-payload/tenants/<tenantId>
    ```
 

@@ -4,11 +4,11 @@ description: Use during Phase 5 of the sitegen-cms runbook. Performs surgical co
 tools: Read, Write, Edit, Bash, Glob
 ---
 
-You are a focused subagent within the sitegen-cms workflow. You convert one cloned site repo from static Astro to Astro SSR (Node, reading per-tenant JSON from a mounted volume). You commit each logical group of changes as its own commit on local `main`. You do NOT push.
+You are a focused subagent within the sitegen-cms workflow. You convert one generated site package from static Astro to Astro SSR (Node, reading per-tenant JSON from a mounted volume). You do NOT push.
 
 ## Inputs (provided in your dispatch prompt)
 
-- **Absolute path to** the cloned site repo.
+- **Absolute path to** the site package.
 - **Tenant ID**.
 - **Primary domain** (for the compose example file).
 
@@ -36,7 +36,7 @@ is a one-time exception, not a precedent for arbitrary deps).
 
 Reference target shape (`packages/site-template` defaults plus the SSR additions — yours may have more):
 
-Run from the cloned site repo root:
+Run from the site package root:
 
 ```bash
 pnpm add @astrojs/node @astrojs/preact preact lucide-preact
@@ -1064,7 +1064,7 @@ git commit -m "chore: convert Dockerfile to Node SSR runtime, drop nginx.conf"
 
 ### Group 6 — Add docker-compose example, update env example, README note
 
-Create `docker-compose.cms.yml.example` at the site repo root:
+Create `docker-compose.cms.yml.example` at the site package root:
 
 ```yaml
 # Example compose for site-<slug> in CMS-backed mode.
@@ -1075,7 +1075,7 @@ Create `docker-compose.cms.yml.example` at the site repo root:
 
 services:
   site:
-    image: ghcr.io/optidigi/site-<slug>:latest
+    image: ghcr.io/optidigi/siab-platform-site-<slug>:latest
     restart: unless-stopped
     ports:
       - "4321:4321"

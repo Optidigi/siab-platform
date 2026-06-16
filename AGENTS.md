@@ -30,6 +30,8 @@ Current moved surfaces:
   `packages/tools/siab-orchestrator/commands/new-site.md`.
 - For `/add-cms <slug>`, use
   `packages/tools/siab-orchestrator/commands/add-cms.md`.
+- For orchestrator package edits, also read
+  `packages/tools/siab-orchestrator/AGENTS.md`.
 
 Do not open an orchestrator workflow `prompt.md` before that workflow's
 preflight/confirmation gate says to do so.

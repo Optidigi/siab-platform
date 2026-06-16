@@ -10,7 +10,7 @@ brief. You don't modify anything.
 
 ## Inputs (provided in your dispatch prompt)
 
-- **Path to** `site-<slug>/`
+- **Path to** `sites/<slug>/`
 - **Intake brief** (the bullet summary the user approved in Phase 1)
 - **Latest auditor report**
 
@@ -26,7 +26,7 @@ brief. You don't modify anything.
 - Security headers wired in `nginx.conf` (CSP, X-Frame-Options,
   X-Content-Type-Options at minimum).
 - `astro.config.mjs` has the correct `site` URL (matches primary domain).
-- `siteManifest.json` present at site repo root (per-tenant manifest used by
+- `siteManifest.json` present at site package root (per-tenant manifest used by
   `/add-cms` during CMS-ification). If absent, raise as
   blocking — Phase 2 should have generated it from `siteManifest.example.json`.
   Do NOT auto-fix; the operator should re-run Phase 2's `cp` step manually so

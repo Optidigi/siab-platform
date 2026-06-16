@@ -14,8 +14,9 @@ Walk the checklist below with the user, one section at a time. Accept "n/a"
 or "skip" per field. After all sections, summarize back what you captured.
 
 ### Identity
-- Site **slug** (used for repo name `site-<slug>` and local dir; lowercase,
-  hyphenless preferred — `amicare`, not `ami-care`)
+- Site **slug** (used for `sites/<slug>` and image package
+  `siab-platform-site-<slug>`; lowercase, hyphenless preferred — `amicare`,
+  not `ami-care`)
 - **Primary domain** (e.g. `amicare.nl`)
 - Other domains / **aliases** (for canonical / redirect notes)
 - **Brand / business name** (used in titles, JSON-LD, footer)
@@ -56,15 +57,15 @@ before you scaffold anything.
 
 ## Phase 2 — Scaffold
 
-Run from the monorepo root. The generated site worktree is created under the
-orchestrator tool directory so it stays ignored by the monorepo.
+Run from the monorepo root. The generated site package is created under
+`sites/<slug>` so it is tracked by the monorepo.
 
 ```bash
-ORCH_ROOT="packages/tools/siab-orchestrator"
-cp -r packages/site-template/. "${ORCH_ROOT}/site-<slug>/"
-cd "${ORCH_ROOT}/site-<slug>"
-rm -rf .git
-git init -b main
+SITE_DIR="sites/<slug>"
+test ! -e "${SITE_DIR}" || { echo "FATAL: ${SITE_DIR} already exists"; exit 1; }
+mkdir -p "${SITE_DIR}"
+cp -r packages/site-template/. "${SITE_DIR}/"
+cd "${SITE_DIR}"
 ```
 
 Then:
@@ -232,7 +233,7 @@ Defer should-fix unless cheap; defer nice-to-have unless trivial.
 ## Phase 7 — Review
 
 Dispatch the `reviewer` subagent (uses `code-reviewer` type) with:
-- path to `site-<slug>/`
+- path to `sites/<slug>/`
 - the captured intake brief
 - the latest auditor report
 
@@ -263,28 +264,47 @@ Stop the dev server before moving on.
 
 ## Phase 9 — Publish
 
-From the orchestrator root:
+From the monorepo root:
 
 ```bash
-cd site-<slug>
-git add -A
+# Ensure a root tenant image workflow exists before committing. Use the existing
+# tenant workflows as the template, with:
+# - context: sites/<slug>
+# - image: ghcr.io/optidigi/siab-platform-site-<slug>
+# - SITE_URL set to the primary domain
+test -f ".github/workflows/build-tenant-<slug>-image.yml" || {
+  echo "FATAL: add .github/workflows/build-tenant-<slug>-image.yml before publishing"
+  exit 1
+}
+
+git add sites/<slug> .github/workflows
 git commit -m "feat: initial site"
-gh repo create optidigi/site-<slug> --public --source=. --remote=origin --push
-gh run watch --exit-status
+git push origin main
+
+SHA=$(git rev-parse HEAD)
+RUN_ID=""
+for i in $(seq 1 15); do
+  RUN_ID=$(gh run list --commit "$SHA" --workflow "build-tenant-<slug>-image" --limit 1 --json databaseId -q '.[0].databaseId')
+  [ -n "$RUN_ID" ] && break
+  sleep 2
+done
+[ -z "$RUN_ID" ] && { echo "FATAL: no tenant image workflow found for $SHA"; exit 1; }
+gh run watch "$RUN_ID" --exit-status
 ```
 
 After the workflow finishes:
-- Confirm the image landed: `gh api /orgs/optidigi/packages/container/site-<slug>/versions | head -50`
+- Confirm the image landed: `gh api /orgs/optidigi/packages/container/siab-platform-site-<slug>/versions | head -50`
   (or check https://github.com/orgs/optidigi/packages).
-- Tell the user the image path: `ghcr.io/optidigi/site-<slug>:latest`.
+- Tell the user the image path:
+  `ghcr.io/optidigi/siab-platform-site-<slug>:latest`.
 - **GATE:** wait for the user to confirm the VPS pulled the image and the
   primary domain serves the site.
 
 If the user reports a problem deploying, you can help diagnose by running the
 published image locally:
 ```bash
-docker pull ghcr.io/optidigi/site-<slug>:latest
-docker run --rm -p 8080:80 ghcr.io/optidigi/site-<slug>:latest
+docker pull ghcr.io/optidigi/siab-platform-site-<slug>:latest
+docker run --rm -p 8080:80 ghcr.io/optidigi/siab-platform-site-<slug>:latest
 # then curl localhost:8080
 ```
 
@@ -292,15 +312,8 @@ docker run --rm -p 8080:80 ghcr.io/optidigi/site-<slug>:latest
 
 ## Phase 10 — Cleanup
 
-From the orchestrator root:
-
-```bash
-rm -rf site-<slug>/
-```
-
 Confirm to the user the site is shipped, the image is at
-`ghcr.io/optidigi/site-<slug>:latest`, the source repo is at
-`https://github.com/optidigi/site-<slug>`, and your local working dir is
-clean.
+`ghcr.io/optidigi/siab-platform-site-<slug>:latest`, the source is at
+`sites/<slug>` in this monorepo, and your local working dir is clean.
 
 Done.

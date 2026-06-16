@@ -73,27 +73,19 @@ VPS data path:         <as supplied>
 Client editor email:   <as supplied or "n/a">
 ```
 
-**GATE:** "Approve to proceed to Phase 2 (clone & inspect)?"
+**GATE:** "Approve to proceed to Phase 2 (inspect site package)?"
 
 ---
 
-## Phase 2 — Clone & inspect
+## Phase 2 — Inspect site package
 
-Verify the orchestrator working dir doesn't already have `./site-<slug>/`:
-
-```bash
-cd "${ORCH_ROOT}"
-test ! -e site-<slug> || { echo "FATAL: ./site-<slug>/ already exists. Remove it or work in a different orchestrator clone."; exit 1; }
-```
-
-Clone:
+Resolve and verify the generated site package:
 
 ```bash
-gh repo clone optidigi/site-<slug> ./site-<slug>
-cd ./site-<slug>
+SITE_DIR="${MONOREPO_ROOT}/sites/<slug>"
+test -d "${SITE_DIR}" || { echo "FATAL: ${SITE_DIR} does not exist"; exit 1; }
+cd "${SITE_DIR}"
 ```
-
-If `gh repo clone` fails: bail. Likely auth or repo doesn't exist. Operator handles.
 
 Verify conventions:
 
@@ -120,7 +112,7 @@ If any idempotency check fires: print the diagnostic, advise the operator to man
 Parse `src/content/site.ts` into JSON for downstream phases (Phase 4 dispatch, Phase 9 compose snippet). Use `tsx` via `pnpm dlx` so we don't depend on the cloned site already having `tsx` installed:
 
 ```bash
-# Still in ./site-<slug>/ from the cd above
+# Still in ${SITE_DIR} from the cd above
 pnpm dlx tsx --eval "
   import { site } from './src/content/site';
   process.stdout.write(JSON.stringify(site, null, 2));
@@ -196,7 +188,7 @@ Resolved VPS data path: /srv/data/saas/siab-payload/tenants/<tenantId>
 
 Dispatch the `payload-seeder` subagent. The dispatch prompt must include:
 
-- Site repo path: `${ORCH_ROOT}/site-<slug>`
+- Site package path: `${MONOREPO_ROOT}/sites/<slug>`
 - Tenant ID (`${TENANT_ID}` from Phase 3)
 - `PAYLOAD_API_URL` and `PAYLOAD_API_TOKEN` values
 - The parsed siteSettings JSON — read `/tmp/site.json` produced in Phase 2 and embed it (or paste as a JSON blob in the dispatch prompt)
@@ -216,27 +208,32 @@ If the subagent reports failures: stop the run, surface them to the operator, ad
 
 Dispatch the `site-converter` subagent. The dispatch prompt must include:
 
-- Absolute site repo path
+- Absolute site package path: `${MONOREPO_ROOT}/sites/<slug>`
 - Tenant ID
 - Primary domain
 
-Wait for the subagent's report. It will have made multiple commits on local `main`. Verify with:
+Wait for the subagent's report. It will have made multiple logical edits under
+`sites/<slug>`. Verify with:
 
 ```bash
-cd "${ORCH_ROOT}/site-<slug>"
-git log --oneline -10
+cd "${MONOREPO_ROOT}"
+git status --short sites/<slug>
+git diff --stat -- sites/<slug>
 ```
 
-Expected: ~7 commits with `chore:`, `feat:`, `refactor:` prefixes per the spec's commit list.
+Expected: the changed files are limited to the target generated site package
+and any required root workflow adjustment.
 
-If the subagent bailed mid-conversion: surface the report, advise operator to manually revert (`git reset --hard origin/main`) before re-running.
+If the subagent bailed mid-conversion: surface the report and advise the
+operator to manually revert only the target `sites/<slug>` changes before
+re-running.
 
 ---
 
 ## Phase 6 — Build verify
 
 ```bash
-cd "${ORCH_ROOT}/site-<slug>"
+cd "${MONOREPO_ROOT}/sites/<slug>"
 pnpm install
 pnpm check:responsive
 pnpm build
@@ -261,7 +258,7 @@ Max 2 fix attempts. After 2 failures, escalate with the build log.
 
 Dispatch the `cms-reviewer` subagent. Dispatch prompt includes:
 
-- Absolute site repo path
+- Absolute site package path
 - Captured intake summary (from Phase 1 + Phase 2)
 - The conversion report from `site-converter` (Phase 5)
 
@@ -317,9 +314,9 @@ If user create returns 4xx with a schema mismatch (e.g., a different role enum, 
 Print to operator:
 
 ```bash
-cd "${ORCH_ROOT}/site-<slug>"
-git log --oneline origin/main..HEAD
-git diff origin/main..HEAD --stat
+cd "${MONOREPO_ROOT}"
+git status --short sites/<slug> .github/workflows
+git diff --stat -- sites/<slug> .github/workflows
 ```
 
 Print the compose snippet (substitute the actual values):
@@ -331,7 +328,7 @@ separate proxy host.
 
   services:
     site-<slug>:
-      image: ghcr.io/optidigi/site-<slug>:latest
+      image: ghcr.io/optidigi/siab-platform-site-<slug>:latest
       restart: unless-stopped
       networks:
         - proxy
@@ -360,7 +357,7 @@ site container is restarted:
 
 ```bash
 scripts/sync-cms-artifacts.sh \
-  --image ghcr.io/optidigi/site-<slug>:latest \
+  --image ghcr.io/optidigi/siab-platform-site-<slug>:latest \
   --tenant-dir <vps-data-path-from-intake>
 ```
 
@@ -378,21 +375,23 @@ Print the Payload admin link:
 Payload admin: ${PAYLOAD_API_URL}/admin/collections/pages?where[tenant][equals]=<tenantId>
 ```
 
-**GATE:** "Approve to push to optidigi/site-<slug>:main? (Triggers GHA build of new image.)"
+**GATE:** "Approve to push monorepo main? (Triggers tenant image workflow.)"
 
 On approval:
 
 ```bash
-cd "${ORCH_ROOT}/site-<slug>"
+cd "${MONOREPO_ROOT}"
+git add sites/<slug> .github/workflows
+git commit -m "feat: cms-ify <slug>"
 git push origin main
 
 # Capture the new HEAD sha so we watch the right run, not "the most recent
-# of any run on the repo". GHA registers the run a few seconds after push,
+# of any run". GHA registers the run a few seconds after push,
 # so poll briefly.
 SHA=$(git rev-parse HEAD)
 RUN_ID=""
 for i in $(seq 1 15); do
-  RUN_ID=$(gh run list --commit "$SHA" --limit 1 --json databaseId -q '.[0].databaseId')
+  RUN_ID=$(gh run list --commit "$SHA" --workflow "build-tenant-<slug>-image" --limit 1 --json databaseId -q '.[0].databaseId')
   [ -n "$RUN_ID" ] && break
   sleep 2
 done
@@ -407,7 +406,7 @@ If GHA fails: tail logs, diagnose. Code issue → fix and push again. Infra issu
 Confirm the new image landed:
 
 ```bash
-gh api "/orgs/optidigi/packages/container/site-<slug>/versions" | jq -r '.[0:3] | .[] | "\(.created_at) \(.metadata.container.tags[]?)"'
+gh api "/orgs/optidigi/packages/container/siab-platform-site-<slug>/versions" | jq -r '.[0:3] | .[] | "\(.created_at) \(.metadata.container.tags[]?)"'
 ```
 
 Expected: a recent `latest` tag (and a `sha-<short>` tag matching the new HEAD commit).
@@ -450,11 +449,11 @@ When the round-trip works, confirm to the operator:
 ```
 Done.
 
-CMS-ified site: optidigi/site-<slug>
-Image:          ghcr.io/optidigi/site-<slug>:latest (new SSR runtime)
+CMS-ified site: sites/<slug>
+Image:          ghcr.io/optidigi/siab-platform-site-<slug>:latest (new SSR runtime)
 Tenant:         <tenantId> on ${PAYLOAD_API_URL}
 Editor:         admin@optidigi.nl (update to client email when ready to hand off)
-Local clone:    ./site-<slug>/ (kept for inspection; remove manually when done)
+Source:         sites/<slug> in the monorepo
 ```
 
 Done.
