@@ -5,7 +5,12 @@ on:
     branches: [main]
     paths:
       - "sites/ami-care/**"
+      - "packages/contracts/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/build-tenant-amicare-image.yml"
+      - ".dockerignore"
   workflow_dispatch: {}
 
 permissions:
@@ -46,13 +51,15 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: sites/ami-care
+          context: .
+          file: sites/ami-care/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=tenant-amicare
           cache-to: type=gha,mode=max,scope=tenant-amicare
           build-args: |
+            SITE_DIR=sites/ami-care
             SITE_URL=https://ami-care.nl
 
       - name: Smoke-start pushed image

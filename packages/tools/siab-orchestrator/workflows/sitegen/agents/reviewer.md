@@ -26,6 +26,16 @@ brief. You don't modify anything.
 - Security headers wired in `nginx.conf` (CSP, X-Frame-Options,
   X-Content-Type-Options at minimum).
 - `astro.config.mjs` has the correct `site` URL (matches primary domain).
+- `package.json` uses
+  `"@siteinabox/contracts": "file:../../packages/contracts"` rather than
+  `workspace:*`; generated sites are snapshots under `sites/<slug>`, not
+  workspace packages authored in `packages/*`.
+- `Dockerfile` uses root-context build conventions:
+  `ARG SITE_DIR=sites/<slug>`, `COPY ${SITE_DIR}`, and
+  `COPY packages/contracts /repo/packages/contracts`.
+- `Dockerfile` uses
+  `ARG PNPM_INSTALL_FLAGS=--ignore-workspace --frozen-lockfile`, because
+  generated sites are not root workspace packages.
 - `siteManifest.json` present at site package root (per-tenant manifest used by
   `/add-cms` during CMS-ification). If absent, raise as
   blocking — Phase 2 should have generated it from `siteManifest.example.json`.

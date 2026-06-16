@@ -2,16 +2,18 @@
 
 # 1. Build
 FROM node:26-alpine AS builder
-WORKDIR /app
+WORKDIR /repo/apps/cms
 RUN apk add --no-cache libc6-compat
 RUN npm install -g pnpm@11.5.0
 # Keep dependency-fetch inputs separate from package.json so script/metadata
 # edits do not force a full package-store refetch.
-COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/cms/pnpm-lock.yaml apps/cms/pnpm-workspace.yaml ./
+COPY packages/ui/package.json /repo/packages/ui/package.json
 RUN pnpm fetch --frozen-lockfile --store-dir=/pnpm/store
-COPY package.json ./
+COPY apps/cms/package.json ./
+COPY packages/ui /repo/packages/ui
 RUN pnpm install --frozen-lockfile --offline --store-dir=/pnpm/store
-COPY . .
+COPY apps/cms .
 ENV NEXT_TELEMETRY_DISABLED=1
 # PAYLOAD_SECRET / DATABASE_URI must be set at runtime, not build time.
 # But payload.config.ts throws if they're missing — provide build-time
@@ -42,9 +44,9 @@ ENV PORT=3000
 RUN apk add --no-cache wget
 # node:26-alpine ships with a `node` user at UID 1000; reuse it (matches the
 # host's serveradmin UID 1000 so the bind-mounted /data-out is writable).
-COPY --from=builder --chown=node:node /app/.next/standalone ./
-COPY --from=builder --chown=node:node /app/.next/static ./.next/static
-COPY --from=builder --chown=node:node /app/public ./public
+COPY --from=builder --chown=node:node /repo/apps/cms/.next/standalone ./
+COPY --from=builder --chown=node:node /repo/apps/cms/.next/static ./.next/static
+COPY --from=builder --chown=node:node /repo/apps/cms/public ./public
 # Migrate-on-boot bundle: a single self-contained `.mjs` produced by esbuild
 # with payload + db-postgres + drizzle + pg + the config + every migration's
 # up/down all INLINED. The runner stage is Next's `.next/standalone` output,
@@ -52,8 +54,8 @@ COPY --from=builder --chown=node:node /app/public ./public
 # as a directly-importable package; therefore the migrate script must be
 # ESM-bundled. See scripts/build-runtime-bundle.mjs (bundler) and
 # scripts/migrate-on-boot-entry.ts (source) for the why.
-COPY --from=builder --chown=node:node /app/dist-runtime ./dist-runtime
-COPY --from=builder --chown=node:node /app/scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
+COPY --from=builder --chown=node:node /repo/apps/cms/dist-runtime ./dist-runtime
+COPY --from=builder --chown=node:node /repo/apps/cms/scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --start-period=60s --timeout=10s --retries=3 \

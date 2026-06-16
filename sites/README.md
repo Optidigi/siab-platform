@@ -20,3 +20,20 @@ sites/
 
 Generated sites should continue to consume the shared contracts from
 `packages/site-template`, `packages/site-themes`, and the `/add-cms` workflow.
+
+## Image Build Convention
+
+Generated sites that consume shared packages must build from the monorepo root
+Docker context. Tenant image workflows should use:
+
+```yaml
+with:
+  context: .
+  file: sites/<slug>/Dockerfile
+  build-args: |
+    SITE_DIR=sites/<slug>
+```
+
+This lets Docker see both `sites/<slug>` and shared packages such as
+`packages/contracts`. Keep tenant-specific image names stable unless the
+operator explicitly approves a deploy contract change.

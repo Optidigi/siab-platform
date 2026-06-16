@@ -5,7 +5,12 @@ on:
     branches: [main]
     paths:
       - "apps/cms/**"
+      - "packages/ui/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/build-cms-image.yml"
+      - ".dockerignore"
   workflow_dispatch:
 
 permissions:
@@ -55,7 +60,8 @@ jobs:
       - name: Build + push image
         uses: docker/build-push-action@v6
         with:
-          context: apps/cms
+          context: .
+          file: apps/cms/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

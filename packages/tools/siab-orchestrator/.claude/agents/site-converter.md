@@ -1004,34 +1004,43 @@ git commit -m "refactor: source SEO components from CMS instead of site.ts"
 
 ### Group 5 — Update Dockerfile, delete nginx.conf
 
-Read the existing Dockerfile first to understand its current shape. Replace the final stage. Target shape:
+Read the existing Dockerfile first to understand its current shape. Replace it
+with a monorepo-root-context Node SSR image. The tenant package may consume
+`packages/contracts`, so the Dockerfile must copy the site directory and shared
+contracts from the repository root build context. Replace `<slug>` with the
+actual `sites/<slug>` directory. Target shape:
 
 ```dockerfile
 # syntax=docker/dockerfile:1.7
 ARG NODE_VERSION=lts-alpine
+ARG SITE_DIR=sites/<slug>
 
 FROM node:${NODE_VERSION} AS build
-WORKDIR /app
+ARG SITE_DIR
+WORKDIR /repo/${SITE_DIR}
 
-COPY package.json pnpm-lock.yaml ./
+COPY ${SITE_DIR}/package.json ${SITE_DIR}/pnpm-lock.yaml ./
+COPY packages/contracts /repo/packages/contracts
 RUN corepack enable && pnpm install --frozen-lockfile
 
-COPY . .
+COPY ${SITE_DIR} .
 ARG SITE_URL=https://example.com
 ENV SITE_URL=${SITE_URL}
 RUN pnpm build
 
 FROM node:${NODE_VERSION}
-WORKDIR /app
+ARG SITE_DIR
+WORKDIR /repo/${SITE_DIR}
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=4321
 ENV CMS_DATA_DIR=/data
 
 # Copy production deps + built server bundle
-COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
+COPY --from=build /repo/${SITE_DIR}/package.json /repo/${SITE_DIR}/pnpm-lock.yaml ./
+COPY --from=build /repo/packages/contracts /repo/packages/contracts
 RUN corepack enable && pnpm install --prod --frozen-lockfile
-COPY --from=build /app/dist ./dist
+COPY --from=build /repo/${SITE_DIR}/dist ./dist
 
 EXPOSE 4321
 
@@ -1049,6 +1058,8 @@ Verify Dockerfile is node-based and nginx is gone:
 ```bash
 grep -E "FROM nginx" Dockerfile && echo "FAIL" || echo "OK: no nginx FROM"
 test ! -f nginx.conf && echo "OK: nginx.conf removed" || echo "FAIL: nginx.conf still present"
+grep -q "SITE_DIR=sites/" Dockerfile && echo "OK: root-context SITE_DIR default present" || echo "FAIL: missing SITE_DIR"
+grep -q "packages/contracts" Dockerfile && echo "OK: shared contracts copied" || echo "FAIL: missing packages/contracts copy"
 ```
 
 Both should print "OK".

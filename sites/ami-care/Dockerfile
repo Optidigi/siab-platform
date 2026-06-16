@@ -1,28 +1,33 @@
 # syntax=docker/dockerfile:1.7
 ARG NODE_VERSION=lts-alpine
+ARG SITE_DIR=sites/ami-care
 
 FROM node:${NODE_VERSION} AS build
-WORKDIR /app
+ARG SITE_DIR
+WORKDIR /repo/${SITE_DIR}
 
-COPY package.json pnpm-lock.yaml ./
+COPY ${SITE_DIR}/package.json ${SITE_DIR}/pnpm-lock.yaml ./
+COPY packages/contracts /repo/packages/contracts
 RUN corepack enable && pnpm install --frozen-lockfile
 
-COPY . .
+COPY ${SITE_DIR} .
 ARG SITE_URL=https://example.com
 ENV SITE_URL=${SITE_URL}
 RUN pnpm check:responsive && pnpm build
 
 FROM node:${NODE_VERSION}
-WORKDIR /app
+ARG SITE_DIR
+WORKDIR /repo/${SITE_DIR}
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=4321
 ENV CMS_DATA_DIR=/data
 
 # Copy production deps + built server bundle
-COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
+COPY --from=build /repo/${SITE_DIR}/package.json /repo/${SITE_DIR}/pnpm-lock.yaml ./
+COPY --from=build /repo/packages/contracts /repo/packages/contracts
 RUN corepack enable && pnpm install --prod --frozen-lockfile
-COPY --from=build /app/dist ./dist
+COPY --from=build /repo/${SITE_DIR}/dist ./dist
 
 EXPOSE 4321
 

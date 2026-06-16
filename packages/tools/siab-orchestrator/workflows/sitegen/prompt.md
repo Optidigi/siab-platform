@@ -69,6 +69,23 @@ cd "${SITE_DIR}"
 ```
 
 Then:
+- Rewrite copied workspace dependencies to generated-site file dependencies:
+  ```bash
+  node -e "const fs=require('fs'); const p='package.json'; const pkg=JSON.parse(fs.readFileSync(p,'utf8')); if (pkg.dependencies?.['@siteinabox/contracts']) pkg.dependencies['@siteinabox/contracts']='file:../../packages/contracts'; fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n')"
+  ```
+  Generated sites live under `sites/<slug>` and are tenant snapshots, so they
+  should consume shared monorepo contracts through the stable
+  `file:../../packages/contracts` path rather than the template package's
+  `workspace:*` development specifier.
+- Set the copied Dockerfile's default build directory to this site:
+  ```bash
+  perl -0pi -e 's#ARG SITE_DIR=packages/site-template#ARG SITE_DIR=sites/<slug>#' Dockerfile
+  perl -0pi -e 's#ARG PNPM_INSTALL_FLAGS=--frozen-lockfile#ARG PNPM_INSTALL_FLAGS=--ignore-workspace --frozen-lockfile#' Dockerfile
+  ```
+  The workflow should still pass `SITE_DIR=sites/<slug>` explicitly, but the
+  defaults should be correct for manual root-context builds too. Generated site
+  packages are not root workspace packages, so Docker builds must install with
+  `--ignore-workspace`.
 - Set `SITE_URL` env reference in `astro.config.mjs` if you need a non-default
   primary domain (the file already reads from `process.env.SITE_URL`).
 - Open `src/content/site.ts` and replace the placeholder with intake data:
@@ -91,7 +108,13 @@ Then:
   disables analytics for this site. Public tracking is still consent-gated by
   the generated-site runtime.
 
-Verify: `pnpm install && pnpm astro check` succeeds.
+Verify:
+```bash
+grep -q '"@siteinabox/contracts": "file:../../packages/contracts"' package.json
+grep -q 'ARG SITE_DIR=sites/<slug>' Dockerfile
+grep -q 'ARG PNPM_INSTALL_FLAGS=--ignore-workspace --frozen-lockfile' Dockerfile
+pnpm install && pnpm astro check
+```
 
 ---
 
@@ -269,7 +292,12 @@ From the monorepo root:
 ```bash
 # Ensure a root tenant image workflow exists before committing. Use the existing
 # tenant workflows as the template, with:
-# - context: sites/<slug>
+# - path filters for sites/<slug>/**, packages/contracts/**, root lock/workspace
+#   files, the workflow file, and .dockerignore
+# - docker/build-push-action context: .
+# - docker/build-push-action file: sites/<slug>/Dockerfile
+# - build-args include SITE_DIR=sites/<slug>
+# - build-args include PNPM_INSTALL_FLAGS=--ignore-workspace --frozen-lockfile
 # - image: ghcr.io/optidigi/siteinabox-site-<slug>
 # - SITE_URL set to the primary domain
 test -f ".github/workflows/build-tenant-<slug>-image.yml" || {

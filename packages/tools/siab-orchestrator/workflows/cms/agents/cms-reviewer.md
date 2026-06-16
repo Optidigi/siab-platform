@@ -160,6 +160,10 @@ If the original `nginx.conf` (now deleted, but reference the design spec or git 
 - `HEALTHCHECK` targets `/healthz` on the same port.
 - `CMD` runs `node ./dist/server/entry.mjs` (or whatever the configured entry is).
 - `ENV CMS_DATA_DIR=/data` set so the in-container default is correct.
+- Dockerfile is compatible with monorepo-root build context:
+  `ARG SITE_DIR=sites/<slug>` is present, `COPY ${SITE_DIR}` is used for the
+  tenant source, and `packages/contracts` is copied for shared contract
+  dependencies.
 
 ### Post-Phase-D contract (RtRoot + role tokens + canvas CSS sync)
 
@@ -211,6 +215,9 @@ If the original `nginx.conf` (now deleted, but reference the design spec or git 
   grep -q 'ENTRYPOINT.*docker-entrypoint.sh' Dockerfile \
     && echo "BLOCKING: obsolete OBS-55 entrypoint workaround present" \
     || echo OK
+  grep -q "SITE_DIR=sites/" Dockerfile && echo OK || echo "BLOCKING: Dockerfile must define SITE_DIR=sites/<slug> for root-context image builds"
+  grep -q 'COPY ${SITE_DIR}' Dockerfile && echo OK || echo "BLOCKING: Dockerfile must copy tenant source through SITE_DIR"
+  grep -q "packages/contracts" Dockerfile && echo OK || echo "BLOCKING: Dockerfile must copy packages/contracts for shared contract deps"
   ```
 - **`docker-compose.cms.yml.example` mounts `/data:ro`**:
   ```bash
