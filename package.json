@@ -1,0 +1,19 @@
+{
+  "name": "siab-platform",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.5.0",
+  "scripts": {
+    "cms:typecheck": "pnpm --dir apps/cms --ignore-workspace typecheck",
+    "cms:test": "pnpm --dir apps/cms --ignore-workspace test",
+    "cms:build": "pnpm --dir apps/cms --ignore-workspace build",
+    "intake:build": "npm --prefix apps/intake run build",
+    "intake:test": "npm --prefix apps/intake run test",
+    "site:build": "pnpm --dir apps/site --ignore-workspace build",
+    "site:test": "pnpm --dir apps/site --ignore-workspace test",
+    "template:build": "pnpm --dir packages/site-template --ignore-workspace build",
+    "template:test": "pnpm --dir packages/site-template --ignore-workspace test",
+    "orchestrator:test": "npm --prefix packages/tools/siab-orchestrator/scripts test"
+  }
+}

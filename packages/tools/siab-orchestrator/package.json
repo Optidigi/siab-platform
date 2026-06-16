@@ -1,0 +1,9 @@
+{
+  "name": "@siab/orchestrator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npm --prefix scripts test"
+  }
+}

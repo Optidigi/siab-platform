@@ -1,0 +1,135 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  cms-quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/cms
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: apps/cms/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-workspace
+      - name: Generate Payload types
+        run: |
+          pnpm payload generate:types
+          pnpm payload generate:importmap
+        env:
+          PAYLOAD_SECRET: ci-placeholder
+          DATABASE_URI: postgres://placeholder@placeholder/placeholder
+      - name: Payload dependency contract
+        run: pnpm payload:contract
+      - name: Type check
+        run: pnpm typecheck
+      - name: Responsive canvas contract
+        run: pnpm check:responsive
+      - name: Frontend boundary contract
+        run: pnpm lint:ui-boundary
+      - name: Frontend composition contract
+        run: pnpm lint:ui-composition
+      - name: Lint (no-css)
+        run: pnpm lint:no-css
+
+  cms-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/cms
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: payload
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: payload_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      PAYLOAD_SECRET: ci-test-secret
+      DATABASE_URI: postgres://payload:ci-password@localhost:5432/payload_test
+      PAYLOAD_DISABLE_JOBS_AUTORUN: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: apps/cms/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-workspace
+      - name: Generate Payload types
+        run: |
+          pnpm payload generate:types
+          pnpm payload generate:importmap
+      - name: Run vitest (unit + integration)
+        run: pnpm test
+
+  site-template:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/site-template
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: packages/site-template/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --ignore-workspace
+      - run: pnpm astro check
+      - run: pnpm test
+      - run: pnpm build
+
+  site:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: apps/site/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --ignore-workspace
+      - run: pnpm build
+      - run: pnpm test
+
+  orchestrator:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/tools/siab-orchestrator/scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: packages/tools/siab-orchestrator/scripts/package-lock.json
+      - run: npm ci
+      - run: npm test

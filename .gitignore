@@ -1,0 +1,24 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+# App build outputs
+.next/
+dist/
+.astro/
+coverage/
+test-results/
+playwright-report/
+
+# Local generated/runtime data
+.data-out/
+.data-test-*/
+
+# Per-engagement working copies used by orchestrator workflows
+site-*/
+packages/tools/siab-orchestrator/site-*/
+
+# Local editor/system files
+.DS_Store
+*.tsbuildinfo

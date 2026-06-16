@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "fixtures": [
+    {
+      "name": "empty-block",
+      "rt": { "t": "root", "variant": "block", "children": [] }
+    },
+    {
+      "name": "paragraph-plain",
+      "rt": { "t": "root", "variant": "block", "children": [
+        { "t": "paragraph", "children": [{ "t": "text", "v": "Hello world." }] }
+      ]}
+    },
+    {
+      "name": "heading-and-paragraph",
+      "rt": { "t": "root", "variant": "block", "children": [
+        { "t": "heading", "level": 2, "children": [{ "t": "text", "v": "Title" }] },
+        { "t": "paragraph", "children": [{ "t": "text", "v": "Body" }] }
+      ]}
+    },
+    {
+      "name": "marks-bold-italic-link",
+      "rt": { "t": "root", "variant": "block", "children": [
+        { "t": "paragraph", "children": [
+          { "t": "text", "v": "Hello " },
+          { "t": "text", "v": "bold", "marks": ["bold"] },
+          { "t": "text", "v": " and " },
+          { "t": "text", "v": "italic", "marks": ["italic"] },
+          { "t": "text", "v": " and a " },
+          { "t": "link", "href": "https://example.com", "children": [{ "t": "text", "v": "link" }] },
+          { "t": "text", "v": "." }
+        ]}
+      ]}
+    },
+    {
+      "name": "list-bullet",
+      "rt": { "t": "root", "variant": "block", "children": [
+        { "t": "list", "ordered": false, "items": [
+          { "t": "listItem", "children": [{ "t": "paragraph", "children": [{ "t": "text", "v": "one" }] }] },
+          { "t": "listItem", "children": [{ "t": "paragraph", "children": [{ "t": "text", "v": "two" }] }] }
+        ]}
+      ]}
+    },
+    {
+      "name": "themed-eyebrow",
+      "rt": { "t": "root", "variant": "block", "children": [
+        { "t": "themed", "id": "eyebrow", "props": { "text": "Over mij" } },
+        { "t": "heading", "level": 2, "children": [{ "t": "text", "v": "About me" }] }
+      ]}
+    },
+    {
+      "name": "inline-headline",
+      "rt": { "t": "root", "variant": "inline", "children": [
+        { "t": "text", "v": "Jeugdzorg met " },
+        { "t": "text", "v": "hart", "marks": ["italic"] },
+        { "t": "text", "v": " en toewijding." }
+      ]}
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+import { requireOwnerSelectedSite } from "@/lib/routePolicy"
+import { getOrCreateSiteSettings } from "@/lib/queries/settings"
+import { listPages } from "@/lib/queries/pages"
+import { PageHeader } from "@/components/page-header"
+import { TenantPill } from "@/components/layout/TenantPill"
+import { NavigationManager } from "@/components/navigation/NavigationManager"
+import type { NavEntry, NavPageOption, NavZone } from "@/components/navigation/navTypes"
+import { getAdminTranslations } from "@/i18n/admin"
+
+// OBS-20 — navigation management. Owner + super-admin only, matching
+// SiteSettings.access.update (canUpdateSettings). AppSidebar gates the link
+// the same way; requireRole here blocks direct-URL access for editor/viewer.
+
+const idOf = (ref: unknown): number | null => {
+  if (ref == null) return null
+  if (typeof ref === "object" && "id" in (ref as object)) {
+    const v = (ref as { id: unknown }).id
+    return typeof v === "number" ? v : Number(v)
+  }
+  return typeof ref === "number" ? ref : Number(ref)
+}
+
+// Normalise a stored nav row (Payload may populate `page` to an object at
+// the query's depth) into the flat shape the client component consumes.
+const normaliseEntry = (row: any): NavEntry => ({
+  type: row?.type ?? "custom",
+  page: idOf(row?.page),
+  anchor: typeof row?.anchor === "string" ? row.anchor : null,
+  url: typeof row?.url === "string" ? row.url : null,
+  label: typeof row?.label === "string" ? row.label : null,
+  external: !!row?.external,
+})
+
+export default async function NavigationPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>
+  searchParams?: Promise<{ zone?: string | string[] }>
+}) {
+  const { slug } = await params
+  const { user, ctx, tenant } = await requireOwnerSelectedSite(slug)
+  const t = await getAdminTranslations(user, "navigation")
+  const sp = (await searchParams) ?? {}
+  const zoneParam = Array.isArray(sp.zone) ? sp.zone[0] : sp.zone
+  const initialZone: NavZone = zoneParam === "footer" ? "footer" : "header"
+
+  const settings = await getOrCreateSiteSettings(tenant.id)
+  const pages = await listPages(tenant.id)
+
+  // Page options for the picker — plus each page's block anchors so a
+  // "section link" can offer an auto-enumerated anchor list.
+  const pageOptions: NavPageOption[] = (pages as any[]).map((p) => ({
+    id: Number(p.id),
+    title: p.title,
+    slug: p.slug,
+    status: p.status,
+    anchors: Array.isArray(p.blocks)
+      ? (p.blocks as any[])
+          .map((b) => (typeof b?.anchor === "string" ? b.anchor.trim() : ""))
+          .filter((a: string) => a.length > 0)
+      : [],
+  }))
+
+  const navHeader = ((settings as any).navHeader ?? []).map(normaliseEntry)
+  const navFooter = ((settings as any).navFooter ?? []).map(normaliseEntry)
+
+  return (
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title={t("title")}
+        beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} href={ctx.mode === "tenant" ? "/" : undefined} />}
+      />
+      <NavigationManager
+        tenantId={tenant.id}
+        initialNavHeader={navHeader}
+        initialNavFooter={navFooter}
+        pages={pageOptions}
+        initialZone={initialZone}
+      />
+    </div>
+  )
+}

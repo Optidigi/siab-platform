@@ -1,0 +1,117 @@
+"use client"
+import * as React from "react"
+import { Loader2 } from "lucide-react"
+import { formatRuntimeCssValue, useCspStyleRule } from "@/components/csp-style"
+import { cn } from "@/lib/utils"
+
+export type MobileFloatingPillVariant = "default" | "warning" | "destructive" | "loading" | "success"
+export type MobileFloatingPillPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right"
+
+export interface MobileFloatingPillProps {
+  position: MobileFloatingPillPosition
+  /** Lucide icon (or any node). Ignored when variant="loading". */
+  icon: React.ReactNode
+  onClick: () => void
+  ariaLabel: string
+  variant?: MobileFloatingPillVariant
+  /** Counter badge top-right of pill. Suppressed when 0/undefined. */
+  badgeCount?: number
+  /** Override badge tone (defaults to match variant). */
+  badgeTone?: "warning" | "destructive"
+  disabled?: boolean
+  /** Extra inset (CSS length) along the pill's horizontal edge — lets a
+   *  second pill sit beside another that shares the same corner. */
+  offset?: string
+  /** Stable test/data attrs (`data-mobile-*`). */
+  dataAttrs?: Record<string, string | undefined>
+}
+
+/**
+ * Reusable floating pill for mobile editor (save / back / trash / etc).
+ *
+ * Default variant inverts the surface: dark pill + light icon in light mode,
+ * light pill + dark icon in dark mode — pops against any tenant canvas.
+ *
+ * Position drives top/right/bottom/left + safe-area inset.
+ * 48px tap target (h-12 w-12). Always md:hidden + fixed z-50.
+ */
+export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
+  position,
+  icon,
+  onClick,
+  ariaLabel,
+  variant = "default",
+  badgeCount,
+  badgeTone,
+  disabled,
+  offset,
+  dataAttrs,
+}) => {
+  const isLoading = variant === "loading"
+  const tone = badgeTone ?? (variant === "destructive" ? "destructive" : "warning")
+  const showBadge = badgeCount != null && badgeCount > 0
+
+  const positionClasses = {
+    "top-left": "top-3 left-3",
+    "top-right": "top-3 right-3",
+    "bottom-left": "bottom-3 left-3",
+    "bottom-right": "bottom-3 right-3",
+  }[position]
+  const safeOffset = formatRuntimeCssValue(offset)
+  const horizontalOffset = safeOffset ? ` + ${safeOffset}` : ""
+  const positionRule = [
+    position.startsWith("top") ? "top:calc(env(safe-area-inset-top) + 0.75rem);" : "",
+    position.startsWith("bottom") ? "bottom:calc(env(safe-area-inset-bottom) + 0.75rem);" : "",
+    position.endsWith("left") ? `left:calc(env(safe-area-inset-left) + 0.75rem${horizontalOffset});` : "",
+    position.endsWith("right") ? `right:calc(env(safe-area-inset-right) + 0.75rem${horizontalOffset});` : "",
+  ].join("")
+  const cspPosition = useCspStyleRule("mobile-floating-pill-position", positionRule)
+
+  const variantClasses = cn(
+    "border bg-foreground text-background border-transparent shadow-lg",
+    variant === "warning" && "border-2 border-amber-500/70 text-amber-400 dark:text-amber-500",
+    variant === "destructive" && "text-destructive",
+    variant === "loading" && "opacity-90 cursor-wait border-transparent",
+    variant === "success" && "border-transparent bg-success text-success-foreground shadow-success/25",
+  )
+
+  return (
+    <>
+      {cspPosition.styleElement}
+      <button
+        type="button"
+        onPointerDown={(e) => {
+          const tag = document.activeElement?.tagName
+          if (tag === "INPUT" || tag === "TEXTAREA") e.preventDefault()
+        }}
+        onClick={isLoading || disabled ? undefined : onClick}
+        disabled={isLoading || disabled}
+        aria-label={ariaLabel}
+        {...(dataAttrs ?? {})}
+        className={cn(
+          cspPosition.className,
+          "md:hidden fixed z-50 inline-flex h-12 w-12 items-center justify-center rounded-full transition-colors pointer-events-auto",
+          positionClasses,
+          variantClasses,
+        )}
+      >
+        {isLoading ? (
+          <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+        ) : (
+          icon
+        )}
+        {showBadge && (
+          <span
+            className={cn(
+              "absolute -top-1 -right-1 min-w-[1.25rem] h-5 px-1 rounded-full text-[10px] font-medium flex items-center justify-center",
+              tone === "destructive" ? "bg-destructive text-destructive-foreground" : "bg-amber-500 text-white",
+            )}
+            aria-hidden
+          >
+            {(badgeCount ?? 0) > 9 ? "9+" : badgeCount}
+          </span>
+        )}
+      </button>
+    </>
+  )
+}

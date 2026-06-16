@@ -1,0 +1,113 @@
+name: build-cms-image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/cms/**"
+      - ".github/workflows/build-cms-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: payload
+          POSTGRES_PASSWORD: payload
+          POSTGRES_DB: payload
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U payload -d payload"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/optidigi/siab-payload
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+            type=sha,format=long,prefix=sha-
+
+      - name: Build + push image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/cms
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: |
+            type=registry,ref=ghcr.io/optidigi/siab-payload:buildcache
+            type=gha
+          cache-to: type=registry,ref=ghcr.io/optidigi/siab-payload:buildcache,mode=max,image-manifest=true,oci-mediatypes=true
+          platforms: linux/amd64
+
+      - name: Smoke-start pushed image
+        env:
+          IMAGE_REF: ghcr.io/optidigi/siab-payload:sha-${{ github.sha }}
+          DATABASE_URI: postgres://payload:payload@host.docker.internal:5432/payload
+          PAYLOAD_SECRET: ci-smoke-start-secret-ci-smoke-start-secret
+          DATA_DIR: /tmp/siab-data
+          NEXT_PUBLIC_SUPER_ADMIN_DOMAIN: siteinabox.nl
+        run: |
+          set -euo pipefail
+
+          container_name="siab-payload-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            docker logs "$container_name" > smoke-container.log 2>&1 || true
+            docker rm -f "$container_name" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker pull "$IMAGE_REF"
+          docker run \
+            --detach \
+            --name "$container_name" \
+            --add-host host.docker.internal:host-gateway \
+            --publish 3000:3000 \
+            --tmpfs "$DATA_DIR:mode=1777" \
+            --env DATABASE_URI="$DATABASE_URI" \
+            --env PAYLOAD_SECRET="$PAYLOAD_SECRET" \
+            --env DATA_DIR="$DATA_DIR" \
+            --env NEXT_PUBLIC_SUPER_ADMIN_DOMAIN="$NEXT_PUBLIC_SUPER_ADMIN_DOMAIN" \
+            "$IMAGE_REF"
+
+          deadline=$((SECONDS + 90))
+          until curl --fail --silent --show-error http://127.0.0.1:3000/api/health; do
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              docker logs "$container_name" || true
+              exit 1
+            fi
+            sleep 3
+          done
+
+      - name: Upload smoke-start logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-start-logs
+          path: smoke-container.log
+          if-no-files-found: ignore

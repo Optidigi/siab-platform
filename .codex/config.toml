@@ -1,0 +1,3 @@
+# Codex project config for siab-platform.
+# Keep MCP server lists in sync with ../.mcp.json.
+# ../.mcp.json currently declares no project-local MCP servers.

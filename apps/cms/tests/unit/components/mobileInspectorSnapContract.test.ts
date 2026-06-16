@@ -1,0 +1,102 @@
+import { readFileSync } from "node:fs"
+import { describe, expect, it } from "vitest"
+
+const read = (path: string) => readFileSync(path, "utf8")
+
+describe("mobile inspector snap contract", () => {
+  it("opens from the compact detent and ignores invalid vaul snap callbacks", () => {
+    const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
+
+    expect(inspectorBar).toContain("const SNAP_POINTS: MobileSnap[] = [0.42, 0.92]")
+    expect(inspectorBar).toContain("const isMobileSnap = (snap: unknown): snap is MobileSnap")
+    expect(inspectorBar).toContain("if (isMobileSnap(snap)) expandTo(snap)")
+    expect(inspectorBar).not.toContain("?? 0.42")
+  })
+
+  it("ships vaul snap mechanics through nonce-bearing css for production CSP", () => {
+    const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
+
+    expect(inspectorBar).toContain('import { useCspNonce } from "@/components/csp-nonce"')
+    expect(inspectorBar).toContain("const VAUL_BOTTOM_SNAP_CSS = `")
+    expect(inspectorBar).toContain('[data-vaul-drawer][data-vaul-snap-points="true"][data-vaul-drawer-direction="bottom"]')
+    expect(inspectorBar).toContain('[data-vaul-drawer][data-vaul-delayed-snap-points="true"][data-vaul-drawer-direction="bottom"]')
+    expect(inspectorBar).toContain("[data-vaul-handle] {")
+    expect(inspectorBar).toContain("height: 0.375rem;")
+    expect(inspectorBar).toContain("width: 2.5rem;")
+    expect(inspectorBar).toContain("nonce={cspNonce}")
+    expect(inspectorBar).toContain("data-mobile-inspector-vaul-css")
+  })
+
+  it("promotes to the editing detent only for intentional editable-field focus", () => {
+    const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
+    const componentEditor = read("src/components/editor/canvas/mobile/mobile-component-editor.tsx")
+
+    expect(inspectorBar).toContain("handleOnly")
+    expect(inspectorBar).toContain("only the visible grip drags the sheet")
+    expect(inspectorBar).toContain("touch-action: auto;")
+    expect(inspectorBar).toContain("touch-action: none;")
+    expect(componentEditor).toContain('import { Drawer as Vaul } from "vaul"')
+    expect(componentEditor).toContain("<Vaul.Close asChild>")
+    expect(componentEditor).toContain("data-mobile-editor-close")
+    expect(componentEditor).toContain("size-10 rounded-full")
+    expect(componentEditor).toContain("onClick={handleCloseClick}")
+    expect(componentEditor).not.toContain("const handleCloseTouchEnd")
+    expect(componentEditor).not.toContain("onTouchEnd={handleCloseTouchEnd}")
+    expect(componentEditor).not.toContain("data-vaul-no-drag")
+    expect(componentEditor).toContain("function getEditableFocusTarget")
+    expect(componentEditor).toContain("onPointerDownCapture={onEditorPointerDown}")
+    expect(componentEditor).toContain("onFocusCapture={onEditorFocus}")
+    expect(componentEditor).toContain("requestAnimationFrame")
+    expect(componentEditor).toContain("if (!getEditableFocusTarget(event.target)) return")
+    expect(componentEditor).toContain("if (!focusReadyRef.current && !hasRecentEditablePointer) return")
+    expect(componentEditor).not.toContain("onFocusCapture={() => focusPop()}")
+  })
+
+  it("keeps mobile section navigation and save affordances pill-shaped", () => {
+    const sectionEdit = read("src/components/editor/canvas/mobile/mobile-section-edit.tsx")
+    const mobilePill = read("src/components/save-ui/mobile-save-pill.tsx")
+    const floatingPill = read("src/components/common/mobile-floating-pill.tsx")
+
+    expect(sectionEdit).toContain('data-mobile-prev')
+    expect(sectionEdit).toContain('data-mobile-next')
+    expect(sectionEdit).toContain('className="sticky top-0 z-30 flex min-w-0 items-center justify-center border-b border-border bg-background px-16 py-3"')
+    expect(sectionEdit).toContain('variant="secondary"')
+    expect(sectionEdit).toContain('className="size-11 rounded-full shrink-0"')
+    expect(sectionEdit).toContain('data-mobile-section-name')
+    expect(sectionEdit).toContain('variant="outline"')
+    expect(sectionEdit).toContain("rounded-full border-border bg-muted px-4 font-medium shadow-sm")
+    expect(sectionEdit).toContain('<span className="truncate">{label}</span>')
+    expect(mobilePill).toContain("const [displayStatus, setDisplayStatus] = React.useState<SaveStatus>(status)")
+    expect(mobilePill).toContain('import { Save, AlertCircle, Check } from "lucide-react"')
+    expect(mobilePill).toContain("saved: <Check")
+    expect(mobilePill).toContain("window.setTimeout")
+    expect(mobilePill).toContain("2_000")
+    expect(mobilePill).toContain('"data-save-status": displayStatus')
+    expect(floatingPill).toContain("bg-success text-success-foreground")
+    expect(floatingPill).not.toContain("animate-pulse")
+    expect(floatingPill).not.toContain("ring-offset-background")
+  })
+
+  it("opens image selection directly on mobile and uses a thumb-sized media close control", () => {
+    const componentEditor = read("src/components/editor/canvas/mobile/mobile-component-editor.tsx")
+    const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
+    const mediaSheet = read("src/components/editor/canvas/mobile/mobile-media-sheet.tsx")
+    const inlineImage = read("src/components/editor/canvas/inline/InlineImage.tsx")
+
+    expect(inspectorBar).toContain('import { useFormContext } from "react-hook-form"')
+    expect(inspectorBar).toContain('import { MobileMediaSheet } from "@/components/editor/canvas/mobile/mobile-media-sheet"')
+    expect(inspectorBar).toContain("const isDirectMediaSelection = state.selected != null && selectedName != null && selectedSpec?.kind === \"image\"")
+    expect(inspectorBar).toContain("if (isDirectMediaSelection)")
+    expect(inspectorBar).toContain("useInspectorKeyboardLock(!isIdle && !isDirectMediaSelection)")
+    expect(inspectorBar).toContain("if (isIdle || isDirectMediaSelection) return")
+    expect(inspectorBar).toContain("setValue(selectedName, media, { shouldDirty: true })")
+    expect(inspectorBar).toContain("function resolveSelectedSpec")
+    expect(componentEditor).not.toContain("const didAutoOpenRef = React.useRef(false)")
+    expect(mediaSheet).toContain("showCloseButton={false}")
+    expect(mediaSheet).toContain("<SheetClose asChild>")
+    expect(mediaSheet).toContain('className="size-10 rounded-full border border-border bg-muted text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"')
+    expect(mediaSheet).toContain("<X className=\"size-4\"")
+    expect(mediaSheet).toContain("data-mobile-media-close")
+    expect(inlineImage).toContain('showOverlayChrome && view !== "mobile" && canvasChrome.visible')
+  })
+})

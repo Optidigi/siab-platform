@@ -1,0 +1,98 @@
+# Production compose for siab-payload.
+# Deploy path on VPS: /srv/saas/infra/stacks/siab-payload/compose.yml
+# Pulls image from ghcr.io. Postgres lives alongside on the internal network.
+# Reverse proxying handled by the shared Traefik edge on the external proxy network.
+services:
+  siab-payload:
+    image: ghcr.io/optidigi/siab-payload:latest
+    container_name: siab-payload
+    restart: unless-stopped
+    environment:
+      DATABASE_URI: postgres://payload:${POSTGRES_PASSWORD}@postgres:5432/payload
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      BETTER_AUTH_ALLOWED_HOSTS: ${BETTER_AUTH_ALLOWED_HOSTS:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-common}
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
+      APPLE_CLIENT_SECRET: ${APPLE_CLIENT_SECRET:-}
+      PREVIEW_HMAC_SECRET: ${PREVIEW_HMAC_SECRET}
+      DATA_DIR: /data-out
+      NEXT_PUBLIC_SUPER_ADMIN_DOMAIN: ${SUPER_ADMIN_DOMAIN:-siteinabox.nl}
+      NEXT_PUBLIC_VPS_IP: ${VPS_IP}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@siteinabox.nl}
+      POSTHOG_HOST: ${POSTHOG_HOST:-}
+      POSTHOG_PUBLIC_HOST: ${POSTHOG_PUBLIC_HOST:-}
+      POSTHOG_PROJECT_TOKEN: ${POSTHOG_PROJECT_TOKEN:-}
+      POSTHOG_PROJECT_ID: ${POSTHOG_PROJECT_ID:-}
+      POSTHOG_PERSONAL_API_KEY: ${POSTHOG_PERSONAL_API_KEY:-}
+      POSTHOG_ENVIRONMENT: ${POSTHOG_ENVIRONMENT:-production}
+      POSTHOG_ANALYTICS_DISABLED: ${POSTHOG_ANALYTICS_DISABLED:-}
+      NODE_ENV: production
+      PORT: "3000"
+      # Default already baked into the image (Dockerfile ENV); kept here so
+      # ops can grep the compose file and see the binding without spelunking
+      # into the Dockerfile. Don't change without coordinating with healthcheck.
+      HOSTNAME: "0.0.0.0"
+    volumes:
+      # Per-tenant data lands here. Each SSR site container later RO-mounts
+      # tenants/<id>/ from this same path. DATA_HOST_PATH overridable via .env;
+      # defaults to /srv path (ops convention with root). Override with a
+      # home-dir path when running as a non-root deploy user.
+      - ${DATA_HOST_PATH:-/srv/data/saas/siab-payload}:/data-out
+    networks: [proxy, internal]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.siabpayload.rule=Host(`admin.siteinabox.nl`) || Host(`admin.ami-care.nl`)
+      - traefik.http.routers.siabpayload.entrypoints=websecure
+      - traefik.http.routers.siabpayload.tls.certresolver=letsencrypt
+      - traefik.http.routers.siabpayload.middlewares=hsts@docker
+      - traefik.http.routers.siabpayload.service=siabpayload
+      - traefik.http.services.siabpayload.loadbalancer.server.port=3000
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      start_period: 60s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: siab-payload-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: payload
+      POSTGRES_USER: payload
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payload -d payload"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres-data:
+
+networks:
+  proxy:    { external: true }   # shared Traefik edge network
+  internal:                       # private — siab-payload <-> postgres only

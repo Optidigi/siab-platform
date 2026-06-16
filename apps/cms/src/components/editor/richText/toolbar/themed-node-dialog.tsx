@@ -1,0 +1,37 @@
+"use client"
+import * as React from "react"
+import { useForm, FormProvider } from "react-hook-form"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { FieldRenderer } from "@/components/editor/FieldRenderer"
+import type { RtManifest } from "@/lib/richText/manifest"
+
+type ThemedNodeDef = NonNullable<RtManifest["themedNodes"]>[number]
+
+export interface ThemedNodeDialogProps {
+  def: ThemedNodeDef
+  initial: Record<string, unknown>
+  onSubmit: (props: Record<string, unknown>) => void
+  onCancel: () => void
+}
+
+export const ThemedNodeDialog: React.FC<ThemedNodeDialogProps> = ({ def, initial, onSubmit, onCancel }) => {
+  const methods = useForm({ defaultValues: initial })
+  const submit = methods.handleSubmit((values) => onSubmit(values))
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onCancel() }}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{def.label}</DialogTitle></DialogHeader>
+        <FormProvider {...methods}>
+          <form onSubmit={submit} className="space-y-3">
+            {def.fields.map((f, i) => <FieldRenderer key={i} field={f as any} />)}
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+              <Button type="submit">Save</Button>
+            </DialogFooter>
+          </form>
+        </FormProvider>
+      </DialogContent>
+    </Dialog>
+  )
+}

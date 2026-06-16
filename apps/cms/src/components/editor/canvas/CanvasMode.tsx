@@ -1,0 +1,859 @@
+"use client"
+import * as React from "react"
+import { useId } from "react"
+import { createPortal } from "react-dom"
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+import { ChevronDown, ChevronRight, Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
+import { CanvasBlockRenderer } from "@/components/editor/canvas/CanvasBlockRenderer"
+import { CanvasMobile } from "@/components/editor/canvas/mobile/CanvasMobile"
+import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "@/components/confirm-dialog"
+import { useCspNonce } from "@/components/csp-nonce"
+import { formatCssPx, formatRuntimeCssValue, useCspStyleRule } from "@/components/csp-style"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { CanvasChromeGutterOverlay } from "@/components/editor/canvas/CanvasChromeGutterOverlay"
+import { CanvasChromeVisibilityProvider } from "@/components/editor/canvas/CanvasChromeVisibilityContext"
+import { useBlockPresets } from "@/components/editor/canvas/BlockPresetsContext"
+import type { BlockPresetDef, BlockTypeDef } from "@/components/editor/canvas/chrome/block-type-picker"
+import { useCanvasBlocks } from "@/components/editor/canvas/useCanvasBlocks"
+import { useCanvasSelection } from "@/components/editor/canvas/CanvasSelectionContext"
+import { useScrollToSelection } from "@/components/editor/canvas/useScrollToSelection"
+import {
+  remapSelectionAfterDelete,
+  remapSelectionAfterInsert,
+  remapSelectionAfterReorder,
+} from "@/components/editor/canvas/elementPath"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { EDITOR_DESKTOP_BREAKPOINT } from "@/lib/editor/constants"
+import type { RtManifest } from "@/lib/richText/manifest"
+import type { ThemeTokens } from "@/lib/theme/schema"
+import { toCssVars } from "@/lib/theme/toCssVars"
+import { isReadOnlyView, type CanvasView } from "@/components/editor/canvas/canvasView"
+import type { MobileSectionListSlotContext } from "@/components/editor/canvas/mobile/mobile-section-list"
+import type { MobileSectionEditSlotContext } from "@/components/editor/canvas/mobile/mobile-section-edit"
+import type { MobileInspectorBarSlotContext } from "@/components/editor/canvas/mobile/mobile-inspector-bar"
+import type { MobilePageSettingsSlotContext } from "@/components/editor/canvas/mobile/mobile-page-settings"
+import type { MobileSeoSettingsSlotContext } from "@/components/editor/canvas/mobile/mobile-seo-settings"
+import { cn } from "@/lib/utils"
+import { useTranslations } from "next-intl"
+import { useStatusFeedback } from "@/components/status-feedback"
+
+export interface CanvasModeProps {
+  manifest: RtManifest
+  tenantCss: string | null
+  view: CanvasView
+  readOnly?: boolean
+  theme?: ThemeTokens | null
+  dangerZone?: React.ReactNode
+  seoCard?: React.ReactNode
+  reorderBlocks: (from: number, to: number) => void
+  deleteBlock: (i: number) => void
+  duplicateBlock: (i: number) => void
+  pageTitle: string
+  onDeletePage: () => void
+  headerChrome?: React.ReactNode
+  footerChrome?: React.ReactNode
+  onOpenBlockInspector?: (index: number) => void
+  renderMobileList?: (context: MobileSectionListSlotContext) => React.ReactNode
+  renderMobileSectionEdit?: (context: MobileSectionEditSlotContext) => React.ReactNode
+  renderMobileInspector?: (context: MobileInspectorBarSlotContext) => React.ReactNode
+  renderMobilePageSettings?: (context: MobilePageSettingsSlotContext) => React.ReactNode
+  renderMobileSeoSettings?: (context: MobileSeoSettingsSlotContext) => React.ReactNode
+}
+
+type AnchorRect = Pick<DOMRect, "left" | "right" | "top" | "width">
+
+function useFixedAnchorRect(
+  ref: React.RefObject<HTMLElement | null>,
+  enabled = true,
+): AnchorRect | null {
+  const [rect, setRect] = React.useState<AnchorRect | null>(null)
+
+  React.useLayoutEffect(() => {
+    if (!enabled) return
+    const node = ref.current
+    if (!node) return
+
+    let frame: number | null = null
+    const measure = () => {
+      frame = null
+      const next = node.getBoundingClientRect()
+      setRect({
+        left: next.left,
+        right: next.right,
+        top: next.top,
+        width: next.width,
+      })
+    }
+    const schedule = () => {
+      if (frame != null) return
+      frame = window.requestAnimationFrame(measure)
+    }
+
+    measure()
+    const resizeObserver = new ResizeObserver(schedule)
+    resizeObserver.observe(node)
+    window.addEventListener("resize", schedule)
+    window.addEventListener("scroll", schedule, true)
+
+    return () => {
+      if (frame != null) window.cancelAnimationFrame(frame)
+      resizeObserver.disconnect()
+      window.removeEventListener("resize", schedule)
+      window.removeEventListener("scroll", schedule, true)
+    }
+  }, [enabled, ref])
+
+  return rect
+}
+
+const CanvasGapOverlay: React.FC<{
+  onInsert: (blockType: string, seed?: Record<string, unknown>) => void
+}> = ({ onInsert }) => {
+  const t = useTranslations("editor")
+  const presetsCtx = useBlockPresets()
+  const anchorRef = React.useRef<HTMLDivElement | null>(null)
+  const [open, setOpen] = React.useState(false)
+  const rect = useFixedAnchorRect(anchorRef, true)
+  const overlayPosition = useCspStyleRule(
+    "canvas-gap-overlay",
+    rect
+      ? `left:${formatCssPx(rect.left)};top:${formatCssPx(rect.top - 16)};width:${formatCssPx(rect.width)};`
+      : null,
+  )
+
+  const overlay = rect && typeof document !== "undefined"
+    ? createPortal(
+        <>
+          {overlayPosition.styleElement}
+          <div
+            data-siab-canvas-chrome="insert-gap"
+            className={`${overlayPosition.className} fixed z-40 flex h-8 items-center justify-center group/gap`}
+          >
+            <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border opacity-0 transition-opacity group-hover/gap:opacity-100" />
+            <button
+              type="button"
+              aria-label={t("insertBlockHere")}
+              onClick={() => setOpen(true)}
+              className="relative z-10 inline-flex size-6 items-center justify-center rounded-full border border-border bg-popover text-popover-foreground opacity-0 shadow-sm transition-opacity group-hover/gap:opacity-100 hover:bg-accent hover:text-accent-foreground focus:opacity-100"
+            >
+              <Plus className="size-3.5" />
+            </button>
+          </div>
+        </>,
+        document.body,
+      )
+    : null
+
+  return (
+    <>
+      <div
+        ref={anchorRef}
+        className="relative h-0"
+        aria-hidden="true"
+        data-siab-canvas-gap-anchor
+      />
+      {overlay}
+      <CanvasBlockPickerDialog
+        {...presetsCtx}
+        open={open}
+        onOpenChange={setOpen}
+        onAdd={(slug, _atIndex, seed) => {
+          onInsert(slug, seed)
+          setOpen(false)
+        }}
+      />
+    </>
+  )
+}
+
+const CanvasBlockPickerDialog: React.FC<{
+  blockTypes: BlockTypeDef[]
+  presets: BlockPresetDef[]
+  presetsError?: string | null
+  onReloadPresets: () => void | Promise<void>
+  onDeletePreset: (preset: BlockPresetDef) => Promise<void>
+  sanitizePresetData?: (slug: string, data: Record<string, unknown>) => Record<string, unknown>
+  onAdd: (slug: string, atIndex: number, seed?: Record<string, unknown>) => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}> = ({
+  blockTypes,
+  presets,
+  presetsError = null,
+  onReloadPresets,
+  onDeletePreset,
+  sanitizePresetData,
+  onAdd,
+  open,
+  onOpenChange,
+}) => {
+  const t = useTranslations("editor")
+  const [expandedSlug, setExpandedSlug] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    if (!open) return
+    setExpandedSlug(null)
+    void onReloadPresets()
+  }, [open, onReloadPresets])
+
+  const presetsBySlug = React.useMemo(() => {
+    const grouped: Record<string, BlockPresetDef[]> = {}
+    for (const preset of presets) {
+      const group = grouped[preset.blockType] ?? []
+      group.push(preset)
+      grouped[preset.blockType] = group
+    }
+    return grouped
+  }, [presets])
+
+  const insert = (slug: string, seed?: Record<string, unknown>) => {
+    onAdd(slug, Number.MAX_SAFE_INTEGER, seed)
+    onOpenChange(false)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{t("addBlockTitle")}</DialogTitle>
+          <DialogDescription>{t("pickBlockType")}</DialogDescription>
+        </DialogHeader>
+        {presetsError && (
+          <p className="text-xs text-destructive">
+            {t("presetLoadFailed", { message: presetsError })}
+          </p>
+        )}
+        <div className="mt-2 grid max-h-[60vh] grid-cols-1 gap-2 overflow-y-auto pr-1">
+          {blockTypes.map((blockType) => {
+            const tilePresets = presetsBySlug[blockType.slug] ?? []
+            const isExpanded = expandedSlug === blockType.slug
+            const hasPresets = tilePresets.length > 0
+            const Icon = blockType.icon
+            const label = typeof blockType.labels?.singular === "string" ? blockType.labels.singular : blockType.slug
+
+            return (
+              <div
+                key={blockType.slug}
+                className={cn(
+                  "rounded-md border border-border bg-card text-card-foreground transition-colors",
+                  isExpanded && "border-ring",
+                )}
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-3 rounded-md p-3 text-left transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => {
+                    if (!hasPresets) {
+                      insert(blockType.slug)
+                      return
+                    }
+                    setExpandedSlug(isExpanded ? null : blockType.slug)
+                  }}
+                >
+                  {Icon && <Icon className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{label}</span>
+                    <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+                      {blockType.description ?? t("fieldCount", { count: blockType.fields.length })}
+                      {hasPresets && ` · ${t("presetCount", { count: tilePresets.length })}`}
+                    </span>
+                  </span>
+                  {hasPresets && (
+                    <span className="mt-0.5 text-muted-foreground" aria-hidden>
+                      {isExpanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                    </span>
+                  )}
+                </button>
+                {isExpanded && hasPresets && (
+                  <div className="space-y-1 border-t border-border p-2">
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => insert(blockType.slug)}
+                    >
+                      <Plus className="size-3.5 text-muted-foreground" aria-hidden />
+                      <span>{t("blankBlock", { type: label })}</span>
+                    </button>
+                    {tilePresets.map((preset) => (
+                      <CanvasPresetRow
+                        key={preset.id}
+                        preset={preset}
+                        onInsert={() => {
+                          const seed = sanitizePresetData
+                            ? sanitizePresetData(blockType.slug, preset.data)
+                            : preset.data
+                          insert(blockType.slug, seed)
+                        }}
+                        onDelete={onDeletePreset}
+                        onDeleted={onReloadPresets}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const CanvasPresetRow: React.FC<{
+  preset: BlockPresetDef
+  onInsert: () => void
+  onDelete: (preset: BlockPresetDef) => Promise<void>
+  onDeleted: () => void | Promise<void>
+}> = ({ preset, onInsert, onDelete, onDeleted }) => {
+  const t = useTranslations("editor")
+  const status = useStatusFeedback()
+  const [confirmOpen, setConfirmOpen] = React.useState(false)
+
+  return (
+    <div className="flex items-center gap-2 rounded-md transition-colors hover:bg-accent/40">
+      <button
+        type="button"
+        className="min-w-0 flex-1 rounded-md px-2 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={onInsert}
+      >
+        <span className="block truncate font-medium">{preset.name}</span>
+        {preset.description && (
+          <span className="block truncate text-xs text-muted-foreground">{preset.description}</span>
+        )}
+      </button>
+      <Button
+        variant="ghost"
+        size="icon"
+        type="button"
+        className="mr-1 size-7"
+        onClick={(event) => {
+          event.stopPropagation()
+          setConfirmOpen(true)
+        }}
+        aria-label={t("deletePresetLabel", { name: preset.name })}
+      >
+        <Trash2 className="size-3.5" />
+      </Button>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={t("deletePresetTitle", { name: preset.name })}
+        description={t("deletePresetDescription")}
+        confirmLabel={t("deletePreset")}
+        onConfirm={async () => {
+          await onDelete(preset)
+          status.success(t("deletedPreset", { name: preset.name }))
+          await onDeleted()
+        }}
+      />
+    </div>
+  )
+}
+
+const CanvasBlockContextMenu: React.FC<{
+  menu: { index: number; point: { x: number; y: number } } | null
+  onClose: () => void
+  onOpenInspector: (index: number) => void
+  onDuplicate: (index: number) => void
+  onDelete: (index: number) => void
+}> = ({ menu, onClose, onOpenInspector, onDuplicate, onDelete }) => {
+  const t = useTranslations("editor")
+  const tCommon = useTranslations("common")
+
+  React.useEffect(() => {
+    if (!menu) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [menu, onClose])
+
+  // siab-responsive-ignore-next-line -- CMS context menu is positioned against the browser viewport.
+  const left = menu && typeof document !== "undefined" ? Math.max(8, Math.min(menu.point.x, window.innerWidth - 240)) : 0
+  // siab-responsive-ignore-next-line -- CMS context menu is positioned against the browser viewport.
+  const top = menu && typeof document !== "undefined" ? Math.max(8, Math.min(menu.point.y, window.innerHeight - 144)) : 0
+  const menuPosition = useCspStyleRule(
+    "canvas-block-menu",
+    menu && typeof document !== "undefined"
+      ? `left:${formatCssPx(left)};top:${formatCssPx(top)};`
+      : null,
+  )
+
+  if (!menu || typeof document === "undefined") return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 font-sans"
+      role="presentation"
+      onClick={onClose}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        onClose()
+      }}
+    >
+      {menuPosition.styleElement}
+      <div
+        role="menu"
+        aria-label={t("blockActions")}
+        className={`${menuPosition.className} fixed min-w-56 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md`}
+        onClick={(event) => event.stopPropagation()}
+        onContextMenu={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+        }}
+      >
+        <button
+          type="button"
+          role="menuitem"
+          className="relative flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+          onClick={() => {
+            onClose()
+            onOpenInspector(menu.index)
+          }}
+        >
+          <SlidersHorizontal className="size-4 text-muted-foreground" aria-hidden />
+          {t("openInspector")}
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          className="relative flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+          onClick={() => {
+            onClose()
+            onDuplicate(menu.index)
+          }}
+        >
+          <Copy className="size-4 text-muted-foreground" aria-hidden />
+          {t("duplicate")}
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          className="relative flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-destructive outline-hidden select-none hover:bg-destructive/10 focus:bg-destructive/10"
+          onClick={() => {
+            onClose()
+            onDelete(menu.index)
+          }}
+        >
+          <Trash2 className="size-4" aria-hidden />
+          {tCommon("delete")}
+        </button>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+interface SortableBlockItemProps {
+  id: string
+  block: any
+  index: number
+  isActive: boolean
+  manifest: RtManifest
+  onActivate: () => void
+  onUpdate: (next: any) => void
+  onDelete: () => void
+  onDuplicate: () => void
+  readOnly?: boolean
+}
+
+const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
+  id,
+  block,
+  index,
+  isActive,
+  manifest,
+  onActivate,
+  onUpdate,
+  onDelete,
+  onDuplicate,
+  readOnly = false,
+}) => {
+  const t = useTranslations("editor")
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled: readOnly })
+  const anchorRef = React.useRef<HTMLDivElement | null>(null)
+  const [gutterVisible, setGutterVisible] = React.useState(false)
+
+  const setRefs = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      setNodeRef(node)
+      anchorRef.current = node
+    },
+    [setNodeRef],
+  )
+
+  const transformValue = formatRuntimeCssValue(CSS.Transform.toString(transform))
+  const transitionValue = formatRuntimeCssValue(transition)
+  const sortableStyle = useCspStyleRule(
+    "canvas-sortable-block",
+    `${transformValue ? `transform:${transformValue};` : ""}${transitionValue ? `transition:${transitionValue};` : ""}`,
+  )
+
+  return (
+    <>
+      {sortableStyle.styleElement}
+      <div
+        ref={setRefs}
+        className={cn(sortableStyle.className, "relative", isDragging && "opacity-50")}
+        onMouseEnter={() => setGutterVisible(true)}
+        onMouseLeave={() => setGutterVisible(false)}
+        onFocusCapture={() => setGutterVisible(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            setGutterVisible(false)
+          }
+        }}
+      >
+        {!readOnly && (
+          <CanvasChromeGutterOverlay
+            anchorRef={anchorRef}
+            visible={gutterVisible}
+            setVisible={setGutterVisible}
+            dragHandleRef={setActivatorNodeRef}
+            dragHandleProps={{ ...attributes, ...listeners }}
+            optionsLabel={t("blockActions")}
+            onDelete={onDelete}
+            onDuplicate={onDuplicate}
+          />
+        )}
+        <CanvasChromeVisibilityProvider value={{ visible: gutterVisible, setVisible: setGutterVisible }}>
+          <CanvasBlockRenderer
+            block={block}
+            index={index}
+            isActive={isActive}
+            manifest={manifest}
+            onActivate={onActivate}
+            onUpdate={readOnly ? () => {} : onUpdate}
+          />
+        </CanvasChromeVisibilityProvider>
+      </div>
+    </>
+  )
+}
+
+export const CanvasMode: React.FC<CanvasModeProps> = ({
+  manifest,
+  tenantCss,
+  view,
+  dangerZone,
+  seoCard,
+  theme,
+  readOnly = false,
+  reorderBlocks,
+  deleteBlock,
+  duplicateBlock,
+  pageTitle,
+  onDeletePage,
+  headerChrome,
+  footerChrome,
+  onOpenBlockInspector,
+  renderMobileList,
+  renderMobileSectionEdit,
+  renderMobileInspector,
+  renderMobilePageSettings,
+  renderMobileSeoSettings,
+}) => {
+  const isMobile = useIsMobile(EDITOR_DESKTOP_BREAKPOINT)
+
+  if (isMobile && !readOnly) {
+    return (
+      <div className="[&_[data-mobile-back-pill]]:!inline-flex [&_[data-mobile-trash-pill]]:!inline-flex">
+        <CanvasMobile
+          manifest={manifest}
+          tenantCss={tenantCss}
+          view="mobile"
+          dangerZone={dangerZone}
+          seoCard={seoCard}
+          theme={theme}
+          reorderBlocks={reorderBlocks}
+          deleteBlock={deleteBlock}
+          duplicateBlock={duplicateBlock}
+          pageTitle={pageTitle}
+          onDeletePage={onDeletePage}
+          renderMobileList={renderMobileList}
+          renderMobileSectionEdit={renderMobileSectionEdit}
+          renderMobileInspector={renderMobileInspector}
+          renderMobilePageSettings={renderMobilePageSettings}
+          renderMobileSeoSettings={renderMobileSeoSettings}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <CanvasModeDesktop
+      manifest={manifest}
+      tenantCss={tenantCss}
+      view={view}
+      theme={theme}
+      readOnly={readOnly}
+      reorderBlocks={reorderBlocks}
+      deleteBlock={deleteBlock}
+      duplicateBlock={duplicateBlock}
+      pageTitle={pageTitle}
+      onDeletePage={onDeletePage}
+      headerChrome={headerChrome}
+      footerChrome={footerChrome}
+      onOpenBlockInspector={onOpenBlockInspector}
+    />
+  )
+}
+
+const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
+  manifest,
+  tenantCss,
+  view,
+  theme,
+  readOnly = false,
+  headerChrome,
+  footerChrome,
+  onOpenBlockInspector,
+}) => {
+  const t = useTranslations("editor")
+  const cspNonce = useCspNonce()
+  const {
+    blocks,
+    activeIndex,
+    setActiveIndex,
+    updateBlock,
+    insertBlockAt,
+    deleteBlock,
+    duplicateBlock,
+    reorderBlocks,
+  } = useCanvasBlocks(manifest)
+  const { select, selected } = useCanvasSelection()
+
+  React.useEffect(() => {
+    setActiveIndex(selected?.field === "" ? selected.blockIndex : null)
+  }, [selected?.blockIndex, selected?.field, setActiveIndex])
+
+  const paneRef = React.useRef<HTMLDivElement>(null)
+  const [blockContextMenu, setBlockContextMenu] = React.useState<{ index: number; point: { x: number; y: number } } | null>(null)
+  const [deleteTargetIndex, setDeleteTargetIndex] = React.useState<number | null>(null)
+  useScrollToSelection(paneRef, selected)
+
+  const onCanvasClick = (event: React.MouseEvent) => {
+    setBlockContextMenu(null)
+    if (event.target === event.currentTarget) {
+      setActiveIndex(null)
+      select(null)
+    }
+  }
+
+  const effectiveReadOnly = readOnly || isReadOnlyView(view)
+
+  const onCanvasContextMenu = (event: React.MouseEvent) => {
+    if (effectiveReadOnly) {
+      event.preventDefault()
+      event.stopPropagation()
+      setBlockContextMenu(null)
+      return
+    }
+    const target = event.target as HTMLElement | null
+    if (target?.closest("[data-site-chrome], [data-site-chrome-wrapper], [data-site-chrome-menu-trigger]")) return
+    event.preventDefault()
+    event.stopPropagation()
+    const blockNode = target?.closest<HTMLElement>("[data-block-index]")
+    if (!blockNode) {
+      setBlockContextMenu(null)
+      return
+    }
+    const index = Number(blockNode.dataset.blockIndex)
+    if (!Number.isInteger(index)) return
+    setActiveIndex(index)
+    select({ blockIndex: index, field: "" })
+    setBlockContextMenu({ index, point: { x: event.clientX, y: event.clientY } })
+  }
+
+  const deleteBlockWithRemap = (i: number) => {
+    select((prev) => remapSelectionAfterDelete(prev, i))
+    deleteBlock(i)
+  }
+
+  const requestDeleteBlock = (i: number) => {
+    setDeleteTargetIndex(i)
+  }
+
+  const reorderBlocksWithRemap = (from: number, to: number) => {
+    select((prev) => remapSelectionAfterReorder(prev, from, to))
+    reorderBlocks(from, to)
+  }
+
+  const insertBlockAtWithRemap = (i: number, slug: string, seed?: Record<string, unknown>) => {
+    select((prev) => remapSelectionAfterInsert(prev, i))
+    insertBlockAt(i, slug, seed)
+  }
+
+  const duplicateBlockWithRemap = (i: number) => {
+    select((prev) => remapSelectionAfterInsert(prev, i + 1))
+    duplicateBlock(i)
+  }
+
+  const dndId = useId()
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+  const sortableIds = blocks.map((_, i) => String(i))
+  const deleteTargetBlock = deleteTargetIndex != null ? blocks[deleteTargetIndex] : undefined
+  const deleteTargetConfig = deleteTargetBlock
+    ? manifest.blocks?.find((blockType) => blockType.slug === deleteTargetBlock.blockType)
+    : undefined
+  const deleteTargetLabel = deleteTargetBlock
+    ? (deleteTargetConfig?.label ?? deleteTargetBlock.blockType)
+    : ""
+
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (effectiveReadOnly || !over || active.id === over.id) return
+    const from = Number(active.id)
+    const to = Number(over.id)
+    if (Number.isNaN(from) || Number.isNaN(to)) return
+    reorderBlocksWithRemap(from, to)
+  }
+
+  return (
+    <div className="w-full">
+      <div
+        ref={paneRef}
+        className="min-w-0 overflow-x-hidden bg-background"
+        onClick={onCanvasClick}
+      >
+        {tenantCss && (
+          <style nonce={cspNonce} suppressHydrationWarning data-rt-tenant-css dangerouslySetInnerHTML={{ __html: tenantCss }} />
+        )}
+        {theme && (
+          <style nonce={cspNonce} suppressHydrationWarning data-rt-theme-overrides dangerouslySetInnerHTML={{ __html: toCssVars(theme) }} />
+        )}
+        <div
+          className="rt-canvas w-full [&_a[href]:not(.rt-click-edit)]:pointer-events-none"
+          data-rt-view={view}
+          data-rt-mode={theme?.mode === "dark" ? "dark" : "light"}
+          onContextMenuCapture={onCanvasContextMenu}
+          onClickCapture={(event) => {
+            if ((event.target as HTMLElement | null)?.closest("a[href]")) event.preventDefault()
+          }}
+        >
+          <div
+            className="site-frame-root"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setActiveIndex(null)
+                select(null)
+              }
+            }}
+          >
+            {headerChrome}
+            {!effectiveReadOnly && (
+              <CanvasGapOverlay
+                onInsert={(slug, seed) => insertBlockAtWithRemap(0, slug, seed)}
+              />
+            )}
+            {blocks.length === 0 && (
+              <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
+                <p>{t("noBlocksYet")} {!isReadOnlyView(view) ? t("addFirstBlockHint") : t("switchToCanvasToAddBlocks")}</p>
+              </div>
+            )}
+            <DndContext
+              id={dndId}
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={onDragEnd}
+            >
+              <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+                {blocks.map((block, i) => (
+                  <React.Fragment key={i}>
+                    <SortableBlockItem
+                      id={String(i)}
+                      block={block}
+                      index={i}
+                      isActive={activeIndex === i}
+                      manifest={manifest}
+                      onActivate={() => {
+                        setActiveIndex(i)
+                        select(null)
+                      }}
+                      onUpdate={updateBlock(i)}
+                      onDelete={() => requestDeleteBlock(i)}
+                      onDuplicate={() => duplicateBlockWithRemap(i)}
+                      readOnly={effectiveReadOnly}
+                    />
+                    {!effectiveReadOnly && (
+                      <CanvasGapOverlay
+                        onInsert={(slug, seed) => insertBlockAtWithRemap(i + 1, slug, seed)}
+                      />
+                    )}
+                  </React.Fragment>
+                ))}
+              </SortableContext>
+            </DndContext>
+            {footerChrome}
+          </div>
+        </div>
+      </div>
+      {!effectiveReadOnly && (
+        <>
+          <CanvasBlockContextMenu
+            menu={blockContextMenu}
+            onClose={() => setBlockContextMenu(null)}
+            onOpenInspector={(index) => {
+              select({ blockIndex: index, field: "" })
+              onOpenBlockInspector?.(index)
+            }}
+            onDuplicate={duplicateBlockWithRemap}
+            onDelete={requestDeleteBlock}
+          />
+          <ConfirmDialog
+            open={deleteTargetIndex !== null}
+            onOpenChange={(open) => {
+              if (!open) setDeleteTargetIndex(null)
+            }}
+            title={t("deleteBlockTitle")}
+            description={t("deleteBlockDescription", { label: deleteTargetLabel })}
+            confirmLabel={t("deleteBlock")}
+            variant="destructive"
+            onConfirm={async () => {
+              if (deleteTargetIndex == null) return
+              deleteBlockWithRemap(deleteTargetIndex)
+              setDeleteTargetIndex(null)
+            }}
+          />
+        </>
+      )}
+    </div>
+  )
+}
