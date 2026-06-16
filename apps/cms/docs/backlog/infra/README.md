@@ -1139,6 +1139,30 @@ The VPS should be updated to pull these new image names. Existing VPS stack
 paths, container names, domains, database volumes, and tenant data paths remain
 unchanged.
 
+#### Update — 2026-06-16 (VPS switched to platform-owned images)
+Production VPS rollout completed over `ssh prod`:
+
+- Backed up live compose files:
+  `/srv/saas/infra/stacks/siab-payload/compose.yml.bak-platform-image-20260616T165108Z`
+  and
+  `/srv/prod/infra/stacks/siteinabox/docker-compose.yml.bak-platform-image-20260616T165108Z`.
+- Updated CMS compose to pull
+  `ghcr.io/optidigi/siab-platform-cms:latest`.
+- Updated public Site in a Box compose to pull
+  `ghcr.io/optidigi/siab-platform-site:latest`.
+- Pulled and recreated the `siab-payload` service. The container is healthy,
+  its startup log reports no pending migrations, and
+  `/api/health` inside the container returns `{"status":"ok","db":"connected","dataDir":"writable"}`.
+- Pulled and recreated the `siteinabox` container from service `web`. The
+  container is healthy and serves the page on `127.0.0.1:80` inside the
+  container.
+- External smoke checks returned HTTP 200 for
+  `https://admin.siteinabox.nl/api/health`,
+  `https://admin.ami-care.nl/api/health`, and `https://siteinabox.nl/`.
+
+The stack paths, service/container names, Postgres volume, Traefik labels, and
+tenant data path were not moved.
+
 #### Acceptance criteria
 1. The monorepo is the source of truth for CMS, public site, intake,
    site-template, generated site source, shared packages, orchestration tools,
