@@ -67,11 +67,25 @@ preflight/confirmation gate says to do so.
 
 ## MCP Status
 
-The monorepo root currently declares no project-local MCP servers in
-`.mcp.json`. Do not claim MCP tools are available from the repo root unless they
-are configured in repo-local MCP files or supplied by the user's global agent
-config. App-local docs may mention useful MCPs for that app; those are
-availability expectations, not proof of root-level MCP configuration.
+The monorepo root declares project-local MCP servers in `.mcp.json`,
+`.mcp.toml`, `.codex/config.toml`, and `.codex/mcp.toml`. Keep all four files
+in sync.
+
+Configured root servers:
+
+- `shadcn`: `npx -y shadcn@latest mcp`
+- `postgres`: `npx -y @modelcontextprotocol/server-postgres postgresql://payload:payload@localhost:5432/payload`
+- `github`: `npx -y @modelcontextprotocol/server-github`
+- `context7`: `npx -y @upstash/context7-mcp`
+- `better-auth`: `https://mcp.better-auth.com/mcp`
+- `docker`: `npx -y mcp-server-docker`
+- `sequential-thinking`: `npx -y @modelcontextprotocol/server-sequential-thinking`
+- `posthog`: `https://mcp.posthog.com/mcp`
+
+Do not add API keys, tokens, or secret env values to repo-local MCP files.
+Authenticated MCP credentials belong in user-scope config. Local services such
+as Postgres or Docker must still be running on the workstation for those MCP
+servers to be useful.
 
 ## Deploy Invariants
 
