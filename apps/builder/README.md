@@ -1,10 +1,9 @@
 # SIAB Builder
 
-Reserved deployable app for the future client-facing Builder workflow.
+Minimal Next App Router shell for the future client-facing Builder workflow.
 
-This app is intentionally not implemented in the first monorepo migration. It
-will become its own container/image and Traefik-routed stack when Builder
-implementation begins.
+This app currently exists to prove Builder can consume the shared SIAB design
+language from `@siteinabox/ui`. It is not a product workflow implementation.
 
 Expected responsibilities:
 
@@ -15,5 +14,14 @@ Expected responsibilities:
 - payment handoff through a future payment provider adapter,
 - publish trigger and deployment metadata handoff.
 
-Do not add product logic here during documentation-only architecture phases. The
-canonical architecture decision is `docs/decisions/builder-platform.md`.
+## UI Rules
+
+- Import shared UI from `@siteinabox/ui` package exports.
+- Import shared tokens through `@siteinabox/ui/styles/shadcn.css`.
+- Do not import from `apps/cms/src/...`.
+- Do not duplicate CMS components manually. Extract app-neutral reusable UI into
+  `packages/ui` only when there is a real reuse need.
+- Do not create a separate Builder design system.
+
+The canonical architecture decision is
+`docs/decisions/builder-platform.md`.

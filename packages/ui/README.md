@@ -27,11 +27,33 @@ Use explicit component subpaths:
 
 ```ts
 import { Button } from "@siteinabox/ui/components/button"
+import { PageHeader } from "@siteinabox/ui/composites/page-header"
 import { cn } from "@siteinabox/ui/lib/utils"
 ```
 
 The root export is intentionally limited to low-level helpers and hooks. Avoid a
 root component barrel so client component boundaries remain explicit.
+
+Use `components/*` for shadcn-style primitives and `composites/*` for
+app-neutral reusable compositions built from those primitives.
+
+## Styles And Tokens
+
+Apps consume shared tokens by importing the package stylesheet once from their
+global app CSS:
+
+```css
+@import "@siteinabox/ui/styles/shadcn.css";
+```
+
+When an app has its own Tailwind v4 input CSS, add app-local `@source` entries
+there and keep `packages/ui/src` included so shared component classes are
+compiled. Do not copy token definitions into apps or create a Builder-specific
+theme fork.
+
+`PageHeader` and `EmptyState` are intentionally app-neutral composites. Keep
+workflow-specific layout, data loading, routes, Payload integration, auth,
+preview, approval, and payment behavior in the owning app.
 
 ## Compatibility Shims
 

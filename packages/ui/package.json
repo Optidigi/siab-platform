@@ -15,6 +15,10 @@
       "types": "./src/components/*.tsx",
       "default": "./src/components/*.tsx"
     },
+    "./composites/*": {
+      "types": "./src/composites/*.tsx",
+      "default": "./src/composites/*.tsx"
+    },
     "./hooks/*": {
       "types": "./src/hooks/*.ts",
       "default": "./src/hooks/*.ts"
