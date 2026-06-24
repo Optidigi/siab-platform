@@ -1,8 +1,11 @@
-# siab-payload
+# SIAB CMS
 
 Multi-tenant Payload v3 + custom shadcn admin powering the siteinabox ecosystem.
 
-See [the design spec](docs/superpowers/specs/2026-05-05-siab-payload-design.md) and [implementation plan](docs/superpowers/plans/2026-05-05-siab-payload-implementation.md).
+For operating rules, start with [AGENTS.md](AGENTS.md). For implementation
+history and active follow-up context, use the backlog indexes under
+[docs/backlog/](docs/backlog/) and the runbooks under
+[docs/runbooks/](docs/runbooks/).
 
 ## Local development
 
@@ -11,8 +14,8 @@ See [docs/runbooks/local-dev.md](docs/runbooks/local-dev.md) for the full local 
 Quick start:
 
 ```bash
-git clone https://github.com/Optidigi/siab-payload.git
-cd siab-payload
+git clone https://github.com/Optidigi/siteinabox.git
+cd siteinabox/apps/cms
 pnpm install
 docker compose -f docker-compose.local.yml up -d
 cp .env.example .env   # edit PAYLOAD_SECRET

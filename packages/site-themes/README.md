@@ -1,8 +1,11 @@
-# siab-site-themes
+# SIAB Site Themes
 
-Curated building blocks for the sitegen workflow. Used by
+Curated building blocks for the legacy sitegen workflow. Used by
 `packages/tools/siab-orchestrator` to source theme components when generating
 sites under `sites/<slug>`.
+
+This package remains for existing generated tenants and transition work. It is
+not the future Builder product architecture for new self-serve sites.
 
 ## Layout
 
@@ -20,4 +23,5 @@ plain/<theme-slug>/   # Plain HTML/CSS/JS templates — adapt into Astro compone
    - `palette`: array of `{name, hex}` — hex with leading `#`, e.g. `[{"name":"primary","hex":"#0066cc"},{"name":"accent","hex":"#ff6600"}]`
 3. Commit and push.
 
-The orchestrator agent reads `theme.json` files to suggest themes when the client says "pick for me".
+The legacy orchestrator agent reads `theme.json` files to suggest themes when
+the client says "pick for me".

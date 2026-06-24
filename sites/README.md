@@ -18,8 +18,9 @@ sites/
   ami-care/
 ```
 
-Generated sites should continue to consume the shared contracts from
+Existing generated sites should continue to consume shared legacy contracts from
 `packages/site-template`, `packages/site-themes`, and the `/add-cms` workflow.
+Do not use this generated-source model for new self-serve Builder sites.
 
 ## Image Build Convention
 

@@ -51,7 +51,7 @@ The private `@siab/*` shadcn registry is no longer the source of truth for this 
 - `pnpm lint:ui-composition` — direct Radix imports stay inside `src/components/ui`, inline style objects are blocked, and new native-button files are rejected unless reviewed
 - `pnpm lint:no-css` — three rules: no `.css` in `src/` outside approved style files; no hex/rgb literals in components; no arbitrary color Tailwind values
 
-**Style ownership:** `src/styles/shadcn.css` is the shadcn/Tailwind entrypoint and the only CSS file shadcn tooling may overwrite. `src/styles/globals.css` only imports `shadcn.css` then `siab.css`. `src/styles/siab.css` is protected SIAB app/editor/canvas CSS and should later move with the shared frontend package if the monorepo introduces `packages/ui` or `packages/cms-ui`.
+**Style ownership:** `src/styles/shadcn.css` is the shadcn/Tailwind entrypoint and the only CSS file shadcn tooling may overwrite. `src/styles/globals.css` only imports `shadcn.css` then `siab.css`. `src/styles/siab.css` is protected SIAB app/editor/canvas CSS. Shared primitives and token CSS now live in `packages/ui`; app/editor/canvas CSS remains app-owned unless deliberately extracted later.
 
 **Primitive overwrites:** see `docs/runbooks/ui-overwrite-boundary.md`. Use `pnpm dlx shadcn@latest add @shadcn/<item> --diff` and review one primitive at a time. Do not bulk-overwrite local primitive forks.
 
@@ -61,7 +61,7 @@ The private `@siab/*` shadcn registry is no longer the source of truth for this 
 
 **Per-tenant theming:** the canvas's tenant tokens come from a separate channel — `ThemeBar` writes role tokens to `Tenant.theme`, the tenant's compiled `cms-editor.css` is loaded via `loadTenantCss`, and they scope to `.rt-canvas` only. **The CMS never owns visible token values — it consumes them through `var()` chains.** Site-side tokens belong to the site repo + the tenant's saved theme; never invent CMS-side utility classes that wrap those tokens.
 
-**Registry transition:** Phase D previously made the private registry the source of truth. As of 2026-06-15, that decision is superseded: SIAB UI source is local to this repo until the planned monorepo can move shared pieces into packages such as `packages/ui` or `packages/cms-ui`.
+**Registry transition:** Phase D previously made the private registry the source of truth. As of 2026-06-15, that decision is superseded: SIAB UI source is local to this repo. Shared primitives and low-level utilities live in `packages/ui`; app-specific composites stay with the owning app.
 
 ## Backlogs
 

@@ -1,14 +1,19 @@
 # Generated Site Snapshot Policy
 
-`packages/site-template` is the canonical source of truth for generated-site
-behavior, CMS renderers, generated-site contracts, and future site starts.
-Tenant sites under `sites/*` are generated snapshots.
+`packages/site-template` is the legacy/transition source of truth for
+generated-site behavior, CMS renderers, and generated-site contracts. Tenant
+sites under `sites/*` are generated snapshots.
+
+This policy applies to existing generated tenants and legacy workflow
+maintenance. It is not the future Builder product architecture for new
+self-serve sites.
 
 ## Template Changes
 
-- Make shared generated-site behavior changes in `packages/site-template`.
+- Make shared legacy generated-site behavior changes in `packages/site-template`.
 - Keep cross-package data shapes in `packages/contracts`.
-- Do not treat an existing tenant site as the canonical source for future sites.
+- Do not treat an existing tenant site as the canonical source for other tenant
+  snapshots.
 - Validate template changes with:
 
 ```bash

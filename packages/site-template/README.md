@@ -1,10 +1,13 @@
-# siab-site-template
+# SIAB Site Template
 
-Astro 5 + Tailwind 4 boilerplate consumed by
-`packages/tools/siab-orchestrator`'s `/new-site` workflow. Per engagement, the
-orchestrator copies this template into `sites/<slug>/`, integrates a theme from
-`packages/site-themes/`, fills content via subagents, and publishes a
-monorepo-owned tenant image.
+Legacy Astro 5 + Tailwind 4 boilerplate consumed by
+`packages/tools/siab-orchestrator`'s `/new-site` workflow. Per legacy
+engagement, the orchestrator copies this template into `sites/<slug>/`,
+integrates a theme from `packages/site-themes/`, fills content via subagents,
+and publishes a monorepo-owned tenant image.
+
+This package remains for existing generated tenants and transition work. It is
+not the future Builder product architecture for new self-serve sites.
 
 ## What's in the box
 
@@ -34,11 +37,12 @@ pnpm astro check  # type / schema check
 See `.env.example`. `SITE_URL` is the only one the build needs;
 `PUBLIC_WEB3FORMS_KEY` and `PUBLIC_CONTACT_EMAIL` are optional.
 
-## Don't edit this template directly during a site engagement
+## Don't edit this template directly during a legacy site engagement
 
 The orchestrator copies the template into `sites/<slug>/` and works there.
-Edits to this template apply to *all future* sites. Land them in a PR and pull
-into `packages/site-template/` on disk before starting the next engagement.
+Edits to this template apply to future legacy generated snapshots. Land them in
+a PR and pull into `packages/site-template/` on disk before starting the next
+legacy engagement.
 
 ## Rich-text rendering contract
 

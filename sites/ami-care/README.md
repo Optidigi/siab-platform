@@ -39,9 +39,10 @@ joins the external `proxy` docker network and declares the public
 
 ## Design
 
-See [`docs/superpowers/specs/2026-05-01-amicare-zorg-design.md`](docs/superpowers/specs/2026-05-01-amicare-zorg-design.md)
-for the design spec and content. See `docs/superpowers/plans/` for the
-implementation plan.
+The imported design/spec history is not present in this monorepo. Use the
+current site source, `src/content/`, and
+[`docs/responsive-canvas-contract.md`](docs/responsive-canvas-contract.md) as
+the local references.
 
 ## CMS editor CSS bundling
 
