@@ -38,22 +38,22 @@ Podman workflow in `docs/runbooks/local-dev.md` when Docker/Compose is absent.
 
 ### OBS-56 — Bring sister SIAB repos forward to current siab-payload contract (post-Phase-D) — RESOLVED
 
-**Status:** Closed 2026-06-01 · **Layer:** multi-repo (`siab-site-template` + `siab-site-orchestrator` + `siab-payload-orchestrator` + per-tenant deploys: `amblast`, `siteinabox`)
+**Status:** Closed 2026-06-01 · **Layer:** multi-repo (`siab-site-template` + `removed site command runner` + `removed Payload command runner` + per-tenant deploys: `amblast`, `siteinabox`)
 **Discovered in:** Session 2026-05-18 (end-of-Phase-D + ami-care deploy)
 
 #### Description
 Phase D (zero-authored-CSS migration + RT v2 schema + registry adoption) landed in siab-payload + its production deploy and ami-care.nl was brought up to the new contract this session. The other SIAB sister repos haven't been touched yet and are now behind:
 
 - **`siab-site-template`** — the template every new SIAB tenant site forks from. Likely missing the rt-v2 RtRoot renderer + the `--font-{title,heading,text}` / `--radius-{sm,md,lg}` role token consumer pattern + the `<section id>` anchoring convention. ami-care got these via direct edits on its own fork (commit `c4ca221` and friends); the template needs the same updates so new tenants don't repeat the work.
-- **`siab-site-orchestrator`** — orchestrates per-tenant site deploys. Doesn't yet run the cms-editor.css copy step described in OBS-55, so any new tenant site will repeat ami-care's "missing canvas styling" incident.
-- **`siab-payload-orchestrator`** — orchestrates siab-payload tenant provisioning. May need updates for the new tenant `siteManifest` field + the rt-v2 schema awareness.
-- **Future CMS tenant deploys** — `amblast.com` + `siteinabox.nl` are not CMS-ified yet. They still need to go through `siab-payload-orchestrator` `/add-cms`; do not treat them as already-existing Payload tenants with projection JSON. Their current static site code predates the post-Phase-D contract, so the `/add-cms` conversion must move them off the old contract. Current old-contract characteristics:
+- **`removed site command runner`** — orchestrates per-tenant site deploys. Doesn't yet run the cms-editor.css copy step described in OBS-55, so any new tenant site will repeat ami-care's "missing canvas styling" incident.
+- **`removed Payload command runner`** — orchestrates siab-payload tenant provisioning. May need updates for the new tenant `siteManifest` field + the rt-v2 schema awareness.
+- **Future CMS tenant deploys** — `amblast.com` + `siteinabox.nl` are not CMS-ified yet. They still need to go through `removed Payload command runner` `removed CMS conversion workflow`; do not treat them as already-existing Payload tenants with projection JSON. Their current static site code predates the post-Phase-D contract, so the `removed CMS conversion workflow` conversion must move them off the old contract. Current old-contract characteristics:
   - Rich-text fields as HTML strings instead of RtRoot jsonb
   - Site renderer expecting HTML strings
   - No tenant-theme token consumer wiring
   - No synced `cms-editor.css` artifact path
 
-  After OBS-55 + the template update lands, each tenant needs a normal `/add-cms` run that seeds RtRoot content and `Tenant.siteManifest`, then deploys through the artifact-sync path. They do **not** need the post-rt-v2 repopulate-from-snapshot script unless an interrupted/manual CMS conversion has already created old projection snapshots.
+  After OBS-55 + the template update lands, each tenant needs a normal `removed CMS conversion workflow` run that seeds RtRoot content and `Tenant.siteManifest`, then deploys through the artifact-sync path. They do **not** need the post-rt-v2 repopulate-from-snapshot script unless an interrupted/manual CMS conversion has already created old projection snapshots.
 
 #### Why deferred
 End-of-session scope cap. Phase D + ami-care deploy was the priority. The other tenants are still functional on the OLD contract (they render whatever's in their projection JSON; old projection has old-format data which the old renderer handles).
@@ -62,7 +62,7 @@ End-of-session scope cap. Phase D + ami-care deploy was the priority. The other 
 1. Update `siab-site-template` with: rt-v2 RtRoot renderer, role-token consumer, anchor convention, cms-editor.css entrypoint copy.
 2. Update orchestrators to ship those bits to new + existing tenants.
 3. Bring Amicare fully onto the artifact-sync path and remove the old site-entrypoint workaround.
-4. Run `/add-cms` for amblast first (smaller surface), then siteinabox.
+4. Run `removed CMS conversion workflow` for amblast first (smaller surface), then siteinabox.
 5. Close this entry once all three (amicare ✓ + newly CMS-ified amblast + newly CMS-ified siteinabox) are on the new contract.
 
 #### Related
@@ -76,14 +76,14 @@ The structural blocker for OBS-56 is now removed. The sister-repo specs listed i
 #### Update — 2026-05-25
 Fresh repo research found this entry was partially stale:
 - `siab-site-template` already has RtRoot types/renderers, role font/radius token consumption, block `anchor` fields, and `siteManifest.example.json`.
-- `siab-payload-orchestrator` already seeds RtRoot-shaped rich-text blocks and PATCHes `Tenant.siteManifest` from `siteManifest.json` / `siteManifest.example.json`.
+- `removed Payload command runner` already seeds RtRoot-shaped rich-text blocks and PATCHes `Tenant.siteManifest` from `siteManifest.json` / `siteManifest.example.json`.
 - Remaining template-side gaps are narrower: renderer parity hardening, preview anchor propagation, tenant-theme runtime injection, and producing `dist/cms/cms-editor.css` + font assets during build.
 
 The orchestrator side now has a concrete artifact-sync path (see OBS-55 update). Do not copy the old `/data:rw` site-entrypoint workaround into more templates/sites. The next implementation batch should bring `siab-site-template` to the same artifact contract, then migrate/redeploy `amblast` and `siteinabox`.
 
 Follow-up same session: `siab-site-template` was brought forward to the new artifact contract. Its build now runs `scripts/build-cms-css.mjs` and produces `dist/cms/cms-editor.css` plus `dist/cms/files/`; a `dev:cms-css` watcher writes the same bundle into a local Payload tenant data dir. `BaseLayout.astro` now injects `tenant-theme.css` from `CMS_DATA_DIR` when present, `RtNodeRenderer` is hardened with RtRoot guarding / inline rendering / external-link rel handling / text extraction, and `PreviewIsland` passes `block.anchor` through every block renderer. Validation: `pnpm exec astro check` passed with existing warnings/hints, `pnpm test` passed, and `pnpm build` produced `dist/cms/cms-editor.css`.
 
-Correction from operator: `amblast` and `siteinabox` are not CMS-ified yet. They should be treated as future `/add-cms` conversions, not existing tenant redeploys. Same-session Amicare follow-up removed the old Docker entrypoint CSS-copy workaround from `site-amicare-zorg`, added an Amicare-specific `siteManifest.json`, updated the VPS compose/example docs to use `/data:ro` plus `sync-cms-artifacts.sh`, and updated `scripts/restructure-cms.sh` to emit RtRoot JSON with explicit block anchors. Validation in `site-amicare-zorg`: `pnpm build` passed and produced `dist/cms/cms-editor.css` plus font files, `pnpm astro check` passed with existing hints, `bash -n scripts/restructure-cms.sh` passed, and a mocked run of `scripts/restructure-cms.sh` produced the expected 5-block payload.
+Correction from operator: `amblast` and `siteinabox` are not CMS-ified yet. They should be treated as future `removed CMS conversion workflow` conversions, not existing tenant redeploys. Same-session Amicare follow-up removed the old Docker entrypoint CSS-copy workaround from `site-amicare-zorg`, added an Amicare-specific `siteManifest.json`, updated the VPS compose/example docs to use `/data:ro` plus `removed artifact sync script`, and updated `scripts/removed one-time restructure script` to emit RtRoot JSON with explicit block anchors. Validation in `site-amicare-zorg`: `pnpm build` passed and produced `dist/cms/cms-editor.css` plus font files, `pnpm astro check` passed with existing hints, `bash -n scripts/removed one-time restructure script` passed, and a mocked run of `scripts/removed one-time restructure script` produced the expected 5-block payload.
 
 Production follow-up completed the Amicare rollout on the artifact-sync path: `site-amicare-zorg` image `c9eb3ce` was built by GitHub Actions, the VPS copied `/app/dist/cms/*` into `/srv/data/saas/siab-payload/tenants/7/`, the live compose mount is `/data:ro`, the `ami-care` container is healthy, `https://ami-care.nl` and `/healthz` return 200/`ok`, `Tenant.siteManifest` is populated for tenant 7, and the live page renders explicit anchors `top`, `werkwijze`, `over`, `wat-telt`, and `contact`.
 
@@ -93,15 +93,15 @@ Same-day maintenance-banner correction: the banner is now a theme-owned optional
 component, not generic layout markup. `site-amicare-zorg` provides
 `src/components/MaintenanceBanner.astro`; its layout loads that component only
 when `site.maintenance.enabled` is true. `siab-site-template` and the
-`siab-payload-orchestrator` converter/reviewer guidance now use the same
+`removed Payload command runner` converter/reviewer guidance now use the same
 optional lookup contract, so themes without `MaintenanceBanner.astro` no-op.
 
-The future `amblast` and `siteinabox` `/add-cms` runs are manual operator workflow runs, not remaining repo code or config blockers for this item.
+The future `amblast` and `siteinabox` `removed CMS conversion workflow` runs are manual operator workflow runs, not remaining repo code or config blockers for this item.
 
 #### Research verification — 2026-05-28
 Current `siab-payload` has the payload-side contract pieces needed by this
 entry. No additional `siab-payload` code change was identified by the backlog
-audit. The remaining `amblast` and `siteinabox` `/add-cms` work is a manual
+audit. The remaining `amblast` and `siteinabox` `removed CMS conversion workflow` work is a manual
 operator workflow run, not unresolved repo code/config work.
 
 #### Current verification — 2026-05-28
@@ -112,20 +112,20 @@ repo-code backlog blocker.
 
 #### Update — 2026-06-01
 Codex enablement was added to both orchestrators without removing or rewriting
-their Claude workflow files. `siab-site-orchestrator` and
-`siab-payload-orchestrator` now each have a root `AGENTS.md`, `.codex/`
+their Claude workflow files. `removed site command runner` and
+`removed Payload command runner` now each have a root `AGENTS.md`, `.codex/`
 command entrypoints, Codex phase-agent mirrors, Codex settings, and MCP mirror
-files. The Codex startup path now routes `/new-site` and `/add-cms <slug>` into
+files. The Codex startup path now routes `removed site generation workflow` and `removed CMS conversion workflow <slug>` into
 the same `preflight.md` confirmation gate, `prompt.md` runbook, and existing
 Claude phase-agent contracts. Local container checks in the Codex path are
 documented to use `podman`; GitHub Actions and VPS deployment contracts remain
 Docker-compatible where those runtimes are part of the external system.
 Follow-up smoke tests used `codex exec` in read-only ephemeral mode from both
-orchestrator roots and confirmed the startup behavior: `/new-site` and
-`/add-cms amblast` both stop at the `preflight.md` summary/confirmation gate
+orchestrator roots and confirmed the startup behavior: `removed site generation workflow` and
+`removed CMS conversion workflow amblast` both stop at the `preflight.md` summary/confirmation gate
 and do not open `prompt.md` early. The Codex enablement subtask is complete. With no remaining code or config
 changes required, OBS-56 is closed; future `amblast` and `siteinabox`
-`/add-cms` conversions should be started manually when the operator is ready.
+`removed CMS conversion workflow` conversions should be started manually when the operator is ready.
 
 
 ### OBS-76 — GitHub push events no longer materialize Actions image builds
@@ -292,10 +292,10 @@ Fresh verification confirmed the separate `optidigi/design-systems` registry is
 obsolete for active SIAB work and the VPS registry service was retired.
 
 Local cloned repo scans covered `siab-payload`, `siab-site-template`,
-`site-amicare-zorg`, `siab-site-orchestrator`, `siab-payload-orchestrator`, and
+`site-amicare-zorg`, `removed site command runner`, `removed Payload command runner`, and
 the duplicate local `cms-orchestrator` checkout. Shallow GitHub clones under
 `/tmp/obs121-scan` covered `site-siteinabox`, `site-amblast`,
-`siab-site-themes`, `serverinfra-ops`, and `serverinfra-prod`. Searches for
+`removed theme package`, `serverinfra-ops`, and `serverinfra-prod`. Searches for
 `@siab`, `registries.optidigi.nl`, `design-systems`, `registry:check`,
 `registry.json`, and shadcn registry references found no active consumer,
 install, CI, or deploy dependency. `siab-payload` no longer has a
@@ -683,10 +683,10 @@ siteinabox/
     site-contracts/   # manifest, block, theme, intake/provisioning schemas
     site-runtime/     # generated-site runtime helpers
     site-blocks/      # shared generated-site block renderers
-    site-themes/      # current siab-site-themes, made real
+    removed theme package/      # current removed theme package, made real
     ui/               # future shared app UI only when duplication proves it
     tools/
-      siab-orchestrator/
+      removed command runner/
 
   sites/              # intended generated/client site source home
   docs/
@@ -751,14 +751,14 @@ Traefik.
 Required confirmation pass:
 
 1. Inspect current local/GitHub repos for `siab-payload`, `site-siteinabox`,
-   `siab-site-template`, `siab-site-themes`, `site-amicare-zorg`,
-   `site-amblast`, `siab-site-orchestrator`, and
-   `siab-payload-orchestrator`.
+   `siab-site-template`, `removed theme package`, `site-amicare-zorg`,
+   `site-amblast`, `removed site command runner`, and
+   `removed Payload command runner`.
 2. Inspect current production paths under `/srv`, especially infra stacks,
    compose files, app containers, images, volumes, networks, and routing config.
-3. Confirm the current edge router and route model before choosing the Builder
-   route. This historical note predates the Builder decision; the current
-   preview model is `https://preview.siteinabox.nl/<slug>/`.
+3. Confirm the current edge router and route model before choosing the removed product app
+   route. This historical note predates the removed product app decision; the current
+   preview model is `removed preview URL`.
 4. Confirm current tenant artifact directories and CMS-backed site mounts before
    migrating generated-site/runtime contracts.
 5. Update this backlog item with the new research snapshot before moving files.
@@ -780,9 +780,9 @@ production compose files that still mention NPM, but the active routing labels
 are Traefik.
 
 Repo scan covered local checkouts for `siab-payload`, `siab-site-template`,
-`site-amicare-zorg`, `siab-site-orchestrator`, and
-`siab-payload-orchestrator`, plus fresh shallow GitHub clones for
-`site-siteinabox`, `site-amblast`, and `siab-site-themes` under
+`site-amicare-zorg`, `removed site command runner`, and
+`removed Payload command runner`, plus fresh shallow GitHub clones for
+`site-siteinabox`, `site-amblast`, and `removed theme package` under
 `/tmp/obs119-scan`. The public site and themes repos did not contain active
 NPM/register helper references. `siab-payload` was already Traefik-aware in
 `docker-compose.yml`, `docs/runbooks/deploy.md`, and the tenant provisioning
@@ -794,43 +794,43 @@ Same-session changes:
   router/service labels, uses `proxy` as the default external network name, and
   no longer documents Nginx Proxy Manager as the edge proxy. Preview/CSP/SEO
   comments now refer to Traefik or generic reverse-proxy behavior.
-- `siab-site-orchestrator` AGENTS/Claude/preflight docs now describe VPS
+- `removed site command runner` AGENTS/Claude/preflight docs now describe VPS
   compose plus Traefik route labels as the out-of-scope operational boundary
   instead of "nginx vhost".
-- `siab-payload-orchestrator` AGENTS/Claude/preflight docs now use the same
-  Traefik wording. Its Phase 9 `/add-cms` compose snippet now includes the
+- `removed Payload command runner` AGENTS/Claude/preflight docs now use the same
+  Traefik wording. Its Phase 9 `removed CMS conversion workflow` compose snippet now includes the
   shared `proxy` network and explicit Traefik labels for the generated SSR site
   instead of leaving routing as an operator-invented follow-up.
 
 Validation: `pnpm build` passed in `site-amicare-zorg` and regenerated
 `dist/cms/cms-editor.css`. Focused `rg` checks confirmed the new Amicare compose
-labels and `/add-cms` Traefik snippet are present. No TS/JS files changed in
+labels and `removed CMS conversion workflow` Traefik snippet are present. No TS/JS files changed in
 `siab-payload` during this pickup, so this repo's typecheck was not required.
 
 #### Update — 2026-06-16 (orchestrator consolidation assessment)
-Research compared the current `siab-site-orchestrator` and
-`siab-payload-orchestrator` contracts, command entrypoints, phase prompts,
+Research compared the current `removed site command runner` and
+`removed Payload command runner` contracts, command entrypoints, phase prompts,
 agent specs, helper scripts, and repo setup.
 
 Conclusion: consolidating the two orchestrator repositories into one main
 orchestrator surface is reasonable, but merging the two workflows into one
 linear runbook would be a regression risk. The safe target is one
-orchestrator package/repo with two explicit subcommands, `/new-site` and
-`/add-cms <slug>`, each keeping its own preflight, confirmation gates, phase
+orchestrator package/repo with two explicit subcommands, `removed site generation workflow` and
+`removed CMS conversion workflow <slug>`, each keeping its own preflight, confirmation gates, phase
 agents, and writable-surface rules.
 
 Why this shape fits:
 
 - The duplicated shell is substantial: both repos carry parallel `AGENTS.md`,
-  `CLAUDE.md`, `.codex/commands`, `.codex/agents`, `.claude/commands`,
-  `.claude/agents`, MCP/Codex config, preflight/prompt structure, GitHub org
+  `CLAUDE.md`, `.codex/commands`, `.codex/agents`, `removed Claude agent config/commands`,
+  `removed Claude agent config/agents`, MCP/Codex config, preflight/prompt structure, GitHub org
   assumptions, `site-<slug>` working-copy convention, GHCR image publishing,
   and operator handoff gates.
 - The workflow domains differ enough that a single shared runbook would be
-  brittle. `/new-site` creates a new repo from `siab-site-template` and
-  `siab-site-themes`, uses copywriter/auditor/reviewer agents, audits live dev
+  brittle. `removed site generation workflow` creates a new repo from `siab-site-template` and
+  `removed theme package`, uses copywriter/auditor/reviewer agents, audits live dev
   preview quality, and deletes the local generated site during cleanup.
-  `/add-cms` clones an existing site repo, requires Payload API credentials,
+  `removed CMS conversion workflow` clones an existing site repo, requires Payload API credentials,
   provisions a tenant, seeds Payload content, converts the site to SSR, keeps
   the local clone for inspection, syncs CMS canvas artifacts, and has strict
   idempotency/destructive-recovery rules.
@@ -842,10 +842,10 @@ Why this shape fits:
 Recommended monorepo shape when this item moves from research to execution:
 
 ```txt
-packages/tools/siab-orchestrator/
+removed command-runbook package/
   commands/
-    new-site.md
-    add-cms.md
+    removed-site-generation.md
+    removed-cms-conversion.md
   workflows/
     sitegen/
       preflight.md
@@ -857,7 +857,7 @@ packages/tools/siab-orchestrator/
       agents/{payload-seeder,site-converter,cms-reviewer}.md
   scripts/
     md-to-rtroot.mjs
-    sync-cms-artifacts.sh
+    removed artifact sync script
   runbooks/
     cms-artifact-sync.md
     existing-tenant-redeploy.md
@@ -869,12 +869,12 @@ and smoke tests only:
 1. Create the umbrella orchestrator package/repo.
 2. Move both workflows under `workflows/sitegen` and `workflows/cms` with
    minimal text churn.
-3. Keep `/new-site` and `/add-cms <slug>` as separate entrypoints.
+3. Keep `removed site generation workflow` and `removed CMS conversion workflow <slug>` as separate entrypoints.
 4. Add a shared root `AGENTS.md` router that selects the workflow by command
    and forbids opening the wrong prompt before that workflow's confirmation
    gate.
-5. Preserve both existing smoke-test behaviors: `/new-site` stops after its
-   preflight summary, and `/add-cms amblast` stops after its preflight summary
+5. Preserve both existing smoke-test behaviors: `removed site generation workflow` stops after its
+   preflight summary, and `removed CMS conversion workflow amblast` stops after its preflight summary
    with the slug known.
 6. Only after that works, deduplicate shared prose/config/scripts.
 
@@ -885,18 +885,18 @@ Follow-up read-only verification same session:
 
 - Fully read the tracked workflow surfaces in both current orchestrator repos,
   excluding only `.git` and installed dependency directories.
-- `siab-site-orchestrator` is a site creation workflow: it depends on local
-  `siab-site-template` and `siab-site-themes` clones, writes only
+- `removed site command runner` is a site creation workflow: it depends on local
+  `siab-site-template` and `removed theme package` clones, writes only
   `./site-<slug>/`, uses copywriter/auditor/reviewer agents, requires preview
   sign-off before publishing, and deletes the local generated site at cleanup.
-- `siab-payload-orchestrator` is a CMS conversion workflow: it depends on
+- `removed Payload command runner` is a CMS conversion workflow: it depends on
   Payload API credentials, clones an existing `optidigi/site-<slug>` repo,
   provisions/seeds a tenant, converts the site to SSR, keeps the local clone
   for inspection, ships `md-to-rtroot` and CMS artifact sync helpers, and has
   explicit no-tenant-deletion / no-incremental-patching recovery rules.
 - Read-only `codex exec --sandbox read-only --ephemeral` smoke tests were run
-  for `/new-site` from `siab-site-orchestrator` and `/add-cms amblast` from
-  `siab-payload-orchestrator`. Both tests avoided file writes and did not open
+  for `removed site generation workflow` from `removed site command runner` and `removed CMS conversion workflow amblast` from
+  `removed Payload command runner`. Both tests avoided file writes and did not open
   `prompt.md`; both stopped because `gh auth status` is not authenticated in the
   smoke environment.
 
@@ -913,10 +913,10 @@ summary.
 Fresh end-shape confirmation before moving files:
 
 - Local working-set check found current local repo roots for `siab-payload`,
-  `siab-site-template`, `siab-site-orchestrator`,
-  `siab-payload-orchestrator`, and `site-amicare-zorg`. Fresh shallow GitHub
+  `siab-site-template`, `removed site command runner`,
+  `removed Payload command runner`, and `site-amicare-zorg`. Fresh shallow GitHub
   clones under `/tmp/obs119-shape` covered `site-siteinabox`, `site-amblast`,
-  and `siab-site-themes`.
+  and `removed theme package`.
 - CI/image-name checks confirmed the first monorepo migration should preserve
   existing GHCR image names: `ghcr.io/optidigi/siab-payload:latest`,
   `ghcr.io/optidigi/site-siteinabox:latest`,
@@ -933,7 +933,7 @@ Expected repository end shape for the first monorepo migration:
 
 ```txt
 siteinabox/
-  AGENTS.md                    # root router for /new-site, /add-cms, app work
+  AGENTS.md                    # root router for removed site generation workflow, removed CMS conversion workflow, app work
   README.md
   package.json                 # workspace root; keep package-manager explicit
   pnpm-workspace.yaml
@@ -952,13 +952,13 @@ siteinabox/
     site-contracts/            # add early; shared schemas only when extracted
     site-runtime/              # add after contracts prove stable
     site-blocks/               # add after duplication proves stable
-    site-themes/               # current siab-site-themes
+    removed theme package/               # current removed theme package
     ui/                        # future only; do not extract prematurely
     tools/
-      siab-orchestrator/       # one umbrella tool with two workflows:
+      removed command runner/       # one umbrella tool with two workflows:
         commands/
-          new-site.md
-          add-cms.md
+          removed-site-generation.md
+          removed-cms-conversion.md
         workflows/
           sitegen/
           cms/
@@ -974,14 +974,14 @@ First migration scope should be deliberately narrower than the final platform:
 1. Move `siab-payload` to `apps/cms`.
 2. Move `site-siteinabox` to `apps/site`.
 3. Move `siab-site-template` to `packages/site-template`.
-4. Move `siab-site-themes` to `packages/site-themes`.
-5. Consolidate the two orchestrators into `packages/tools/siab-orchestrator`
-   while preserving `/new-site` and `/add-cms <slug>` as separate workflows.
+4. Move `removed theme package` to `removed theme package`.
+5. Consolidate the two orchestrators into `removed command-runbook package`
+   while preserving `removed site generation workflow` and `removed CMS conversion workflow <slug>` as separate workflows.
 6. Move generated/client site source under `sites/` deliberately, while keeping
    their existing image names and VPS stack entries stable until each migration
    is validated.
-7. Add the future Builder placeholder after the moved repo builds and command
-   smoke tests pass. This was later named `apps/builder`.
+7. Add the future removed product app placeholder after the moved repo builds and command
+   smoke tests pass. This was later named `removed product app`.
 
 Expected VPS/deploy end shape after the first migration:
 
@@ -1010,7 +1010,7 @@ Preferred production stack namespace once the monorepo deploy shape is stable:
   cms/                         # siab-payload compose; data path unchanged
   apps/
     site/                      # public siteinabox.nl app stack
-    builder/                   # future Builder app stack
+    removed-product-app/                   # future removed product app app stack
   tenants/
     amblast/                   # generated/client site stack
     ami-care/                  # generated/client CMS-backed site stack
@@ -1024,8 +1024,8 @@ stack namespace cleanup.
 
 Future deploy changes, after the first migration is stable:
 
-- Add `apps/builder` as a separate deployable image and separate
-  Traefik-routed stack when the Builder product is implemented.
+- Add `removed product app` as a separate deployable image and separate
+  Traefik-routed stack when the removed product app product is implemented.
 - Keep infra stack definitions out of this monorepo for now. The current
   server/ops infra source remains external to `siteinabox`; revisit only if
   the platform repo becomes the deliberate deploy-stack source of truth.
@@ -1036,16 +1036,16 @@ Future deploy changes, after the first migration is stable:
 2. Move code with minimal path churn:
    `siab-payload -> apps/cms`, `site-siteinabox -> apps/site`,
    `siab-site-template -> packages/site-template`,
-   orchestrators into `packages/tools/*`, and `siab-site-themes` into
-   `packages/site-themes`.
+   orchestrators into `packages/tools/*`, and `removed theme package` into
+   `removed theme package`.
 3. Keep existing GHCR image names stable at first so production deploy contracts
    do not change during the repo migration.
 4. Add monorepo-aware CI that builds/tests only affected apps and packages.
-5. Add `apps/builder` as a new deployable app and route it separately when the
-   Builder product is implemented.
-6. Extract shared contracts before runtime/UI packages so CMS, Builder,
+5. Add `removed product app` as a new deployable app and route it separately when the
+   removed product app product is implemented.
+6. Extract shared contracts before runtime/UI packages so CMS, removed product app,
    template, generated sites, and tools share schema language.
-7. Extract `site-runtime`, `site-blocks`, and `site-themes` only after contracts
+7. Extract `site-runtime`, `site-blocks`, and `removed theme package` only after contracts
    are stable and duplication is proven.
 8. Keep deploy-stack source-of-truth outside `siteinabox` for now; if this
    changes later, preserve the current one-container-per-app/site deployment
@@ -1059,17 +1059,17 @@ Created the first local `siteinabox` monorepo shell at
 `/home/shimmy/Desktop/env/siab/siteinabox`:
 
 - Imported `siab-payload` into `apps/cms`, `site-siteinabox` into `apps/site`,
-  `siab-site-template` into `packages/site-template`, and `siab-site-themes`
-  into `packages/site-themes`.
+  `siab-site-template` into `packages/site-template`, and `removed theme package`
+  into `removed theme package`.
 - Added root workspace files (`package.json`, `pnpm-workspace.yaml`,
   `pnpm-lock.yaml`, README, AGENTS, MCP placeholders, slash-command wrappers,
   and GitHub workflows).
 - Consolidated the two runbook orchestrators into
-  `packages/tools/siab-orchestrator` while keeping `/new-site` and
-  `/add-cms <slug>` as separate command contracts, preflights, prompts,
+  `removed command-runbook package` while keeping `removed site generation workflow` and
+  `removed CMS conversion workflow <slug>` as separate command contracts, preflights, prompts,
   agents, scripts, and runbooks.
 - Updated orchestrator commands/agents and template/public-site docs for the
-  monorepo paths (`packages/site-template`, `packages/site-themes`,
+  monorepo paths (`packages/site-template`, `removed theme package`,
   `apps/cms`) and preserved the current Traefik/data-path deploy contract.
 - Added monorepo image workflows that keep the current VPS-consumed image
   names: `ghcr.io/optidigi/siab-payload` and
@@ -1077,7 +1077,7 @@ Created the first local `siteinabox` monorepo shell at
 
 Validation in the new monorepo:
 
-- `npm test` in `packages/tools/siab-orchestrator/scripts` passed: 20/20.
+- `npm test` in `removed command-runbook package/scripts` passed: 20/20.
 - `pnpm --ignore-workspace test` and `pnpm --ignore-workspace build` passed in
   `packages/site-template`.
 - `pnpm --ignore-workspace test` and `pnpm --ignore-workspace build` passed in
@@ -1099,7 +1099,7 @@ Follow-up implementation completed the remaining non-deploying scaffold work:
 - Added monorepo-level `docs/` and `sites/` README files to document ownership
   boundaries without moving live stacks.
 - Added reserved app placeholder and README. It was originally named with the
-  old intake terminology; the canonical app name is now `apps/builder`.
+  old intake terminology; the canonical app name is now `removed product app`.
 - Aligned root package scripts with the validated transitional commands. The
   CMS, public site, and site-template scripts use `--ignore-workspace` so they
   keep working with the imported app-local lockfiles during the migration.
@@ -1115,7 +1115,7 @@ Follow-up implementation completed the remaining non-deploying scaffold work:
 
 Additional validation:
 
-- `npm ci && npm test` in `packages/tools/siab-orchestrator/scripts` passed:
+- `npm ci && npm test` in `removed command-runbook package/scripts` passed:
   20/20.
 - The placeholder app build/test scripts passed as explicit no-op checks.
 - `pnpm install --lockfile-only --ignore-scripts` passed at the root for six
@@ -1211,10 +1211,10 @@ Validation:
   `https://admin.ami-care.nl/api/health`, `https://siteinabox.nl/`,
   `https://ami-care.nl/healthz`, and `https://amblast.siteinabox.nl/`.
 
-OBS-119 is closed for monorepo/deploy consolidation. Building the real Builder
-product and deploying a Builder image remain future feature work; this item only
+OBS-119 is closed for monorepo/deploy consolidation. Building the real removed product app
+product and deploying a removed product app image remain future feature work; this item only
 reserved the app placeholder and matching server stack namespace. The canonical
-placeholder is now `apps/builder`.
+placeholder is now `removed product app`.
 
 #### Follow-up cleanup — 2026-06-16
 Post-consolidation cleanup removed the migration backup/archive artifacts from
@@ -1272,8 +1272,8 @@ The VPS stack namespace was tightened so all deployable SIAB apps live under
 The old GitHub repositories are obsolete for builds/deployments and can be
 deleted after any final manual archival preference:
 `Optidigi/siab-payload`, `Optidigi/site-siteinabox`,
-`Optidigi/siab-site-template`, `Optidigi/siab-site-themes`,
-`Optidigi/siab-site-orchestrator`, `Optidigi/siab-payload-orchestrator`,
+`Optidigi/siab-site-template`, `Optidigi/removed theme package`,
+`Optidigi/removed site command runner`, `Optidigi/removed Payload command runner`,
 `Optidigi/site-amicare-zorg`, and `Optidigi/site-amblast`.
 
 #### Final namespace rename — 2026-06-16
@@ -1436,16 +1436,16 @@ bounce/error handling, and local/staging behavior all need an explicit contract.
 Completion should include a deployment/runbook update and a production smoke
 test that sends a password reset or invite to a controlled mailbox.
 
-### OBS-98 — Fresh `/add-cms` generation path drifted from current SiteSettings contract
+### OBS-98 — Fresh `removed CMS conversion workflow` generation path drifted from current SiteSettings contract
 
-**Status:** Closed 2026-06-02 · **Layer:** multi-repo (`siab-payload-orchestrator` + `siab-site-template` + generated site repos)
+**Status:** Closed 2026-06-02 · **Layer:** multi-repo (`removed Payload command runner` + `siab-site-template` + generated site repos)
 **Discovered in:** Session 2026-06-02 (orchestrator/template/design/CMS sync verification)
 
 #### Description
 The existing production Amicare site has been patched to consume the current
 Payload projection shape (`siteName`, `siteUrl`, `contact.social`,
 `navHeader`, `navFooter`, `nap.streetAddress`, `hours[].day/open/close`), but
-the fresh `/add-cms` runbook in `siab-payload-orchestrator` still contains stale
+the fresh `removed CMS conversion workflow` runbook in `removed Payload command runner` still contains stale
 SiteSettings assumptions from the older static template shape:
 
 - `payload-seeder.md` documents `nav -> navigation` and builds the POST body
@@ -1469,16 +1469,16 @@ generated site is not yet guaranteed e2e-complete without operator correction.
 #### Resolution
 The fresh generation path now matches the current Payload projection contract:
 
-- `siab-payload-orchestrator/.claude/agents/payload-seeder.md` seeds
+- `removed Payload command runner/removed Claude agent config/agents/payload-seeder.md` seeds
   `navHeader` / `navFooter` in Payload's current schema shape. The Codex
   `payload-seeder` wrapper points at this canonical Claude contract, so both
   agent paths use the same mapping.
-- `siab-payload-orchestrator/.claude/agents/site-converter.md` now scaffolds
+- `removed Payload command runner/removed Claude agent config/agents/site-converter.md` now scaffolds
   `SiteSettings` with `siteName`, `siteUrl`, `contact.social`, `navHeader`,
   `navFooter`, `nap.streetAddress`, `hours[].day/open/close`, optional
   `CTA.primary`, `CTA.backgroundImage`, and generic fallbacks only. The Codex
   `site-converter` wrapper points at the same canonical contract.
-- `siab-payload-orchestrator/.claude/agents/cms-reviewer.md` now blocks old
+- `removed Payload command runner/removed Claude agent config/agents/cms-reviewer.md` now blocks old
   runtime field names and tenant-specific fallback leaks in layout, SEO, pages,
   and CMS renderers. The Codex `cms-reviewer` wrapper points at the same
   canonical contract.
@@ -1500,10 +1500,10 @@ engine warning.
 `pnpm test`, `pnpm build`, and `pnpm check:responsive` passed. Astro check only
 reported existing hints.
 
-`siab-payload-orchestrator/scripts`: installed dependencies and `npm test`
+`removed Payload command runner/scripts`: installed dependencies and `npm test`
 passed.
 
-`siab-site-orchestrator`: no code changes required; its Codex wrappers route to
+`removed site command runner`: no code changes required; its Codex wrappers route to
 the canonical Claude workflow and its reviewer already requires
 `siteManifest.json` before sign-off.
 
@@ -1895,8 +1895,8 @@ volume reset before recreating production with the new compose image.
 The CMS canvas reads tenant-specific compiled CSS + font files from `DATA_DIR/tenants/<id>/cms-editor.css` + `/files/*` to render the editor surface with tenant tokens. The Astro build (in each tenant site repo) produces both at `/app/dist/cms/*` via `scripts/build-cms-css.mjs`. Production had no orchestrator step that copied these into the CMS data dir at deploy time, so `site-amicare-zorg` temporarily copied the artifacts from its container entrypoint and required a writable `/data:rw` mount.
 
 #### Resolution
-`siab-payload-orchestrator` now defines the deploy-time sync contract instead of relying on writable site containers:
-- Added `scripts/sync-cms-artifacts.sh`, which pulls/creates the built site image, copies `/app/dist/cms/*` out of the image, and writes `cms-editor.css` plus `files/*` into `/srv/data/saas/siab-payload/tenants/<tenantId>/`.
+`removed Payload command runner` now defines the deploy-time sync contract instead of relying on writable site containers:
+- Added `scripts/removed artifact sync script`, which pulls/creates the built site image, copies `/app/dist/cms/*` out of the image, and writes `cms-editor.css` plus `files/*` into `/srv/data/saas/siab-payload/tenants/<tenantId>/`.
 - Added `runbooks/cms-artifact-sync.md`.
 - Updated the CMS-ification prompt to print the sync command and keep the site compose mount at `/data:ro`.
 - Updated `site-converter` and `cms-reviewer` guidance so new conversions no longer generate or require the obsolete `/data:rw` entrypoint copy workaround.
@@ -1914,10 +1914,10 @@ Production Amicare used the new sync path on 2026-05-25. The VPS tenant data dir
 **Depends on:** OBS-38 (must land in `sitegen-template` / `site-amicare-zorg` + `site-orch` + `payload-orch` first)
 
 #### Description
-Once OBS-38 shipped dark-mode + role-token plumbing in the site template and the build/deploy contracts in the orchestrators, those changes only reached production tenants via redeploy. The production CMS tenant inventory is currently Amicare only; `amblast` and `siteinabox` are future `/add-cms` conversions, not existing Payload tenants.
+Once OBS-38 shipped dark-mode + role-token plumbing in the site template and the build/deploy contracts in the orchestrators, those changes only reached production tenants via redeploy. The production CMS tenant inventory is currently Amicare only; `amblast` and `siteinabox` are future `removed CMS conversion workflow` conversions, not existing Payload tenants.
 
 #### Resolution
-`siab-payload-orchestrator/runbooks/existing-tenant-redeploy.md` records the redeploy checklist and corrected known CMS tenant inventory. Amicare was redeployed on 2026-05-25 from `site-amicare-zorg` commit `c9eb3ce` after the artifact-sync contract landed.
+`removed Payload command runner/runbooks/existing-tenant-redeploy.md` records the redeploy checklist and corrected known CMS tenant inventory. Amicare was redeployed on 2026-05-25 from `site-amicare-zorg` commit `c9eb3ce` after the artifact-sync contract landed.
 
 #### Validation
 GitHub Actions built and pushed the Amicare image, the VPS pulled/recreated the `ami-care` service, and production smoke checks pass: container health is `healthy`, `https://ami-care.nl` returns HTTP 200, `/healthz` returns `ok`, `Tenant.siteManifest` is populated for tenant 7, block anchors are explicit in the DB and live HTML, tenant-theme CSS is injected, and the `/data` mount is read-only.
@@ -1943,10 +1943,10 @@ The generated registry item was rebuilt, pulled into `siab-payload`, and pinned 
 
 **Status:** Closed 2026-05-22.
 **Discovered in:** Session 2026-05-20, Bundle 3 (OBS-42) gating of site-amicare-zorg.
-**Files:** `siab-payload-orchestrator/.claude/agents/site-converter.md`, `siab-site-template/src/components/cms/RtNodeRenderer.tsx`
+**Files:** `removed Payload command runner/removed Claude agent config/agents/site-converter.md`, `siab-site-template/src/components/cms/RtNodeRenderer.tsx`
 
 #### Resolution
-Fixed both canonical sources that every generated site inherits. The `Blocks.astro` scaffold in `siab-payload-orchestrator` now accepts `MediaRef | undefined` in the media resolver contract, so optional hero images and testimonial avatars no longer trip strict checks. The `siab-site-template` rich-text renderer now narrows link children explicitly instead of reading `children` from an inline union that also includes `linebreak`.
+Fixed both canonical sources that every generated site inherits. The `Blocks.astro` scaffold in `removed Payload command runner` now accepts `MediaRef | undefined` in the media resolver contract, so optional hero images and testimonial avatars no longer trip strict checks. The `siab-site-template` rich-text renderer now narrows link children explicitly instead of reading `children` from an inline union that also includes `linebreak`.
 
 #### Validation
 `pnpm astro check` in `siab-site-template` reports 0 errors. Existing hints remain unrelated baseline hints.

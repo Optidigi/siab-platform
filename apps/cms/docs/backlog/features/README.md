@@ -657,7 +657,7 @@ Follow-up 2026-05-25: completed the Dutch admin pass across list pages, user/sit
 
 **Status:** Closed 2026-05-22 · **Layer:** multi-repo
 **Discovered in:** Session 2026-05-19 (FE walkthrough — operator request)
-**Files:** `@siab/rich-text-toolbar`, `src/lib/richText/*`, `src/components/editor/richText/LexicalField.tsx`, `src/components/editor/canvas/inline/RtStaticView.tsx`, `siab-site-template`, `site-amicare-zorg`, `siab-payload-orchestrator`
+**Files:** `@siab/rich-text-toolbar`, `src/lib/richText/*`, `src/components/editor/richText/LexicalField.tsx`, `src/components/editor/canvas/inline/RtStaticView.tsx`, `siab-site-template`, `site-amicare-zorg`, `removed Payload command runner`
 
 #### Resolution
 RichText now has a manifest-bound font-family chip in the persistent and floating toolbars. The chip reads `siteManifest.fontFamilies[]`, previews the tenant CSS variable, writes `--rt-font:<id>` into Lexical selection style, and mirrors that value to the stable DOM class `rt-font-<id>`.
@@ -2482,8 +2482,8 @@ silently enabling full persistence for every tenant.
    context and explicit allowlisted event properties.
 3. Define the stable event taxonomy before broad instrumentation:
    authentication funnel, dashboard visits, page/editor open, block add/remove,
-   save success/failure, media upload, form submission received, `/new-site` /
-   `/add-cms` operational milestones, site pageview, section viewed,
+   save success/failure, media upload, form submission received, `removed site generation workflow` /
+   `removed CMS conversion workflow` operational milestones, site pageview, section viewed,
    section engaged, CTA clicked, form started/submitted, phone/email click, and
    conversion completed.
 4. Standardize generated-site event context: `tenant_id`, `site_id`, `page_id`,
@@ -2898,13 +2898,13 @@ emits the approved public-site V1 events after consent, exposes
 `window.SIABAnalytics.grantConsent()` / `revokeConsent()`, and tests emitted
 metadata plus no pre-consent transmission.
 
-`siab-site-orchestrator` ensures new generated sites inherit the analytics
+`removed site command runner` ensures new generated sites inherit the analytics
 runtime from the template, ensures generated site metadata/manifest output
 includes analytics support, and adds reviewer gates that verify analytics
 runtime/metadata exists or is intentionally disabled.
 
-`siab-payload-orchestrator` seeds the operator-managed analytics config into
-Payload, ensures `/add-cms` generated tenants get the analytics contract, and
+`removed Payload command runner` seeds the operator-managed analytics config into
+Payload, ensures `removed CMS conversion workflow` generated tenants get the analytics contract, and
 adds runbook checks for PostHog environment/configuration plus generated-site
 analytics metadata.
 
@@ -2972,7 +2972,7 @@ Initial OBS-99 implementation slice is in place across the planned repos:
   `window.SIABAnalytics.grantConsent()`, adds safe referrer-domain/source-type
   and device-type metadata after consent, and avoids PostHog transmission or
   browser storage before consent.
-- `siab-site-orchestrator` and `siab-payload-orchestrator` prompts/reviewer
+- `removed site command runner` and `removed Payload command runner` prompts/reviewer
   contracts now preserve the analytics manifest/runtime requirements for future
   generated sites.
 
@@ -3641,7 +3641,7 @@ manifest shape, renderers, CMS CSS, analytics, image/deploy contract, and
 Payload seeding can be reviewed as one tenant conversion.
 
 #### Suggested fix shape
-1. Run the `/add-cms amblast` workflow preflight and confirm the current
+1. Run the `removed CMS conversion workflow amblast` workflow preflight and confirm the current
    tenant/deploy contract before touching the snapshot.
 2. Compare `sites/amblast` against `packages/site-template` and decide which
    template changes should be adopted versus which tenant-specific code should
@@ -4038,7 +4038,7 @@ one at a time with `shadcn add --diff`.
 
 2026-06-16 verification: the SIAB platform monorepo exists, but this item was
 not complete. The workspace had no shared frontend/contract packages yet:
-`packages/` only contained `site-template`, `site-themes`, and tooling, while
+`packages/` only contained `site-template`, `removed theme package`, and tooling, while
 the generated-site projection/RtRoot contract was still duplicated between
 `packages/site-template/src/lib/types.ts`, `sites/ami-care/src/lib/types.ts`,
 and `sites/ami-care/src/lib/richText.ts`.
@@ -4235,7 +4235,7 @@ The implementation deliberately kept the persisted tenant shape unchanged: `Tena
 
 ### OBS-62 — Canvas responsive preview via container-query authoring contract (supersedes FE-47)
 
-**Status:** Closed 2026-06-03 · **Layer:** multi-repo (`siab-payload` checker + `siab-site-template` + `siab-payload-orchestrator` + `siab-site-orchestrator` + `siab-site-themes` + per-tenant deploys)
+**Status:** Closed 2026-06-03 · **Layer:** multi-repo (`siab-payload` checker + `siab-site-template` + `removed Payload command runner` + `removed site command runner` + `removed theme package` + per-tenant deploys)
 **Discovered in:** Session 2026-05-18 (rescoped from FE-47 after three-researcher consensus on architecture)
 **Supersedes:** FE-47 (canvas-side-only scope), FE-26 (narrow `xl:`/`2xl:` mismatch — closed earlier same session)
 
@@ -4253,8 +4253,8 @@ All three independent research lines (multi-repo contract patterns, LLM-agent en
 1. **Responsive contract/checker** — currently implemented in Payload as `src/scripts/check-responsive.mjs` and mirrored by the active repos that need the gate. A future published `@siab/responsive-canvas-lint` package may still be useful if more repos need to consume the exact same CLI/tailwind preset, but the current `siab-payload` implementation does not depend on that package.
 2. **`siab-payload`** — `globals.css` declares `.rt-canvas { container-type: inline-size; container-name: site-frame; contain: layout; }`; `useFitZoom`/`CANVAS_DESIGN_WIDTH` were removed; `pnpm check:responsive` runs in CI alongside existing gates; Claude Code Stop hook guidance should invoke the same checker with binding semantics where configured.
 3. **`siab-site-template`** — install package; `BaseLayout.astro <body>` declares same container (`container-type: inline-size; container-name: site-frame; contain: layout;`); apply the Tailwind preset; CI gate via `publish.yml`. New tenant forks inherit automatically.
-4. **`siab-payload-orchestrator` + `siab-site-orchestrator`** — `.claude/settings.json` Stop hooks running the script with exit 2 (the only mechanism with binding semantics per LLM-agent research). `cms-reviewer.md` / `auditor.md` rewritten to **invoke the CLI, not inline grep, no `BLOCKING` markers** ("BLOCKING/MUST" markers in agent markdown are documented to drift ~5.6%/step). One-paragraph contract reference in `prompt.md`; do not restate rules. Builder/validator agent split — separate agent triages failures, doer doesn't self-fix.
-5. **`siab-site-themes`** — README requires the convention for any future theme; consumes the package as peer dep.
+4. **`removed Payload command runner` + `removed site command runner`** — `removed Claude agent config/settings.json` Stop hooks running the script with exit 2 (the only mechanism with binding semantics per LLM-agent research). `cms-reviewer.md` / `auditor.md` rewritten to **invoke the CLI, not inline grep, no `BLOCKING` markers** ("BLOCKING/MUST" markers in agent markdown are documented to drift ~5.6%/step). One-paragraph contract reference in `prompt.md`; do not restate rules. removed product app/validator agent split — separate agent triages failures, doer doesn't self-fix.
+5. **`removed theme package`** — README requires the convention for any future theme; consumes the package as peer dep.
 6. **Per-tenant migrations** — install package; convert viewport width variants to named `site-frame` container variants; add body container declaration; one-time per tenant. ami-care first (~35 class swaps across 7 cms/* files plus 1 `vh` hit), then amblast, then siteinabox.
 
 #### Research update 2026-05-26
@@ -4347,7 +4347,7 @@ Per container-query architecture research:
 - **No `var()` in `@container` conditions** — breakpoint values must be literals. Tailwind v4's token system sidesteps this for `@`-modifiers but tenant-authored raw `@container` rules need to know.
 
 #### Migration order
-Package first → siab-payload structural changes → site-template structural changes → orchestrator agent updates → site-themes README → per-tenant migrations (separate timeline, ami-care reference first).
+Package first → siab-payload structural changes → site-template structural changes → orchestrator agent updates → removed theme package README → per-tenant migrations (separate timeline, ami-care reference first).
 
 #### Out of scope for this entry
 - `<picture media="...">` source selection (still document-viewport-bound; convention covers ~95%, document the escape)
@@ -4675,7 +4675,7 @@ FE-60's `maxHeight` snap-cap is retained (clips content to the visible detent). 
 
 ### OBS-42 — ContactSection: submit button label hardcoded as "Send" in renderer (CLOSED 2026-05-20)
 
-**Resolved via:** Bundle 3 (Full Pipeline) — siab-payload `9512e23`, siab-site-template `61029d2`, siab-payload-orchestrator `88cfbf1`, site-amicare-zorg `42e87e8`. Added a `submitLabel` text field (required, default "Send") to the ContactSection block schema; migration `20260520_170754_add_contact_submit_label` adds the column `DEFAULT 'Send' NOT NULL` (backfills existing rows → CMS-canonical data). The label is now editor-set across the whole autogeneration pipeline: the siab-payload canvas renderer; the `siab-site-template` renderer + `ContactSectionBlock` type + preview-island dispatch (so future generated sites inherit it); the `site-converter.md` scaffold codeblocks — `types.ts` + `Blocks.astro` dispatch — which are canonical for future site conversions; and the live `site-amicare-zorg` renderer + both dispatchers. Renderers read `{submitLabel ?? "Send"}`; the type is `submitLabel?: string | null` (optional — already-projected page JSON lacks it until re-save).
+**Resolved via:** Bundle 3 (Full Pipeline) — siab-payload `9512e23`, siab-site-template `61029d2`, removed Payload command runner `88cfbf1`, site-amicare-zorg `42e87e8`. Added a `submitLabel` text field (required, default "Send") to the ContactSection block schema; migration `20260520_170754_add_contact_submit_label` adds the column `DEFAULT 'Send' NOT NULL` (backfills existing rows → CMS-canonical data). The label is now editor-set across the whole autogeneration pipeline: the siab-payload canvas renderer; the `siab-site-template` renderer + `ContactSectionBlock` type + preview-island dispatch (so future generated sites inherit it); the `site-converter.md` scaffold codeblocks — `types.ts` + `Blocks.astro` dispatch — which are canonical for future site conversions; and the live `site-amicare-zorg` renderer + both dispatchers. Renderers read `{submitLabel ?? "Send"}`; the type is `submitLabel?: string | null` (optional — already-projected page JSON lacks it until re-save).
 
 ---
 
@@ -4942,8 +4942,8 @@ Mirrored the CMS canvas pattern in the site. Added `--radius-sm/md/lg` defaults 
 
 #### Unblocked follow-up specs (each gets its own brainstorm + plan)
 1. `siab-site-template` rebuild against the new contract (consumes `siteManifest.example.json` declaring `blocks[]`, reads `block.anchor` in site renderers, ships rt-v2 renderer + role tokens + cms-css build pipeline + docker-entrypoint).
-2. `siab-payload-orchestrator` updates: payload-seeder reads `siteManifest.json` from cloned site repo and writes `Tenant.siteManifest`; seeder generates RtRoot-shaped seeds.
-3. `siab-site-orchestrator` updates: auditor manifest-presence gate (OBS-50), deploy-time `docker cp` hook for cms-editor.css (OBS-55), contract docs.
+2. `removed Payload command runner` updates: payload-seeder reads `siteManifest.json` from cloned site repo and writes `Tenant.siteManifest`; seeder generates RtRoot-shaped seeds.
+3. `removed site command runner` updates: auditor manifest-presence gate (OBS-50), deploy-time `docker cp` hook for cms-editor.css (OBS-55), contract docs.
 4. ami-care cleanup: add `siteManifest.json`, switch from hardcoded section ids to `block.anchor` (drop the canvas-renderer literal fallbacks for `werkwijze` / `contact` / `wat-telt` / `top` once data is filled in), remove `docker-entrypoint.sh` cms-css copy workaround + revert `/data:rw` → `/data:ro`.
 5. amblast + siteinabox migrations (deferred per OBS-56).
 
@@ -5014,19 +5014,19 @@ Closing out the per-tenant deploy work for amblast + siteinabox (OBS-56) will su
 
 ---
 
-### OBS-49 — siab-payload-orchestrator: payload-seeder emits siteManifest (CLOSED 2026-05-19)
+### OBS-49 — removed Payload command runner: payload-seeder emits siteManifest (CLOSED 2026-05-19)
 
-**Resolved by:** `siab-payload-orchestrator` commit `4da8347` (2026-05-18) — `.claude/agents/payload-seeder.md` Phase 4 now reads `${SITE_REPO}/siteManifest.json` (or `siteManifest.example.json` fallback) and PATCHes it onto `Tenant.siteManifest` via the Payload API after siteSettings POST succeeds. Non-fatal if both files missing — emits a WARN noting that `DEFAULT_MANIFEST` only supports paragraph + h2/h3 + bold/italic.
+**Resolved by:** `removed Payload command runner` commit `4da8347` (2026-05-18) — `removed Claude agent config/agents/payload-seeder.md` Phase 4 now reads `${SITE_REPO}/siteManifest.json` (or `siteManifest.example.json` fallback) and PATCHes it onto `Tenant.siteManifest` via the Payload API after siteSettings POST succeeds. Non-fatal if both files missing — emits a WARN noting that `DEFAULT_MANIFEST` only supports paragraph + h2/h3 + bold/italic.
 
-**Original status:** Active · **Layer:** multi-repo (siab-payload-orchestrator). Closed during 2026-05-19 backlog audit.
+**Original status:** Active · **Layer:** multi-repo (removed Payload command runner). Closed during 2026-05-19 backlog audit.
 
 ---
 
-### OBS-50 — siab-site-orchestrator: auditor gate on siteManifest.json presence (CLOSED 2026-05-19)
+### OBS-50 — removed site command runner: auditor gate on siteManifest.json presence (CLOSED 2026-05-19)
 
-**Resolved by:** `siab-site-orchestrator` commit `b7f61b6` — *"feat(reviewer): gate Phase 7 sign-off on siteManifest.json presence."* Converted sites now require a manifest before sign-off.
+**Resolved by:** `removed site command runner` commit `b7f61b6` — *"feat(reviewer): gate Phase 7 sign-off on siteManifest.json presence."* Converted sites now require a manifest before sign-off.
 
-**Original status:** Active · **Layer:** multi-repo (siab-site-orchestrator). Closed during 2026-05-19 backlog audit.
+**Original status:** Active · **Layer:** multi-repo (removed site command runner). Closed during 2026-05-19 backlog audit.
 
 ---
 

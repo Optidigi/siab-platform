@@ -9,9 +9,6 @@
 # ghcr.io/optidigi/siteinabox-site-ami-care:latest on every push to main.
 #
 # Deploy steps on the VPS:
-#   packages/tools/siab-orchestrator/scripts/sync-cms-artifacts.sh \
-#     --image ghcr.io/optidigi/siteinabox-site-ami-care:latest \
-#     --tenant-dir /srv/data/saas/siab-payload/tenants/7
 #   cd /srv/saas/infra/stacks/siteinabox/tenants/ami-care
 #   docker compose pull
 #   docker compose up -d

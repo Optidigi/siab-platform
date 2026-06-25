@@ -260,11 +260,10 @@ docker compose up -d
 Log in at `https://admin.<your-domain>/login`, then go to your user record in
 the admin UI and rotate the password.
 
-## Step 9 — Create the orchestrator service user
+## Step 9 — Create an automation service user
 
-The monorepo orchestrator integration in `packages/tools/siab-orchestrator`
-calls Payload via API key. Create a dedicated super-admin service user with
-`enableAPIKey: true`.
+Create a dedicated super-admin service user with `enableAPIKey: true` for
+approved platform automation that needs to call Payload server-to-server.
 
 Easiest path: log in as the super-admin from Step 8, open the Users list, and
 use the "Create User" form (Phase A3 added a global create form on `/users`).
@@ -281,18 +280,14 @@ TOKEN=$(curl -s -X POST -H "Content-Type: application/json" \
   | python -c "import sys,json; print(json.load(sys.stdin)['token'])")
 
 curl -X POST -H "Content-Type: application/json" -H "Authorization: JWT $TOKEN" \
-  -d "{\"email\":\"orchestrator@<your-domain>\",\"name\":\"Orchestrator\",\"password\":\"$(openssl rand -hex 16)\",\"role\":\"super-admin\",\"enableAPIKey\":true,\"apiKey\":\"$KEY\"}" \
+  -d "{\"email\":\"automation@<your-domain>\",\"name\":\"Automation\",\"password\":\"$(openssl rand -hex 16)\",\"role\":\"super-admin\",\"enableAPIKey\":true,\"apiKey\":\"$KEY\"}" \
   https://admin.<your-domain>/api/users
 
 echo "Save this API key: $KEY"
 ```
 
-In `packages/tools/siab-orchestrator/.env`:
-
-```
-PAYLOAD_API_URL=https://admin.<your-domain>
-PAYLOAD_API_TOKEN=<key>
-```
+Store this key in the calling service's secret store. Do not commit it to the
+repo or to project-local MCP/config files.
 
 ## Common gotchas
 
@@ -499,7 +494,6 @@ no longer serves HTML at all.
 - **Secrets manager.** Move `RESEND_API_KEY` (and eventually
   `POSTGRES_PASSWORD`, `PAYLOAD_SECRET`) out of `.env` into a secrets
   manager — Doppler, Vault, or a SOPS-encrypted file at minimum.
-- **CORS / CSRF allowlist.** Once `packages/tools/siab-orchestrator` calls Payload
-  cross-origin (it doesn't yet — currently same-VPS service-to-service),
-  add the orchestrator's hostname to `cors` and `csrf` arrays in
+- **CORS / CSRF allowlist.** Once approved automation calls Payload
+  cross-origin, add the calling service hostname to `cors` and `csrf` arrays in
   `payload.config.ts`.

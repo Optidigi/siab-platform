@@ -1,5 +1,4 @@
-/* Baseline rt-* class contract styles. Theme tokens via var() — themes
-   override values during /new-site Phase 3 integration. */
+/* Baseline rt-* class contract styles. Tenant/runtime tokens override values. */
 
 /* Block-level rt-* nodes */
 .rt-p          { margin: 0 0 1em; }

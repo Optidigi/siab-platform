@@ -55,7 +55,7 @@ The private `@siab/*` shadcn registry is no longer the source of truth for this 
 
 **Primitive overwrites:** see `docs/runbooks/ui-overwrite-boundary.md`. Use `pnpm dlx shadcn@latest add @shadcn/<item> --diff` and review one primitive at a time. Do not bulk-overwrite local primitive forks.
 
-**Local hooks enforce this:** `.claude/settings.json` runs `pnpm typecheck` before Stop.
+**Local checks:** run `pnpm typecheck` before handing off CMS TypeScript changes.
 
 **Token system:** colors / radii / fonts are CSS custom properties (`--background`, `--foreground`, `--primary`, `--muted`, `--border`, `--destructive`, role tokens `--font-{title,heading,text}`, `--radius-{sm,md,lg}`, etc.). Dark mode via the `.dark` class. Reference tokens through Tailwind utility classes (`bg-background`, `text-muted-foreground`); never hard-code colors or override primitive internals via inline `style` props.
 
@@ -171,11 +171,11 @@ Test setup reads `.env` and overrides `DATABASE_URI` to `payload_test` automatic
 - The `BOOTSTRAP_TOKEN` env var enables the one-time super-admin seed endpoint. Unset it after first boot in production.
 - Sessions are cleared on every password rotation via the `clearSessionsOnPasswordChange` `beforeValidate` hook. Do not disable `useSessions` on the Users collection.
 - **Rich text storage is structured, not stringly typed.** All rich text content lives in `jsonb` columns as `RtRoot` values (validated against the tenant's `siteManifest`). No raw HTML reaches the database, and the projection emits `RtRoot` verbatim. The shared DOM emission contract lives at `docs/runbooks/rt-dom-contract.md` — both the CMS editor and the Astro renderer emit the same class names per node type.
-- **Per-tenant block menu is gated by `tenants.siteManifest.blocks[]`.** When present, `BlockPresetsContext` filters the "Add block" menu to the declared slugs and the `enforceTenantBlockMenu` hook (Pages.beforeValidate) rejects saves that introduce non-declared block types. When omitted, the CMS falls back to all 7 block types visible (backwards-compatible default). The canonical authoring convention + valid slug list lives in `packages/site-template/README.md` § "`siteManifest.blocks[]` — the per-tenant CMS block menu"; downstream integration docs live in `packages/tools/siab-orchestrator/workflows/cms/agents/payload-seeder.md` (Phase 4 seed) and `packages/tools/siab-orchestrator/workflows/sitegen/agents/reviewer.md` (Phase 7 gate).
+- **Per-tenant block menu is gated by `tenants.siteManifest.blocks[]`.** When present, `BlockPresetsContext` filters the "Add block" menu to the declared slugs and the `enforceTenantBlockMenu` hook (Pages.beforeValidate) rejects saves that introduce non-declared block types. When omitted, the CMS falls back to all 7 block types visible (backwards-compatible default). The canonical authoring convention + valid slug list lives in `packages/site-template/README.md` § "`siteManifest.blocks[]` — the per-tenant CMS block menu"; future generation must write equivalent validated structured data through `packages/contracts`.
 
 ## MCP credentials
 
-The project's `.mcp.json` ships **anonymous-tier MCP server definitions only**. Per-machine API keys / tokens are configured at user scope via `claude mcp add -s user`, so secrets live in `~/.claude.json` (outside any repo, never committed) and the project config stays portable.
+The project's `.mcp.json` ships **anonymous-tier MCP server definitions only**. Per-machine API keys / tokens are configured at user scope via `claude mcp add -s user`, so secrets live in `~/removed Claude agent config.json` (outside any repo, never committed) and the project config stays portable.
 
 **Why this pattern**: project-scope (`.mcp.json`) entries always shadow user-scope ones with the same name. So secrets cannot ride in `.mcp.json` env-var references — if the project entry exists, it wins, and the user-scope key is ignored. Anonymous tier in the project config + user-scope override for credentials is the only setup that works for both fresh clones (anonymous tier just works) and authenticated single-machine use.
 

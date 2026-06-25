@@ -7,19 +7,18 @@ Shared UI primitives and low-level UI utilities for SIAB apps.
 - This package owns shadcn-style primitives, token CSS, `cn`, CSP style helpers,
   and low-level reusable hooks.
 - App-specific composites and layouts stay in the app that owns the workflow.
-  CMS forms, editor canvas UI, navigation managers, dashboards, Builder intake,
-  approval, and payment handoff surfaces belong in the owning app when they only
-  fit that app/workflow.
+  CMS forms, editor canvas UI, navigation managers, dashboards, and future
+  product workflow surfaces belong in the owning app when they only fit that
+  app/workflow.
 - Reusable composites can live in this package when they are modular,
   dependency-light, and useful to more than one app or workflow. Keep their
   data/domain behavior injectable through props, slots, or adapters instead of
   importing CMS internals.
-- New Builder and CMS work must import shared primitives/components from this
+- New app and CMS work must import shared primitives/components from this
   package, not from another app.
 - Legacy generated-site rendering logic currently lives in
-  `packages/site-template` and `sites/*`. Future shared preview/live/editor
-  rendering should move through `packages/site-runtime` when that package is
-  implemented.
+  `packages/site-template` and `sites/*` while the future platform
+  architecture is reconsidered.
 
 ## Imports
 
@@ -48,8 +47,8 @@ global app CSS:
 
 When an app has its own Tailwind v4 input CSS, add app-local `@source` entries
 there and keep `packages/ui/src` included so shared component classes are
-compiled. Do not copy token definitions into apps or create a Builder-specific
-theme fork.
+compiled. Do not copy token definitions into apps or create app-specific theme
+forks without an approved design-system decision.
 
 `PageHeader` and `EmptyState` are intentionally app-neutral composites. Keep
 workflow-specific layout, data loading, routes, Payload integration, auth,

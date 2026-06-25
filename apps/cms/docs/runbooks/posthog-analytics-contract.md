@@ -409,15 +409,12 @@ the approved public-site V1 events after consent, exposes
 `window.SIABAnalytics.grantConsent()` / `revokeConsent()`, and tests emitted
 metadata plus no pre-consent transmission.
 
-`packages/tools/siab-orchestrator` ensures new generated sites inherit the analytics
-runtime from the template, ensures generated site metadata/manifest output
-includes analytics support, and adds reviewer gates that verify analytics
-runtime/metadata exists or is intentionally disabled.
+Future generation must include analytics support in validated structured site
+metadata and must verify that analytics runtime/metadata exists or is
+intentionally disabled.
 
-`packages/tools/siab-orchestrator` seeds the operator-managed analytics config into
-Payload, ensures `/add-cms` generated tenants get the analytics contract, and
-adds runbook checks for PostHog environment/configuration plus generated-site
-analytics metadata.
+Approved automation seeds operator-managed analytics config into Payload and
+checks PostHog environment/configuration plus public-site analytics metadata.
 
 Existing tenant sites, including Amicare, need a normal template/runtime
 backport or site-specific integration. They are not complete until events appear

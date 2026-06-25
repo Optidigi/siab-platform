@@ -1,8 +1,0 @@
-@import "@siteinabox/ui/styles/shadcn.css";
-
-@source "../app";
-@source "../../../../packages/ui/src";
-
-body {
-  font-family: var(--font-sans);
-}

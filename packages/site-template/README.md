@@ -1,13 +1,8 @@
 # SIAB Site Template
 
-Legacy Astro 5 + Tailwind 4 boilerplate consumed by
-`packages/tools/siab-orchestrator`'s `/new-site` workflow. Per legacy
-engagement, the orchestrator copies this template into `sites/<slug>/`,
-integrates a theme from `packages/site-themes/`, fills content via subagents,
-and publishes a monorepo-owned tenant image.
-
-This package remains for existing generated tenants and transition work. It is
-not the future Builder product architecture for new self-serve sites.
+Astro 5 + Tailwind 4 transition renderer/reference package for current tenant
+snapshots. This package remains for existing tenant maintenance only; it is not
+the future product architecture for new self-serve sites.
 
 ## What's in the box
 
@@ -37,23 +32,24 @@ pnpm astro check  # type / schema check
 See `.env.example`. `SITE_URL` is the only one the build needs;
 `PUBLIC_WEB3FORMS_KEY` and `PUBLIC_CONTACT_EMAIL` are optional.
 
-## Don't edit this template directly during a legacy site engagement
+## Maintenance Scope
 
-The orchestrator copies the template into `sites/<slug>/` and works there.
-Edits to this template apply to future legacy generated snapshots. Land them in
-a PR and pull into `packages/site-template/` on disk before starting the next
-legacy engagement.
+Edits to this template should support current tenant snapshots or migration
+toward the next approved architecture. New product architecture work should wait
+for that decision instead of extending this template.
 
 ## Rich-text rendering contract
 
-This template ships the `rt-*` class contract per `apps/cms/docs/runbooks/rt-dom-contract.md`. Block renderers in `src/components/cms/` consume `RtRoot` shapes via `RtNodeRenderer.tsx`. Role tokens (`--font-{title,heading,text}`, `--radius-{sm,md,lg}`) declared in `global.css @theme {}` are placeholders — themes override during `/new-site` Phase 3 integration.
+This template ships the `rt-*` class contract per `apps/cms/docs/runbooks/rt-dom-contract.md`. Block renderers in `src/components/cms/` consume `RtRoot` shapes via `RtNodeRenderer.tsx`. Role tokens (`--font-{title,heading,text}`, `--radius-{sm,md,lg}`) declared in `global.css @theme {}` are tenant/runtime override points.
 
-The post-CMS-ification SSR flow (the `site-converter` subagent in
-`packages/tools/siab-orchestrator/workflows/cms/agents/site-converter.md`) wires
-these renderers to Payload data; in static-mode they remain inert until the
-CMS-ification phase runs.
+CMS-backed tenant snapshots wire these renderers to Payload-projected data. In
+static-mode they remain inert until tenant data is mounted and read by the
+runtime code.
 
-Per-tenant block menu subsetting + themed-node declarations + type styles + color tokens live in `siteManifest.example.json` (this template ships a generic example). Tenant forks customise it; `/add-cms` Phase 4 reads it and seeds `Tenant.siteManifest`.
+Per-tenant block menu subsetting, themed-node declarations, type styles, and
+color tokens live in `siteManifest.example.json` (this template ships a generic
+example). Future generation should produce equivalent validated structured data
+instead of copying source.
 
 ## `siteManifest.blocks[]` — the per-tenant CMS block menu
 
@@ -98,8 +94,6 @@ Start from `siteManifest.example.json` (this template's all-7-blocks default). S
 
 ### Integration touchpoints
 
-- **`packages/tools/siab-orchestrator/workflows/cms/agents/payload-seeder.md` § "Seed Tenant.siteManifest"** — Phase 4 reads `${SITE_REPO}/siteManifest.json` (or falls back to `siteManifest.example.json`) and PATCHes it onto `Tenant.siteManifest`.
-- **`packages/tools/siab-orchestrator/workflows/sitegen/agents/reviewer.md` § Phase 7 gate** — requires `siteManifest.json` at the site package root before sign-off.
 - **`apps/cms/src/lib/richText/manifest.ts`** — Zod schema; canonical validation source.
 - **`apps/cms/src/hooks/enforceTenantBlockMenu.ts`** — save-time gate.
 - **`apps/cms/src/components/editor/BlockPresetsContext.tsx`** — UI-side filter for the "Add block" menu.
