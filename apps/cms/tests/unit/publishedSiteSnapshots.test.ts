@@ -333,26 +333,33 @@ describe("published site snapshots", () => {
   })
 
   it("blocks direct snapshot update/delete access and immutable field mutation", async () => {
-    const { PublishedSiteSnapshots } = await import("@/collections/PublishedSiteSnapshots")
+    const { protectImmutableSnapshot, PublishedSiteSnapshots } = await import("@/collections/PublishedSiteSnapshots")
 
     expect(await (PublishedSiteSnapshots.access?.update as any)?.({ req: { user: { role: "super-admin" } } })).toBe(false)
     expect(await (PublishedSiteSnapshots.access?.delete as any)?.({ req: { user: { role: "super-admin" } } })).toBe(false)
 
-    const beforeChange = PublishedSiteSnapshots.hooks?.beforeChange?.[0] as any
-    expect(() => beforeChange({
+    expect(() => protectImmutableSnapshot({
       operation: "update",
       data: { snapshotHash: "tampered" },
+      originalDoc: { snapshotHash: "original" },
       req: { context: { publishSnapshotLifecycleMutation: true } },
     })).toThrow("immutable")
-    expect(() => beforeChange({
+    expect(() => protectImmutableSnapshot({
+      operation: "update",
+      data: { status: "active", tenant: 2 },
+      originalDoc: { status: "drafted", tenant: 1 },
+      req: { context: { publishSnapshotLifecycleMutation: true } },
+    })).toThrow('Published site snapshot field "tenant" is immutable after creation.')
+    expect(() => protectImmutableSnapshot({
       operation: "update",
       data: { status: "active" },
       req: { context: {} },
     })).toThrow("immutable")
-    expect(beforeChange({
+    expect(protectImmutableSnapshot({
       operation: "update",
-      data: { status: "active" },
+      data: { status: "active", tenant: { id: 1 }, sourceGenerationRun: null },
+      originalDoc: { status: "drafted", tenant: 1, sourceGenerationRun: undefined },
       req: { context: { publishSnapshotLifecycleMutation: true } },
-    })).toEqual({ status: "active" })
+    })).toEqual({ status: "active", tenant: { id: 1 }, sourceGenerationRun: null })
   })
 })

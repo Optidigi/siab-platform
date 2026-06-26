@@ -3,6 +3,7 @@ import {
   formatContractValidationIssues,
   PublishedSiteSnapshotSchema,
 } from "@siteinabox/contracts/generation"
+import { relationshipId } from "@/lib/relationshipId"
 
 const allowedLifecycleUpdateFields = new Set([
   "status",
@@ -18,14 +19,33 @@ const isInternalLifecycleMutation = (args: {
   args.req?.context?.publishSnapshotLifecycleMutation === true ||
   args.context?.publishSnapshotLifecycleMutation === true
 
-const protectImmutableSnapshot = (args: any) => {
+const relationshipFields = new Set(["tenant", "sourceGenerationRun", "publishedBy"])
+
+const stableStringify = (value: unknown): string => {
+  if (value == null || typeof value !== "object") return JSON.stringify(value)
+  if (Array.isArray(value)) return `[${value.map((item) => stableStringify(item)).join(",")}]`
+  const record = value as Record<string, unknown>
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`
+}
+
+const immutableFieldIsUnchanged = (field: string, nextValue: unknown, originalDoc: Record<string, unknown> | undefined): boolean => {
+  if (!originalDoc || !(field in originalDoc)) return false
+  const originalValue = originalDoc[field]
+  if (relationshipFields.has(field)) return relationshipId(nextValue as any) === relationshipId(originalValue as any)
+  return stableStringify(nextValue) === stableStringify(originalValue)
+}
+
+export const protectImmutableSnapshot = (args: any) => {
   if (args.operation !== "update") return args.data
   if (!isInternalLifecycleMutation(args)) {
     throw new Error("Published site snapshots are immutable. Use the publish activation flow for lifecycle changes.")
   }
 
   const changedFields = Object.keys(args.data ?? {})
-  const immutableField = changedFields.find((field) => !allowedLifecycleUpdateFields.has(field))
+  const immutableField = changedFields.find((field) =>
+    !allowedLifecycleUpdateFields.has(field) &&
+    !immutableFieldIsUnchanged(field, args.data?.[field], args.originalDoc),
+  )
   if (immutableField) {
     throw new Error(`Published site snapshot field "${immutableField}" is immutable after creation.`)
   }
