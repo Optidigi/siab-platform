@@ -2,10 +2,12 @@ import { createHash } from "node:crypto"
 import Module from "node:module"
 import type { Payload } from "payload"
 import {
+  amblastPublishedSiteSnapshot,
   amblastSiteGenerationSpec,
+  amicarePublishedSiteSnapshot,
   amicareSiteGenerationSpec,
 } from "@siteinabox/contracts/fixtures/tenants"
-import type { SiteGenerationSpec } from "@siteinabox/contracts/generation"
+import type { PublishedSiteSnapshot, SiteGenerationSpec } from "@siteinabox/contracts/generation"
 import { SiteGenerationSpecSchema, formatContractValidationIssues } from "@siteinabox/contracts/generation"
 
 type TenantKey = "amicare" | "amblast"
@@ -27,6 +29,7 @@ type StagingFixture = {
   slug: string
   domain: string
   sourceSpec: SiteGenerationSpec
+  publishedSnapshot: PublishedSiteSnapshot
 }
 
 type ApplySiteGenerationSpecFn = typeof import("@/lib/site-generation/applySiteGenerationSpec")["applySiteGenerationSpec"]
@@ -47,6 +50,7 @@ const STAGING_FIXTURES: Record<TenantKey, StagingFixture> = {
     slug: "amicare-renderer",
     domain: "amicare.optidigi.nl",
     sourceSpec: amicareSiteGenerationSpec,
+    publishedSnapshot: amicarePublishedSiteSnapshot,
   },
   amblast: {
     key: "amblast",
@@ -54,6 +58,7 @@ const STAGING_FIXTURES: Record<TenantKey, StagingFixture> = {
     slug: "amblast-renderer",
     domain: "amblast.optidigi.nl",
     sourceSpec: amblastSiteGenerationSpec,
+    publishedSnapshot: amblastPublishedSiteSnapshot,
   },
 }
 
@@ -68,7 +73,8 @@ type SiteGenerationHelpers = {
 
 type ExecuteHelpers = SiteGenerationHelpers & {
   promoteGenerationRunPages: typeof import("@/lib/site-generation/promoteGenerationRunPages")["promoteGenerationRunPages"]
-  publishSiteSnapshot: typeof import("@/lib/publish/siteSnapshots")["publishSiteSnapshot"]
+  activatePublishedSnapshot: typeof import("@/lib/publish/siteSnapshots")["activatePublishedSnapshot"]
+  retargetPublishedSiteSnapshot: typeof import("@/lib/publish/retargetSnapshot")["retargetPublishedSiteSnapshot"]
   recordGenerationRunPaymentState: typeof import("@/lib/payments/generationRunPayment")["recordGenerationRunPaymentState"]
 }
 
@@ -97,16 +103,18 @@ const loadSiteGenerationHelpers = async (): Promise<SiteGenerationHelpers> => {
 
 const loadExecuteHelpers = async (): Promise<ExecuteHelpers> => {
   installServerOnlyShim()
-  const [siteGeneration, promotion, publishing, payment] = await Promise.all([
+  const [siteGeneration, promotion, publishing, retargeting, payment] = await Promise.all([
     loadSiteGenerationHelpers(),
     import("@/lib/site-generation/promoteGenerationRunPages"),
     import("@/lib/publish/siteSnapshots"),
+    import("@/lib/publish/retargetSnapshot"),
     import("@/lib/payments/generationRunPayment"),
   ])
   return {
     ...siteGeneration,
     promoteGenerationRunPages: promotion.promoteGenerationRunPages,
-    publishSiteSnapshot: publishing.publishSiteSnapshot,
+    activatePublishedSnapshot: publishing.activatePublishedSnapshot,
+    retargetPublishedSiteSnapshot: retargeting.retargetPublishedSiteSnapshot,
     recordGenerationRunPaymentState: payment.recordGenerationRunPaymentState,
   }
 }
@@ -195,6 +203,22 @@ const stableStringify = (value: unknown): string => {
 
 const stableHash = (value: unknown): string =>
   createHash("sha256").update(stableStringify(value)).digest("hex")
+
+const nextPublishedSnapshotVersion = async (
+  payload: Payload,
+  tenantId: string | number,
+): Promise<number> => {
+  const result = await payload.find({
+    collection: "published-site-snapshots" as any,
+    where: { tenant: { equals: tenantId } },
+    sort: "-version",
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  } as any)
+  const latest = result.docs[0] as { version?: number } | undefined
+  return Number.isFinite(latest?.version) ? Number(latest!.version) + 1 : 1
+}
 
 const requireSuccessfulApplyResult = (
   result: ApplySiteGenerationSpecResult,
@@ -433,6 +457,56 @@ const verifyDomain = async (
   })
 }
 
+const createStagingPublishedSnapshot = async (
+  payload: Payload,
+  fixture: StagingFixture,
+  tenantId: string | number,
+  generationRunId: string | number,
+  helpers: ExecuteHelpers,
+  options: CliOptions,
+  now: string,
+) => {
+  const version = await nextPublishedSnapshotVersion(payload, tenantId)
+  const snapshot = helpers.retargetPublishedSiteSnapshot(fixture.publishedSnapshot, {
+    tenantId,
+    tenantSlug: fixture.slug,
+    domain: fixture.domain,
+    siteUrl: `https://${fixture.domain}`,
+    mediaBaseUrl: fixture.publishedSnapshot.siteUrl,
+    aliases: [],
+    manifestVersion: version,
+    publishedAt: now,
+  })
+  const hash = stableHash(snapshot)
+  const snapshotDoc = await payload.create({
+    collection: "published-site-snapshots" as any,
+    data: {
+      tenant: tenantId,
+      sourceGenerationRun: generationRunId,
+      snapshotKey: `${snapshot.tenantSlug}-v${version}-${hash.slice(0, 12)}`,
+      version,
+      status: "drafted",
+      domain: snapshot.domain,
+      snapshotHash: hash,
+      snapshot,
+      publishedAt: snapshot.publishedAt,
+      activationReason: options.activate
+        ? `Renderer staging activation for ${fixture.domain}`
+        : `Renderer staging parity snapshot for ${fixture.domain}`,
+    },
+    depth: 0,
+    overrideAccess: true,
+  } as any) as any
+
+  if (!options.activate) return { snapshot: snapshotDoc, activated: false }
+  const activated = await helpers.activatePublishedSnapshot(payload, {
+    snapshotId: snapshotDoc.id,
+    manualActivation: true,
+    activationReason: `Renderer staging activation for ${fixture.domain}`,
+  })
+  return { snapshot: activated, activated: true }
+}
+
 const runFixture = async (
   payload: Payload,
   fixture: StagingFixture,
@@ -458,7 +532,7 @@ const runFixture = async (
   if (options.verifyDomain) console.log("           mark staging domain verified")
   if (options.waivePayment) console.log("           waive payment gate")
   if (options.promotePages) console.log("           promote run pages")
-  if (options.publish) console.log("           publish immutable snapshot")
+  if (options.publish) console.log("           publish retargeted migrated parity snapshot fixture")
   if (options.activate) console.log("           activate published snapshot with manualActivation=true")
 
   if (!options.execute) return
@@ -488,15 +562,15 @@ const runFixture = async (
     await executeHelpers.promoteGenerationRunPages(payload, run.doc.id, { promotedBy: OPERATOR_ACTOR })
   }
   if (options.publish) {
-    const result = await executeHelpers.publishSiteSnapshot(payload, {
-      tenantId: successfulApplyResult.tenantId,
-      generationRunId: run.doc.id,
-      activate: options.activate,
-      manualActivation: options.activate,
-      activationReason: options.activate
-        ? `Renderer staging activation for ${fixture.domain}`
-        : `Renderer staging snapshot for ${fixture.domain}`,
-    })
+    const result = await createStagingPublishedSnapshot(
+      payload,
+      fixture,
+      successfulApplyResult.tenantId,
+      run.doc.id,
+      executeHelpers,
+      options,
+      now,
+    )
     const snapshotId = (result.snapshot as any)?.id
     console.log(`  snapshot: ${snapshotId ?? "(unknown)"}${result.activated ? " activated" : " drafted"}`)
   }

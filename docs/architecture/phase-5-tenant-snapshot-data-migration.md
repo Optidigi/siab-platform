@@ -43,10 +43,9 @@ keeping CMS-importable `SiteGenerationSpec` fixtures conservative.
 - No provider secret is stored in fixture data. Amblast Web3Forms config records
   provider/action/honeypot/messages only; the required access key still needs a
   runtime-safe solution before forms can submit through Web3Forms.
-- Public media delivery is not solved by this data migration. The generic
-  renderer currently has no tenant media proxy/static media mount, and CMS media
-  URLs are control-plane/auth scoped. Phase 6 must verify or implement the
-  approved public media delivery path before true renderer cutover.
+- Public media delivery is not solved by this data migration. Phase 6 adds a
+  staging retarget that loads legacy media from the old tenant origins, but final
+  domain cutover still needs platform-owned media storage/proxy behavior.
 - The current split means CMS draft import remains compatible with existing
   Payload block definitions, while the published snapshot fixture proves richer
   renderer data. A later CMS editor/importer phase is still required if editors

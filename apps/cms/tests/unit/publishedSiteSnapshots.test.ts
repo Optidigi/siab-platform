@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { createElement } from "react"
+import { renderToStaticMarkup } from "react-dom/server"
+import { amblastPublishedSiteSnapshot, amicarePublishedSiteSnapshot } from "@siteinabox/contracts/fixtures/tenants"
+import { SitePageRenderer } from "@siteinabox/site-renderer"
 import type { Page, SiteGenerationRun, Tenant } from "@/payload-types"
 
 const settingsDoc = {
@@ -238,6 +242,70 @@ describe("published site snapshots", () => {
     } as unknown as SiteGenerationRun
 
     expect(canActivatePublishedSnapshot(approvedWaived).ok).toBe(true)
+  })
+
+  it("retargets migrated published fixtures for renderer staging without dropping parity data", async () => {
+    const { retargetPublishedSiteSnapshot } = await import("@/lib/publish/retargetSnapshot")
+
+    const snapshot = retargetPublishedSiteSnapshot(amblastPublishedSiteSnapshot, {
+      tenantId: 42,
+      tenantSlug: "amblast-renderer",
+      domain: "amblast.optidigi.nl",
+      siteUrl: "https://amblast.optidigi.nl",
+      mediaBaseUrl: amblastPublishedSiteSnapshot.siteUrl,
+      aliases: [],
+      manifestVersion: 7,
+      publishedAt: "2026-06-26T12:00:00.000Z",
+    })
+
+    expect(snapshot.tenantId).toBe("42")
+    expect(snapshot.tenantSlug).toBe("amblast-renderer")
+    expect(snapshot.domain).toBe("amblast.optidigi.nl")
+    expect(snapshot.siteUrl).toBe("https://amblast.optidigi.nl")
+    expect(snapshot.settings.siteUrl).toBe("https://amblast.optidigi.nl")
+    expect(snapshot.settings.aliases).toEqual([])
+    expect(snapshot.settings.seoJsonLd?.organization?.url).toBe("https://amblast.optidigi.nl")
+    expect(snapshot.settings.branding?.logo).toMatchObject({ url: "https://amblast.nl/uploads/logo/cropped-AMBlast_logo.png" })
+    expect(snapshot.manifest).toMatchObject({ tenantId: "42", version: 7 })
+    expect(snapshot.publishedAt).toBe("2026-06-26T12:00:00.000Z")
+    expect(snapshot.blocks?.map((block) => block.slug)).toEqual(expect.arrayContaining(["mediaHero", "beforeAfterGallery", "contactDetails"]))
+    expect(snapshot.pages.flatMap((page) => page.blocks).map((block) => block.blockType)).toEqual(expect.arrayContaining(["mediaHero", "beforeAfterGallery"]))
+    expect(JSON.stringify(snapshot.pages)).toContain("https://amblast.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
+    expect(JSON.stringify(snapshot.pages)).toContain("\"href\":\"/contact\"")
+    expect(JSON.stringify(snapshot.media)).toContain("IMG_20210402_151225-scaled.jpg")
+
+    const homeHtml = renderToStaticMarkup(createElement(SitePageRenderer, {
+      page: snapshot.pages.find((page) => page.slug === "index") as any,
+      settings: snapshot.settings,
+      theme: snapshot.theme,
+    }))
+    const portfolioHtml = renderToStaticMarkup(createElement(SitePageRenderer, {
+      page: snapshot.pages.find((page) => page.slug === "portfolio") as any,
+      settings: snapshot.settings,
+      theme: snapshot.theme,
+    }))
+    expect(homeHtml).toContain("data-siab-service-carousel")
+    expect(homeHtml).toContain("https://amblast.nl/uploads/logo/cropped-AMBlast_logo.png")
+    expect(portfolioHtml).toContain("data-siab-before-after-pair")
+    expect(portfolioHtml).toContain("https://amblast.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
+  })
+
+  it("retargets Amicare CMS media refs to the legacy media route for renderer staging", async () => {
+    const { retargetPublishedSiteSnapshot } = await import("@/lib/publish/retargetSnapshot")
+
+    const snapshot = retargetPublishedSiteSnapshot(amicarePublishedSiteSnapshot, {
+      tenantId: 41,
+      tenantSlug: "amicare-renderer",
+      domain: "amicare.optidigi.nl",
+      siteUrl: "https://amicare.optidigi.nl",
+      mediaBaseUrl: amicarePublishedSiteSnapshot.siteUrl,
+      aliases: [],
+      manifestVersion: 3,
+      publishedAt: "2026-06-26T12:00:00.000Z",
+    })
+
+    expect(JSON.stringify(snapshot.pages)).toContain("https://ami-care.nl/media/bedroom.jpg")
+    expect(JSON.stringify(snapshot.pages)).not.toContain("https://ami-care.nl/assets/bedroom.jpg")
   })
 
   it("keeps manual activation override behind tenant and domain safety gates", async () => {

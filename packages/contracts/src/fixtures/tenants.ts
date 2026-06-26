@@ -265,7 +265,7 @@ const amicarePages: GeneratedPageSpec[] = [
         subheadline: blockText("Persoonlijke begeleiding, rust en structuur voor jongeren en gezinnen die tijdelijk extra steun nodig hebben."),
         pills: [{ label: "Jeugdzorg" }, { label: "Begeleiding" }, { label: "Vertrouwen" }],
         cta: { label: "Neem contact op", href: "#contact" },
-        image: { id: "amicare-bedroom", url: "/assets/bedroom.jpg", filename: "bedroom.jpg", alt: "Rustige kinderkamer" },
+        image: { id: "amicare-bedroom", url: "/media/bedroom.jpg", filename: "bedroom.jpg", alt: "Rustige kinderkamer" },
       },
       {
         blockType: "featureList",
@@ -1028,8 +1028,8 @@ export const amicareSiteGenerationSpec: SiteGenerationSpec = {
   pages: amicarePages,
   blocks: canonicalBlocks.filter((block) => ["hero", "featureList", "richText", "cta", "contactSection"].includes(block.slug)),
   assets: [
-    { id: "amicare-bedroom", url: "/assets/bedroom.jpg", filename: "bedroom.jpg", alt: "Rustige kinderkamer" },
-    { id: "amicare-toys", url: "/assets/toys.jpg", filename: "toys.jpg", alt: "Speelgoed" },
+    { id: "amicare-bedroom", url: "/media/bedroom.jpg", filename: "bedroom.jpg", alt: "Rustige kinderkamer" },
+    { id: "amicare-toys", url: "/media/toys.jpg", filename: "toys.jpg", alt: "Speelgoed" },
     { id: "amicare-og", url: "/og-default.png", filename: "og-default.png", alt: "Amicare-Zorg social image" },
     { id: "amicare-favicon-svg", url: "/favicon.svg", filename: "favicon.svg", alt: "Amicare-Zorg favicon" },
     { id: "amicare-favicon", url: "/favicon.ico", filename: "favicon.ico", alt: "Amicare-Zorg favicon" },
