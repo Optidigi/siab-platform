@@ -50,7 +50,8 @@ const sharedBuildOpts = {
   // Resolve `@/...` like tsconfig + Next do so entries can import
   // `@/payload.config`, `@/migrations`, `@/lib/richText/*`, etc.
   alias: {
-    "@": path.join(repoRoot, "src")
+    "@": path.join(repoRoot, "src"),
+    "server-only": path.join(repoRoot, "scripts/server-only-shim.ts")
   },
   loader: { ".ts": "ts" },
   external: [
