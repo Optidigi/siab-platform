@@ -23,6 +23,12 @@ const blockText = (text: string): RtBlockRoot => ({
   children: [{ t: "paragraph", children: [{ t: "text", v: text }] }],
 })
 
+const paragraphs = (items: string[]): RtBlockRoot => ({
+  t: "root",
+  variant: "block",
+  children: items.map((text) => ({ t: "paragraph", children: [{ t: "text", v: text }] })),
+})
+
 const blockRichText = (parts: Array<{ heading?: string; text?: string }>): RtBlockRoot => ({
   t: "root",
   variant: "block",
@@ -61,8 +67,15 @@ const mediaManifestKey = (media: MediaRef): string | null => {
 const toSnapshot = (
   spec: SiteGenerationSpec,
   tenantId: string,
+  overrides?: {
+    pages?: GeneratedPageSpec[]
+    blocks?: SiteBlockManifestItem[]
+    assets?: MediaRef[]
+  },
 ): PublishedSiteSnapshot => {
-  const baseManifest = manifestEntries(tenantId, spec.settings, spec.pages)
+  const pages = overrides?.pages ?? spec.pages
+  const assets = overrides?.assets ?? spec.assets
+  const baseManifest = manifestEntries(tenantId, spec.settings, pages)
 
   return {
     schemaVersion: 1,
@@ -74,21 +87,21 @@ const toSnapshot = (
       ...baseManifest,
       entries: [
         ...baseManifest.entries,
-        ...(spec.assets ?? []).flatMap((asset) => {
+        ...(assets ?? []).flatMap((asset) => {
           const key = mediaManifestKey(asset)
           return key ? [{ type: "media" as const, key, updatedAt: GENERATED_AT }] : []
         }),
       ],
     },
     settings: spec.settings,
-    pages: spec.pages.map((page) => ({
+    pages: pages.map((page) => ({
       ...page,
       status: page.status ?? "published",
       updatedAt: page.updatedAt ?? GENERATED_AT,
     })),
     theme: spec.theme,
-    blocks: spec.blocks,
-    media: spec.assets,
+    blocks: overrides?.blocks ?? spec.blocks,
+    media: assets,
     publishedAt: GENERATED_AT,
   }
 }
@@ -148,6 +161,15 @@ const canonicalBlocks: SiteBlockManifestItem[] = [
   { slug: "testimonials", label: "Ervaringen" },
 ]
 
+const rendererParityBlocks: SiteBlockManifestItem[] = [
+  ...canonicalBlocks,
+  { slug: "mediaHero", label: "Media hero", defaultAnchor: "top" },
+  { slug: "infoCardList", label: "Info cards" },
+  { slug: "serviceCarousel", label: "Services" },
+  { slug: "beforeAfterGallery", label: "Before/after gallery" },
+  { slug: "contactDetails", label: "Contact details" },
+]
+
 const amicareSettings: GeneratedSiteSettings = {
   siteName: "Amicare-Zorg",
   siteUrl: "https://ami-care.nl",
@@ -156,23 +178,69 @@ const amicareSettings: GeneratedSiteSettings = {
   contactEmail: "info@ami-care.nl",
   branding: { primaryColor: "#a04e32" },
   chrome: {
+    header: {
+      behavior: "sticky",
+      activeMode: "anchor",
+      mobileMenu: "dropdown",
+      cta: { label: "Contact", href: "#contact" },
+    },
     footer: {
       tagline: "Jeugdzorg met hart en toewijding.",
       copyright: "© Amicare-Zorg",
       columns: [
-        { id: "brand", items: [{ type: "brand", label: "Amicare-Zorg" }] },
-        { id: "contact", items: [{ type: "contact", label: "Contact" }] },
+        { id: "brand", items: [{ type: "brand", label: "Amicare-Zorg", text: "Jeugdzorg met hart en toewijding." }] },
+        { id: "business", items: [{ type: "business", label: "Bedrijfsgegevens" }] },
+        { id: "contact", items: [{ type: "contact", label: "Contact", links: [{ label: "info@ami-care.nl", href: "mailto:info@ami-care.nl" }] }] },
         { id: "nav", items: [{ type: "navigation", label: "Navigatie" }] },
       ],
     },
   },
   contact: { phone: null, address: null, social: [] },
   nap: {
-    legalName: "Amicare-Zorg",
+    legalName: "AMICARE ZORG",
+    kvkNumber: "99968347",
+    establishmentNumber: "000065004922",
     country: "NL",
   },
-  navHeader: [{ label: "Home", href: "/" }],
-  navFooter: [{ label: "Home", href: "/" }],
+  navHeader: [
+    { label: "Werkwijze", href: "#werkwijze" },
+    { label: "Over", href: "#over" },
+    { label: "Wat telt", href: "#wat-telt" },
+    { label: "Contact", href: "#contact" },
+  ],
+  navFooter: [
+    { label: "Werkwijze", href: "#werkwijze" },
+    { label: "Over", href: "#over" },
+    { label: "Wat telt", href: "#wat-telt" },
+    { label: "Contact", href: "#contact" },
+  ],
+  analytics: { provider: "posthog", captureSections: true, captureActions: true, captureForms: true },
+  analyticsConsent: {
+    enabled: true,
+    provider: "posthog",
+    consentStorageKey: "siab-analytics-consent",
+    consentVersion: "2026-06",
+    captureSections: true,
+    captureActions: true,
+    captureForms: true,
+  },
+  seoJsonLd: {
+    organization: {
+      enabled: true,
+      type: "Organization",
+      name: "Amicare-Zorg",
+      url: "https://ami-care.nl",
+      logo: { id: "amicare-og", url: "/og-default.png", filename: "og-default.png", alt: "Amicare-Zorg" },
+    },
+    localBusiness: {
+      enabled: true,
+      type: "ProfessionalService",
+      name: "Amicare-Zorg",
+      description: "Jeugdzorg met hart en toewijding.",
+      email: "info@ami-care.nl",
+      serviceArea: ["Nederland"],
+    },
+  },
   updatedAt: GENERATED_AT,
 }
 
@@ -226,15 +294,53 @@ const amicarePages: GeneratedPageSpec[] = [
       },
       {
         blockType: "cta",
-        anchor: "contact",
+        anchor: "wat-telt",
         eyebrow: inlineText("Kennismaken"),
         headline: inlineText("Bespreek wat er nodig is"),
         description: blockText("Neem contact op om rustig te bekijken welke ondersteuning passend is."),
         primary: { label: "Mail Amicare", href: "mailto:info@ami-care.nl" },
       },
+      {
+        blockType: "contactSection",
+        anchor: "contact",
+        title: inlineText("Neem contact op"),
+        description: blockText("Stuur een bericht om rustig te bespreken welke ondersteuning passend is."),
+        formName: "amicare-contact",
+        submitLabel: "Verzenden",
+        fields: [
+          { name: "name", label: "Naam", type: "text", required: true },
+          { name: "email", label: "E-mail", type: "email", required: true },
+          { name: "phone", label: "Telefoon", type: "tel", required: false },
+          { name: "message", label: "Bericht", type: "textarea", required: true },
+        ],
+      },
     ],
   },
 ]
+
+const amicareRendererPages: GeneratedPageSpec[] = amicarePages.map((page) => ({
+  ...page,
+  blocks: page.blocks.map((block) => {
+    if (block.blockType !== "contactSection") return block
+    return {
+      ...block,
+      fields: block.fields.map((field) => ({
+        ...field,
+        maxLength: field.type === "textarea" ? 2000 : field.name === "email" ? 240 : 160,
+      })),
+      provider: {
+        provider: "siab" as const,
+        action: "/api/forms",
+        method: "POST" as const,
+        hiddenFields: [{ name: "tenant", value: "amicare" }],
+        honeypotField: "company",
+        successMessage: "Bedankt, je bericht is verzonden.",
+        errorMessage: "Verzenden is niet gelukt. Mail eventueel direct naar info@ami-care.nl.",
+        analyticsEnabled: true,
+      },
+    }
+  }),
+}))
 
 const contactFields = [
   { name: "name", label: "Naam", type: "text" as const, required: true },
@@ -268,6 +374,28 @@ const directContactBlock = {
   ],
 }
 
+const withAmblastWeb3FormsProvider = (block: typeof quoteContactBlock | typeof directContactBlock) => ({
+  ...block,
+  fields: block.fields.map((field) => ({
+    ...field,
+    maxLength: field.type === "textarea" ? 2000 : 400,
+  })),
+  provider: {
+    provider: "web3forms" as const,
+    action: "https://api.web3forms.com/submit",
+    method: "POST" as const,
+    hiddenFields: [
+      { name: "from_name", value: "Amblast | Facility Services" },
+      { name: "subject", value: "Bericht via amblast.nl" },
+    ],
+    honeypotField: "botcheck",
+    fallbackHref: "mailto:info@amblast.nl",
+    successMessage: "Bedankt, uw bericht is verzonden.",
+    errorMessage: "Verzenden is niet gelukt. Mail eventueel direct naar info@amblast.nl.",
+    analyticsEnabled: false,
+  },
+})
+
 const serviceFeatures = [
   {
     title: inlineText("Industriële schoonmaak"),
@@ -291,6 +419,45 @@ const serviceFeatures = [
   },
 ]
 
+const amblastMedia = {
+  logo: { id: "amblast-logo", url: "/uploads/logo/cropped-AMBlast_logo.png", filename: "cropped-AMBlast_logo.png", alt: "Amblast logo", width: 714, height: 179 },
+  logoSmall: { id: "amblast-logo-small", url: "/uploads/logo/cropped-AMBlast_logo-300x75.png", filename: "cropped-AMBlast_logo-300x75.png", alt: "Amblast logo", width: 300, height: 75 },
+  faviconUpload: { id: "amblast-upload-favicon", url: "/uploads/logo/AMBlast_favicon.png", filename: "AMBlast_favicon.png", alt: "Amblast favicon" },
+  favicon: { id: "amblast-favicon", url: "/favicon.ico", filename: "favicon.ico", alt: "Amblast favicon" },
+  favicon32: { id: "amblast-favicon-32", url: "/favicon-32x32.png", filename: "favicon-32x32.png", alt: "Amblast favicon" },
+  appleTouchIcon: { id: "amblast-apple-touch-icon", url: "/apple-touch-icon.png", filename: "apple-touch-icon.png", alt: "Amblast app icon" },
+  icon192: { id: "amblast-icon-192", url: "/icon-192.png", filename: "icon-192.png", alt: "Amblast app icon" },
+  icon512: { id: "amblast-icon-512", url: "/icon-512.png", filename: "icon-512.png", alt: "Amblast app icon" },
+  og: { id: "amblast-og", url: "/og-default.png", filename: "og-default.png", alt: "Amblast social image" },
+  heroHome: { id: "amblast-hero-home", url: "/uploads/hero/IMG_20210723_135545-scaled-e1631503963184.jpg", filename: "IMG_20210723_135545-scaled-e1631503963184.jpg", alt: "Industriële reiniging", width: 2560, height: 1920 },
+  heroHomeWebp: { id: "amblast-hero-home-webp", url: "/uploads/hero/IMG_20210723_135545-scaled-e1631503963184.webp", filename: "IMG_20210723_135545-scaled-e1631503963184.webp", alt: "Industriële reiniging" },
+  heroHomeAvif: { id: "amblast-hero-home-avif", url: "/uploads/hero/IMG_20210723_135545-scaled-e1631503963184.avif", filename: "IMG_20210723_135545-scaled-e1631503963184.avif", alt: "Industriële reiniging" },
+  heroAbout: { id: "amblast-hero-about", url: "/uploads/hero/IMG_20210319_160356-scaled.jpg", filename: "IMG_20210319_160356-scaled.jpg", alt: "Amblast werkzaamheden", width: 2560, height: 1920 },
+  heroServices: { id: "amblast-hero-services", url: "/uploads/hero/IMG_20210827_152238-scaled.jpg", filename: "IMG_20210827_152238-scaled.jpg", alt: "Amblast diensten", width: 2560, height: 1920 },
+  heroPortfolio: { id: "amblast-hero-portfolio", url: "/uploads/hero/IMG_20210507_091012s-scaled.jpg", filename: "IMG_20210507_091012s-scaled.jpg", alt: "Amblast portfolio", width: 2560, height: 1920 },
+  serviceIndustrial: { id: "amblast-service-pressure-washer-1", url: "/uploads/service-cards/pressure-washer-1.png", filename: "pressure-washer-1.png", alt: "Hogedrukreiniger", width: 512, height: 512 },
+  servicePaper: { id: "amblast-service-open-box-1", url: "/uploads/service-cards/open-box-1.png", filename: "open-box-1.png", alt: "Papierindustrie", width: 512, height: 512 },
+  serviceFloors: { id: "amblast-service-household-1", url: "/uploads/service-cards/household-1.png", filename: "household-1.png", alt: "Vloeren reiniging", width: 512, height: 512 },
+  serviceOther: { id: "amblast-service-sweeping-1", url: "/uploads/service-cards/sweeping-1.png", filename: "sweeping-1.png", alt: "Overige industrieën", width: 512, height: 512 },
+  serviceFacility: { id: "amblast-service-house", url: "/uploads/service-cards/003-house.png", filename: "003-house.png", alt: "Facility management", width: 512, height: 512 },
+  serviceFloorsGrid: { id: "amblast-service-household", url: "/uploads/service-cards/household.png", filename: "household.png", alt: "Vloeren reiniging", width: 512, height: 512 },
+  servicePaperGrid: { id: "amblast-service-pressure-washer", url: "/uploads/service-cards/pressure-washer.png", filename: "pressure-washer.png", alt: "Papier industrie", width: 512, height: 512 },
+  serviceIndustrialGrid: { id: "amblast-service-sweeping", url: "/uploads/service-cards/sweeping.png", filename: "sweeping.png", alt: "Industriële schoonmaak", width: 512, height: 512 },
+  iconHours: { id: "amblast-icon-hours", url: "/uploads/icons/Icons-3.png", filename: "Icons-3.png", alt: "Openingstijden", width: 200, height: 209 },
+  iconContact: { id: "amblast-icon-contact", url: "/uploads/icons/Icons-1.png", filename: "Icons-1.png", alt: "Contact", width: 195, height: 159 },
+  iconLocation: { id: "amblast-icon-location", url: "/uploads/icons/Icons-2.png", filename: "Icons-2.png", alt: "Locatie", width: 208, height: 210 },
+  iconEmail: { id: "amblast-icon-email", url: "/uploads/icons/Icons-10.png", filename: "Icons-10.png", alt: "Email", width: 299, height: 295 },
+  iconWorkHours: { id: "amblast-icon-work-hours", url: "/uploads/icons/Icons-1-3.png", filename: "Icons-1-3.png", alt: "Werktijden", width: 318, height: 318 },
+  iconPrice: { id: "amblast-icon-price", url: "/uploads/icons/BANKING-AND-FINANCE-Black-06.png", filename: "BANKING-AND-FINANCE-Black-06.png", alt: "Concurrerende prijzen", width: 340, height: 340 },
+  iconAvailability: { id: "amblast-icon-availability", url: "/uploads/icons/ECO-AND-GREEN-ENERGY-Black-16.png", filename: "ECO-AND-GREEN-ENERGY-Black-16.png", alt: "Maandag t/m zondag", width: 340, height: 340 },
+  iconService: { id: "amblast-icon-service", url: "/uploads/icons/BANKING-AND-FINANCE-Black-28.png", filename: "BANKING-AND-FINANCE-Black-28.png", alt: "Persoonlijke service", width: 340, height: 340 },
+  aboutPortrait: { id: "amblast-about-portrait", url: "/uploads/portfolio/IMG_20210723_083536-576x1024.jpg", filename: "IMG_20210723_083536-576x1024.jpg", alt: "Amblast werkzaamheden", width: 576, height: 1024 },
+  beforeOil: { id: "amblast-before-oil", url: "/uploads/portfolio/1-olie-scaled.jpg", filename: "1-olie-scaled.jpg", alt: "Voor reiniging olie", width: 2560, height: 1920 },
+  afterOil: { id: "amblast-after-oil", url: "/uploads/portfolio/2-olie-scaled.jpg", filename: "2-olie-scaled.jpg", alt: "Na reiniging olie", width: 2560, height: 1920 },
+  beforeMachine: { id: "amblast-before-machine", url: "/uploads/portfolio/IMG_20210402_144215-scaled.jpg", filename: "IMG_20210402_144215-scaled.jpg", alt: "Voor reiniging machine", width: 2560, height: 1920 },
+  afterMachine: { id: "amblast-after-machine", url: "/uploads/portfolio/IMG_20210402_151225-scaled.jpg", filename: "IMG_20210402_151225-scaled.jpg", alt: "Na reiniging machine", width: 2560, height: 1920 },
+} satisfies Record<string, Exclude<MediaRef, number | string | null>>
+
 const amblastSettings: GeneratedSiteSettings = {
   siteName: "Amblast | Facility Services",
   siteUrl: "https://amblast.nl",
@@ -299,18 +466,45 @@ const amblastSettings: GeneratedSiteSettings = {
   contactEmail: "info@amblast.nl",
   branding: {
     primaryColor: "#ffd500",
-    logo: { id: "amblast-logo", url: "/logo.png", filename: "logo.png", alt: "Amblast logo" },
+    logo: { id: "amblast-logo", url: "/uploads/logo/cropped-AMBlast_logo.png", filename: "cropped-AMBlast_logo.png", alt: "Amblast logo", width: 714, height: 179 },
     favicon: { id: "amblast-favicon", url: "/favicon.ico", filename: "favicon.ico", alt: "Amblast favicon" },
   },
   chrome: {
-    header: { logo: { id: "amblast-logo", url: "/logo.png", filename: "logo.png", alt: "Amblast logo" } },
+    header: {
+      logo: { id: "amblast-logo", url: "/uploads/logo/cropped-AMBlast_logo.png", filename: "cropped-AMBlast_logo.png", alt: "Amblast logo", width: 714, height: 179 },
+      behavior: "static",
+      activeMode: "path",
+      mobileMenu: "dropdown",
+      cta: { label: "Contact", href: "/contact" },
+    },
     footer: {
+      logo: { id: "amblast-logo", url: "/uploads/logo/cropped-AMBlast_logo.png", filename: "cropped-AMBlast_logo.png", alt: "Amblast logo", width: 714, height: 179 },
       tagline: "Specialist in industriële schoonmaak.",
-      copyright: "© Amblast",
+      copyright: "Copyright © 2026 Amblast",
+      legalLinks: [{ label: "Privacy verklaring", href: "#" }],
       columns: [
-        { id: "contact", items: [{ type: "contact", label: "Contact" }] },
-        { id: "info", items: [{ type: "business", label: "Info" }] },
-        { id: "nav", items: [{ type: "navigation", label: "Navigatie" }] },
+        { id: "brand", items: [{ type: "brand", label: "Amblast", text: "Manage your facility" }] },
+        { id: "menu", items: [{ type: "navigation", label: "Menu" }] },
+        {
+          id: "contact",
+          items: [{
+            type: "contact",
+            label: "Contact",
+            text: "Heinsbergerweg 172\n6045 CK Roermond",
+            links: [
+              { label: "info@amblast.nl", href: "mailto:info@amblast.nl" },
+              { label: "+31 6 19 96 36 51", href: "tel:+31619963651" },
+            ],
+          }],
+        },
+        {
+          id: "info",
+          items: [{
+            type: "business",
+            label: "Info",
+            text: "KvK: 72128690\nBTW ID: NL002407752B08\nIBAN: NL45 INGB 0008 6149 44\nBIC: INGBNL2A",
+          }],
+        },
       ],
     },
   },
@@ -342,7 +536,6 @@ const amblastSettings: GeneratedSiteSettings = {
     { label: "Over ons", href: "/over-ons" },
     { label: "Onze diensten", href: "/diensten" },
     { label: "Portfolio", href: "/portfolio" },
-    { label: "Contact", href: "/contact" },
   ],
   navFooter: [
     { label: "Home", href: "/" },
@@ -351,6 +544,24 @@ const amblastSettings: GeneratedSiteSettings = {
     { label: "Portfolio", href: "/portfolio" },
     { label: "Contact", href: "/contact" },
   ],
+  seoJsonLd: {
+    organization: {
+      enabled: true,
+      type: "HomeAndConstructionBusiness",
+      name: "Amblast | Facility Services",
+      url: "https://amblast.nl",
+      logo: { id: "amblast-logo", url: "/uploads/logo/cropped-AMBlast_logo.png", filename: "cropped-AMBlast_logo.png", alt: "Amblast logo", width: 714, height: 179 },
+    },
+    localBusiness: {
+      enabled: true,
+      type: "HomeAndConstructionBusiness",
+      name: "Amblast",
+      description: "Specialist in industriële schoonmaak in Limburg.",
+      telephone: "+31619963651",
+      email: "info@amblast.nl",
+      serviceArea: ["Limburg"],
+    },
+  },
   updatedAt: GENERATED_AT,
 }
 
@@ -539,11 +750,261 @@ const amblastPages: GeneratedPageSpec[] = [
         body: blockRichText([
           {
             heading: "Neem gerust contact op",
-            text: "AMBLAST, Stationspark 189, 6042 AX Roermond. info@amblast.nl. +31 6 19 96 36 51. KvK: 72128690. BTW ID: NL002407752B08. IBAN: NL45 INGB 0008 6149 44. BIC: INGBNL2A.",
+            text: "AMBLAST, Heinsbergerweg 172, 6045 CK Roermond. info@amblast.nl. +31 6 19 96 36 51. KvK: 72128690. BTW ID: NL002407752B08. IBAN: NL45 INGB 0008 6149 44. BIC: INGBNL2A.",
           },
         ]),
       },
       directContactBlock,
+    ],
+  },
+]
+
+const amblastServiceCarouselItems = [
+  {
+    title: inlineText("Industriële schoonmaak"),
+    description: paragraphs(["Machines, productielijnen, opslagtanks", "Hogedrukreiniging", "Preventief en correctief onderhoud"]),
+    image: amblastMedia.serviceIndustrial,
+    cta: { label: "Offerte aanvragen", href: "/contact" },
+  },
+  {
+    title: inlineText("Papierindustrie"),
+    description: paragraphs(["Reinigen van papiermachines, droogpartijen, perspartijen, filters en vloeren", "Verwijderen van pulp- en stofafzetting", "Verminderen van brand- en storingsrisico's"]),
+    image: amblastMedia.servicePaper,
+    cta: { label: "Offerte aanvragen", href: "/contact" },
+  },
+  {
+    title: inlineText("Vloeren reiniging"),
+    description: blockText("Een schone vloer is de basis van een veilige en efficiënte werkomgeving. Met onze professionele veeg- en schrobmachines reinigen wij moeiteloos grote oppervlakken, zoals magazijnen en fabriekshallen. Kies voor eenmalige schoonmaak of periodiek onderhoud."),
+    image: amblastMedia.serviceFloors,
+    cta: { label: "Offerte aanvragen", href: "/contact" },
+  },
+  {
+    title: inlineText("Overige industrieën"),
+    description: paragraphs(["Chemische fabrieken, logistieke hallen, warehouses", "Veiligheidsreiniging met aandacht voor milieu"]),
+    image: amblastMedia.serviceOther,
+  },
+]
+
+const amblastContactFactCards = {
+  blockType: "infoCardList" as const,
+  anchor: "contactgegevens",
+  analytics: { sectionVariant: "amblast-image-boxes" },
+  layout: "grid" as const,
+  iconPosition: "top" as const,
+  items: [
+    { title: inlineText("Telefoon"), description: blockText("+31 6 19 96 36 51"), image: amblastMedia.iconContact, link: { label: "Bel Amblast", href: "tel:+31619963651" }, animation: "float" as const },
+    { title: inlineText("Email"), description: blockText("info@amblast.nl"), image: amblastMedia.iconEmail, link: { label: "Mail Amblast", href: "mailto:info@amblast.nl" }, animation: "float" as const },
+    { title: inlineText("Werktijden"), description: blockText("7:30 - 16:00"), image: amblastMedia.iconWorkHours, animation: "float" as const },
+  ],
+}
+
+const amblastRendererPages: GeneratedPageSpec[] = [
+  {
+    ...amblastPages[0]!,
+    blocks: [
+      {
+        blockType: "mediaHero",
+        anchor: "top",
+        analytics: { sectionVariant: "amblast-shaped-overlay" },
+        headline: inlineText("Specialist in industriële schoonmaak"),
+        subheadline: blockText("Amblast is dé partner voor industriële reiniging in de papierindustrie en andere productieomgevingen. Wij zorgen dat uw machines, installaties en productieruimtes veilig, hygiënisch en optimaal blijven functioneren."),
+        cta: { label: "Contact", href: "/contact" },
+        backgroundImage: amblastMedia.heroHome,
+        overlay: { color: "#111111", opacity: 0.5 },
+        minHeight: "viewport",
+        contentAlign: "left",
+        contentWidth: "wide",
+        shapeDividers: { top: "mountains", bottom: "wave-brush" },
+        priority: true,
+      },
+      {
+        blockType: "infoCardList",
+        anchor: "bereikbaarheid",
+        analytics: { sectionVariant: "amblast-image-boxes" },
+        layout: "row",
+        iconPosition: "left",
+        items: [
+          { title: inlineText("Maandag t/m zondag"), description: blockText("24/7"), image: amblastMedia.iconHours, animation: "fadeInDown" },
+          { title: inlineText("+31 6 19 96 36 51"), description: blockText("info@amblast.nl"), image: amblastMedia.iconContact, link: { label: "Bel Amblast", href: "tel:+31619963651" }, animation: "fadeInDown" },
+          { title: inlineText("Actief in Limburg"), description: blockText("Gevestigd in Roermond"), image: amblastMedia.iconLocation, animation: "fadeInDown" },
+        ],
+      },
+      {
+        blockType: "serviceCarousel",
+        anchor: "diensten",
+        analytics: { sectionVariant: "amblast-swiper-services" },
+        title: inlineText("Waarvoor kunt u bij ons terecht?"),
+        intro: blockText("Onze diensten"),
+        layout: "carousel",
+        items: amblastServiceCarouselItems,
+        carousel: {
+          slidesPerView: 1,
+          slidesPerViewTablet: 1,
+          slidesPerViewMobile: 1,
+          spaceBetween: 24,
+          autoplay: true,
+          autoplayDelayMs: 3000,
+          loop: true,
+          pagination: "bullets",
+          pauseOnInteraction: false,
+        },
+      },
+      {
+        blockType: "richText",
+        anchor: "papierindustrie",
+        body: blockRichText([{ heading: "Industriële reiniging in de papierindustrie", text: "Amblast helpt productiebedrijven hun machines, productielijnen en werkvloeren schoon, veilig en efficiënt te houden." }]),
+      },
+      withAmblastWeb3FormsProvider(quoteContactBlock),
+    ],
+  },
+  {
+    ...amblastPages[1]!,
+    blocks: [
+      {
+        blockType: "mediaHero",
+        anchor: "top",
+        analytics: { sectionVariant: "amblast-shaped-overlay" },
+        headline: inlineText("Over ons"),
+        backgroundImage: amblastMedia.heroAbout,
+        overlay: { color: "#111111", opacity: 0.42 },
+        minHeight: "tall",
+        contentAlign: "left",
+        shapeDividers: { bottom: "mountains" },
+        priority: true,
+      },
+      {
+        blockType: "richText",
+        anchor: "over",
+        body: blockRichText([
+          { heading: "Amblast manages your facility.", text: "Amblast is een familiebedrijf en gespecialiseerd in industriële reiniging. Wij zijn actief in sectoren zoals de papierindustrie en voedingsindustrie, waar schoonmaak onmisbaar is om veilig en efficiënt te kunnen produceren." },
+          { text: "Ontstaan vanuit praktijkervaring. Jarenlang werk binnen industriële omgevingen waar we van dichtbij zagen hoe belangrijk grondige reiniging is voor het voorkomen van stilstand en het waarborgen van kwaliteit." },
+          { heading: "Waar wij voor staan", text: "Betrouwbaarheid, jonge en gedreven teams, eerlijke beloning en resultaatgericht werken." },
+          { heading: "Onze specialisatie", text: "Reiniging van machines, productielijnen en fabriekshallen, plus oplossingen voor andere industriële sectoren." },
+        ]),
+      },
+      {
+        blockType: "infoCardList",
+        anchor: "waarden",
+        analytics: { sectionVariant: "amblast-image-boxes" },
+        layout: "grid",
+        iconPosition: "top",
+        items: [
+          { title: inlineText("Concurrerende Prijzen"), image: amblastMedia.iconPrice, animation: "float" },
+          { title: inlineText("Maandag t/m zondag"), image: amblastMedia.iconAvailability, animation: "float" },
+          { title: inlineText("Persoonlijke service"), image: amblastMedia.iconService, animation: "float" },
+        ],
+      },
+      {
+        blockType: "cta",
+        anchor: "diensten",
+        headline: inlineText("Bekijk onze diensten"),
+        description: blockText("Van facility management tot specialistische industriële schoonmaak."),
+        primary: { label: "Diensten", href: "/diensten" },
+      },
+      withAmblastWeb3FormsProvider(quoteContactBlock),
+    ],
+  },
+  {
+    ...amblastPages[2]!,
+    blocks: [
+      {
+        blockType: "mediaHero",
+        anchor: "top",
+        analytics: { sectionVariant: "amblast-shaped-overlay" },
+        headline: inlineText("Onze diensten"),
+        backgroundImage: amblastMedia.heroServices,
+        overlay: { color: "#111111", opacity: 0.45 },
+        minHeight: "tall",
+        contentAlign: "left",
+        shapeDividers: { bottom: "mountains" },
+        priority: true,
+      },
+      {
+        blockType: "serviceCarousel",
+        anchor: "diensten",
+        analytics: { sectionVariant: "amblast-swiper-services" },
+        title: inlineText("Facility services voor productieomgevingen"),
+        intro: blockText("Van periodiek onderhoud tot specialistische reiniging van machines, vloeren en fabriekshallen."),
+        layout: "grid",
+        items: [
+          { title: inlineText("Facility management"), description: blockText("Een totaalservice voor onderhoud en reiniging van fabriekshallen of industriële complexen."), image: amblastMedia.serviceFacility },
+          { title: inlineText("Vloeren reiniging"), description: blockText("Professionele veeg- en schrobmachines voor magazijnen en fabriekshallen."), image: amblastMedia.serviceFloorsGrid },
+          { title: inlineText("Papier industrie"), description: paragraphs(["Reinigen van papiermachines, droogpartijen, perspartijen, filters en vloeren", "Verwijderen van pulp- en stofafzetting", "Verminderen van brand- en storingsrisico's"]), image: amblastMedia.servicePaperGrid },
+          { title: inlineText("Industriële schoonmaak"), description: paragraphs(["Machines, productielijnen, opslagtanks", "Hogedrukreiniging", "Preventief en correctief onderhoud"]), image: amblastMedia.serviceIndustrialGrid },
+        ],
+      },
+      withAmblastWeb3FormsProvider(quoteContactBlock),
+    ],
+  },
+  {
+    ...amblastPages[3]!,
+    blocks: [
+      {
+        blockType: "mediaHero",
+        anchor: "top",
+        analytics: { sectionVariant: "amblast-shaped-overlay" },
+        headline: inlineText("Portfolio"),
+        backgroundImage: amblastMedia.heroPortfolio,
+        overlay: { color: "#111111", opacity: 0.45 },
+        minHeight: "tall",
+        contentAlign: "left",
+        shapeDividers: { bottom: "mountains" },
+        priority: true,
+      },
+      {
+        blockType: "richText",
+        anchor: "werk",
+        body: blockRichText([{ heading: "Hoe we het al meer dan 8 jaar doen", text: "Neem hier een kijkje naar het werk dat wij verrichten." }]),
+      },
+      {
+        blockType: "beforeAfterGallery",
+        anchor: "voor-en-na",
+        analytics: { sectionVariant: "amblast-portfolio-comparisons" },
+        title: inlineText("Voor en na"),
+        pairs: [
+          { before: amblastMedia.beforeOil, after: amblastMedia.afterOil, beforeLabel: "Voor", afterLabel: "Na", initialRatio: 0.5, orientation: "horizontal" },
+          { before: amblastMedia.beforeMachine, after: amblastMedia.afterMachine, beforeLabel: "Voor", afterLabel: "Na", initialRatio: 0.5, orientation: "horizontal" },
+        ],
+      },
+      withAmblastWeb3FormsProvider(quoteContactBlock),
+    ],
+  },
+  {
+    ...amblastPages[4]!,
+    blocks: [
+      {
+        blockType: "mediaHero",
+        anchor: "top",
+        analytics: { sectionVariant: "amblast-shaped-overlay" },
+        headline: inlineText("Contact"),
+        backgroundImage: amblastMedia.heroPortfolio,
+        overlay: { color: "#111111", opacity: 0.45 },
+        minHeight: "tall",
+        contentAlign: "left",
+        shapeDividers: { bottom: "wave-brush" },
+        priority: true,
+      },
+      {
+        blockType: "contactDetails",
+        anchor: "amblast",
+        analytics: { sectionVariant: "amblast-contact-cards" },
+        title: inlineText("Neem gerust contact op"),
+        intro: blockText("Contact"),
+        layout: "split",
+        items: [
+          { kind: "address", label: "Adres", value: blockText("Heinsbergerweg 172\n6045 CK Roermond"), icon: "map-pin" },
+          { kind: "email", label: "Email", value: inlineText("info@amblast.nl"), href: "mailto:info@amblast.nl", icon: "mail" },
+          { kind: "phone", label: "Telefoon", value: inlineText("+31 6 19 96 36 51"), href: "tel:+31619963651", icon: "phone" },
+        ],
+        legal: {
+          kvkNumber: "72128690",
+          btwId: "NL002407752B08",
+          iban: "NL45 INGB 0008 6149 44",
+          bic: "INGBNL2A",
+        },
+      },
+      amblastContactFactCards,
+      withAmblastWeb3FormsProvider(directContactBlock),
     ],
   },
 ]
@@ -569,9 +1030,13 @@ export const amicareSiteGenerationSpec: SiteGenerationSpec = {
   assets: [
     { id: "amicare-bedroom", url: "/assets/bedroom.jpg", filename: "bedroom.jpg", alt: "Rustige kinderkamer" },
     { id: "amicare-toys", url: "/assets/toys.jpg", filename: "toys.jpg", alt: "Speelgoed" },
+    { id: "amicare-og", url: "/og-default.png", filename: "og-default.png", alt: "Amicare-Zorg social image" },
+    { id: "amicare-favicon-svg", url: "/favicon.svg", filename: "favicon.svg", alt: "Amicare-Zorg favicon" },
+    { id: "amicare-favicon", url: "/favicon.ico", filename: "favicon.ico", alt: "Amicare-Zorg favicon" },
+    { id: "amicare-apple-touch-icon", url: "/apple-touch-icon.png", filename: "apple-touch-icon.png", alt: "Amicare-Zorg app icon" },
   ],
   generatedAt: GENERATED_AT,
-  generator: { name: "legacy-tenant-migration", version: "phase-4" },
+  generator: { name: "legacy-tenant-migration", version: "phase-5" },
 }
 
 export const amblastSiteGenerationSpec: SiteGenerationSpec = {
@@ -596,7 +1061,7 @@ export const amblastSiteGenerationSpec: SiteGenerationSpec = {
       colors: ["#ffd500", "#333333", "#4ca5ed", "#ffffff"],
       fonts: ["Roboto Slab", "Roboto"],
       tone: ["industrieel", "praktisch", "betrouwbaar"],
-      assets: [{ id: "amblast-logo", url: "/logo.png", filename: "logo.png", alt: "Amblast logo" }],
+      assets: [amblastMedia.logo],
     },
   },
   tenant: { name: "Amblast | Facility Services", slug: "amblast", domain: "amblast.nl", status: "active" },
@@ -605,18 +1070,20 @@ export const amblastSiteGenerationSpec: SiteGenerationSpec = {
   pages: amblastPages,
   blocks: canonicalBlocks,
   assets: [
-    { id: "amblast-logo", url: "/logo.png", filename: "logo.png", alt: "Amblast logo" },
-    { id: "amblast-og", url: "/og-default.png", filename: "og-default.png", alt: "Amblast social image" },
-    { id: "amblast-hero-home", url: "/uploads/hero/IMG_20210723_135545-scaled-e1631503963184.jpg", filename: "IMG_20210723_135545-scaled-e1631503963184.jpg", alt: "Industriële reiniging" },
-    { id: "amblast-hero-services", url: "/uploads/hero/IMG_20210827_152238-scaled.jpg", filename: "IMG_20210827_152238-scaled.jpg", alt: "Amblast diensten" },
-    { id: "amblast-hero-contact", url: "/uploads/hero/IMG_20210507_091012s-scaled.jpg", filename: "IMG_20210507_091012s-scaled.jpg", alt: "Contact met Amblast" },
+    ...Object.values(amblastMedia),
   ],
   generatedAt: GENERATED_AT,
-  generator: { name: "legacy-tenant-migration", version: "phase-4" },
+  generator: { name: "legacy-tenant-migration", version: "phase-5" },
 }
 
-export const amicarePublishedSiteSnapshot = toSnapshot(amicareSiteGenerationSpec, "tenant-amicare")
-export const amblastPublishedSiteSnapshot = toSnapshot(amblastSiteGenerationSpec, "tenant-amblast")
+export const amicarePublishedSiteSnapshot = toSnapshot(amicareSiteGenerationSpec, "tenant-amicare", {
+  pages: amicareRendererPages,
+})
+export const amblastPublishedSiteSnapshot = toSnapshot(amblastSiteGenerationSpec, "tenant-amblast", {
+  pages: amblastRendererPages,
+  blocks: rendererParityBlocks,
+  assets: Object.values(amblastMedia),
+})
 
 export const tenantSiteGenerationSpecs = [amicareSiteGenerationSpec, amblastSiteGenerationSpec] as const
 export const tenantPublishedSiteSnapshots = [amicarePublishedSiteSnapshot, amblastPublishedSiteSnapshot] as const

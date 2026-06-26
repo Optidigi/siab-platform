@@ -175,12 +175,12 @@ Amblast required assets:
 
 - Amblast address conflict: `src/content/site.ts` lists `Heinsbergerweg 172,
   6045 CK Roermond`; the contact page prints `Stationspark 189, 6042 AX
-  Roermond`. Phase 4 must choose the business source of truth and document the
+  Roermond`. Phase 5 must choose the business source of truth and document the
   decision in tenant data.
-- Amblast current fixtures include only a subset of referenced assets. Phase 4
+- Amblast current fixtures include only a subset of referenced assets. Phase 5
   must include every asset required by the approved blocks.
 - Amicare fixture content may be placeholder-like compared with the live
-  `CMS_DATA_DIR` content. Phase 4 must export the active CMS tenant snapshot and
+  `CMS_DATA_DIR` content. Phase 5 must export the active CMS tenant snapshot and
   compare it against the legacy renderer.
 - Renderer SEO currently omits JSON-LD and selected chrome metadata. Phase 2/3
   must decide whether those are app shell features or shared renderer features.

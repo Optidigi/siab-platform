@@ -8,6 +8,7 @@ import {
   tenantPublishedSiteSnapshots,
   tenantSiteGenerationSpecs,
 } from "@siteinabox/contracts/fixtures/tenants"
+import { PublishedSiteSnapshotSchema } from "@siteinabox/contracts"
 import { applySiteGenerationSpec, validateSiteGenerationSpecForCms } from "@/lib/site-generation/applySiteGenerationSpec"
 import { buildPageSeoMetadata } from "@siteinabox/site-renderer/seo"
 import { findPublishedPage, pagePath } from "../../../renderer/src/lib/snapshot"
@@ -79,6 +80,7 @@ describe("legacy tenant generation fixtures", () => {
     ] as const
 
     for (const [spec, snapshot] of pairs) {
+      expect(PublishedSiteSnapshotSchema.safeParse(snapshot).success, `${snapshot.tenantSlug}: snapshot contract`).toBe(true)
       expect(snapshot.schemaVersion).toBe(1)
       expect(snapshot.tenantSlug).toBe(spec.tenant.slug)
       expect(snapshot.domain).toBe(spec.tenant.domain)
@@ -109,9 +111,9 @@ describe("legacy tenant generation fixtures", () => {
       "Over ons",
       "Onze diensten",
       "Portfolio",
-      "Contact",
     ])
-    expect(amicareSiteGenerationSpec.settings.navHeader?.[0]?.href).toBe("/")
+    expect(amblastSiteGenerationSpec.settings.chrome?.header?.cta).toMatchObject({ label: "Contact", href: "/contact" })
+    expect(amicareSiteGenerationSpec.settings.navHeader?.[0]?.href).toBe("#werkwijze")
     expect(amblastSiteGenerationSpec.settings.navHeader?.[0]?.href).toBe("/")
 
     const allBlocks = amblastSiteGenerationSpec.pages.flatMap((page) => page.blocks)
@@ -129,8 +131,86 @@ describe("legacy tenant generation fixtures", () => {
     })
     if (contactForm?.blockType !== "contactSection") throw new Error("Expected contact section")
     expect(contactForm.fields.map((field) => field.name)).toEqual(["name", "email", "subject", "message"])
-    expect(JSON.stringify(contactPage?.blocks)).toContain("Stationspark 189")
+    expect(JSON.stringify(contactPage?.blocks)).toContain("Heinsbergerweg 172")
     expect(amblastSiteGenerationSpec.settings.contact?.address).toBe("Heinsbergerweg 172, 6045 CK Roermond")
+  })
+
+  it("publishes Amblast renderer-parity blocks, chrome, provider config, and media without secrets", () => {
+    const snapshotBlocks = amblastPublishedSiteSnapshot.pages.flatMap((page) => page.blocks)
+    const blockTypes = new Set(snapshotBlocks.map((block) => block.blockType))
+
+    expect(Array.from(blockTypes)).toEqual(expect.arrayContaining([
+      "mediaHero",
+      "infoCardList",
+      "serviceCarousel",
+      "beforeAfterGallery",
+      "contactDetails",
+      "contactSection",
+    ]))
+    expect(amblastPublishedSiteSnapshot.blocks?.map((block) => block.slug)).toEqual(expect.arrayContaining([
+      "mediaHero",
+      "infoCardList",
+      "serviceCarousel",
+      "beforeAfterGallery",
+      "contactDetails",
+    ]))
+    expect(amblastPublishedSiteSnapshot.settings.chrome?.footer?.legalLinks?.[0]).toMatchObject({ label: "Privacy verklaring" })
+    expect(amblastPublishedSiteSnapshot.settings.seoJsonLd?.localBusiness?.serviceArea).toContain("Limburg")
+
+    const portfolio = amblastPublishedSiteSnapshot.pages.find((page) => page.slug === "portfolio")
+    const beforeAfter = portfolio?.blocks.find((block) => block.blockType === "beforeAfterGallery")
+    expect(beforeAfter).toMatchObject({ blockType: "beforeAfterGallery" })
+    if (beforeAfter?.blockType !== "beforeAfterGallery") throw new Error("Expected before/after gallery")
+    expect(beforeAfter.pairs).toHaveLength(2)
+    expect(JSON.stringify(beforeAfter)).toContain("/uploads/portfolio/1-olie-scaled.jpg")
+
+    const contactDetails = amblastPublishedSiteSnapshot.pages
+      .find((page) => page.slug === "contact")
+      ?.blocks.find((block) => block.blockType === "contactDetails")
+    expect(JSON.stringify(contactDetails)).toContain("Heinsbergerweg 172")
+    expect(JSON.stringify(contactDetails)).not.toContain("Stationspark 189")
+
+    const contactSections = snapshotBlocks.filter((block) => block.blockType === "contactSection")
+    expect(contactSections.length).toBeGreaterThan(0)
+    for (const block of contactSections) {
+      if (block.blockType !== "contactSection") continue
+      expect(block.provider).toMatchObject({
+        provider: "web3forms",
+        action: "https://api.web3forms.com/submit",
+        honeypotField: "botcheck",
+      })
+      expect(JSON.stringify(block.provider)).not.toContain("access_key")
+    }
+
+    expect(amblastPublishedSiteSnapshot.media?.length).toBeGreaterThan(25)
+    expect(JSON.stringify(amblastPublishedSiteSnapshot.media)).toContain("cropped-AMBlast_logo.png")
+    expect(JSON.stringify(amblastPublishedSiteSnapshot.media)).toContain("IMG_20210402_151225-scaled.jpg")
+  })
+
+  it("publishes Amicare chrome, analytics consent, JSON-LD, and SIAB form metadata", () => {
+    expect(amicarePublishedSiteSnapshot.settings.chrome?.header).toMatchObject({
+      behavior: "sticky",
+      activeMode: "anchor",
+      mobileMenu: "dropdown",
+    })
+    expect(amicarePublishedSiteSnapshot.settings.analyticsConsent).toMatchObject({
+      enabled: true,
+      provider: "posthog",
+      captureForms: true,
+    })
+    expect(amicarePublishedSiteSnapshot.settings.seoJsonLd?.organization?.enabled).toBe(true)
+    const contactBlock = amicarePublishedSiteSnapshot.pages[0]?.blocks.find((block) => block.blockType === "contactSection")
+    expect(contactBlock).toMatchObject({ blockType: "contactSection", formName: "amicare-contact" })
+    if (contactBlock?.blockType !== "contactSection") throw new Error("Expected Amicare contact section")
+    expect(contactBlock.provider).toMatchObject({
+      provider: "siab",
+      action: "/api/forms",
+      honeypotField: "company",
+      analyticsEnabled: true,
+    })
+    expect(amicarePublishedSiteSnapshot.media?.map((entry) => typeof entry === "object" && entry ? entry.filename : entry)).toEqual(
+      expect.arrayContaining(["bedroom.jpg", "toys.jpg", "og-default.png", "favicon.svg", "favicon.ico", "apple-touch-icon.png"]),
+    )
   })
 
   it("publishes both real validation tenants through the snapshot model", () => {
@@ -168,7 +248,7 @@ describe("legacy tenant generation fixtures", () => {
       canonical: "https://amblast.nl/portfolio",
     })
     expect(amblastPublishedSiteSnapshot.theme?.colors?.accent).toBe("#ffd500")
-    expect(amblastPublishedSiteSnapshot.settings.branding?.logo).toMatchObject({ filename: "logo.png" })
+    expect(amblastPublishedSiteSnapshot.settings.branding?.logo).toMatchObject({ filename: "cropped-AMBlast_logo.png" })
   })
 
   it("applies both tenant specs through the CMS generation path", async () => {

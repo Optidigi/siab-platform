@@ -72,7 +72,7 @@ describe("renderer block catalog", () => {
       expect(entry.variants.every((variant) => variant.provenance.visualExactnessStatus === "needs-browser-comparison")).toBe(true)
     }
 
-    const parityVariantIds = new Set(
+    const parityVariantIds = new Set<string>(
       SITE_PARITY_BLOCK_SLUGS.flatMap((slug) => SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[slug].variants.map((variant) => variant.id)),
     )
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => parityVariantIds.has(variant.variantId))).toBe(false)
