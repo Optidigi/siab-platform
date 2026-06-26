@@ -49,6 +49,7 @@ describe("renderer block catalog", () => {
       expect(entry.fixtureCoverage.length).toBeGreaterThan(0)
       expect(entry.variants.length).toBeGreaterThan(0)
       expect(entry.variants.every((variant) => variant.provenance)).toBe(true)
+      expect(entry.variants.every((variant) => variant.variant && !variant.variant.includes(":"))).toBe(true)
       expect(entry.variants.every((variant) => variant.rendererSupportStatus === "supported")).toBe(true)
     }
   })
@@ -70,6 +71,7 @@ describe("renderer block catalog", () => {
       expect(entry.variants.every((variant) => variant.rendererSupportStatus === "supported")).toBe(true)
       expect(entry.variants.every((variant) => variant.provenance.sourceName === "SIAB legacy tenant snapshot")).toBe(true)
       expect(entry.variants.every((variant) => variant.provenance.visualExactnessStatus === "needs-browser-comparison")).toBe(true)
+      expect(entry.variants.every((variant) => variant.variant && !variant.variant.includes(":"))).toBe(true)
     }
 
     const parityVariantIds = new Set<string>(
@@ -81,6 +83,9 @@ describe("renderer block catalog", () => {
   it("accepts structured parity blocks as generated snapshot and shared renderer page data", () => {
     const parityBlock: GeneratedBlockSpec = {
       blockType: "beforeAfterGallery",
+      variant: "amblastPortfolio",
+      tokens: { density: "compact" },
+      metadata: { sourceBlockId: "amblast-portfolio" },
       analytics: { sectionVariant: "amblast-portfolio-comparisons" },
       anchor: "portfolio",
       title: inlineRoot("Voor en na"),
@@ -109,9 +114,16 @@ describe("renderer block catalog", () => {
     expect(
       GeneratedBlockSpecSchema.safeParse({
         ...parityBlock,
-        analytics: { sectionVariant: "tailblocks-cta-a" },
+        variant: "tailblocksCtaA",
       }).success,
     ).toBe(false)
+    expect(
+      GeneratedBlockSpecSchema.safeParse({
+        ...parityBlock,
+        variant: undefined,
+        analytics: { sectionVariant: "amblast-portfolio-comparisons" },
+      }).success,
+    ).toBe(true)
   })
 
   it("records vetted source status and keeps unavailable sources blocked", () => {
@@ -155,7 +167,9 @@ describe("renderer block catalog", () => {
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.slug)).toEqual(expect.arrayContaining([...SITE_BLOCK_SLUGS]))
 
     for (const variant of SITE_SOURCE_BACKED_BLOCK_VARIANTS) {
-      expect(variant.sectionVariant, `${variant.variantId} missing sectionVariant`).toBeTruthy()
+      expect(variant.variant, `${variant.variantId} missing runtime variant`).toBeTruthy()
+      expect(variant.variant, `${variant.variantId} runtime variant should be scoped by blockType, not duplicated in the value`).not.toContain(":")
+      expect(variant.sectionVariant, `${variant.variantId} missing legacy sectionVariant metadata`).toBeTruthy()
       expect(variant.rendererClassName, `${variant.variantId} missing rendererClassName`).toMatch(/^cms-block--source-/)
       expect(variant.provenance.url, `${variant.variantId} missing source URL`).toMatch(/^https:\/\//)
       expect(variant.provenance.upstreamBlockName, `${variant.variantId} missing upstream block name`).toBeTruthy()

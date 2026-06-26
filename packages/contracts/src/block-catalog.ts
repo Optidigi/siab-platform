@@ -14,10 +14,14 @@ export type BlockReferenceSource = {
 
 export type SiteBlockCatalogVariant = {
   id: string
+  variant: string
   label: string
   intent: string
-  dataSignal: "field-presence" | "renderer-inferred" | "analytics.sectionVariant"
+  dataSignal: "field-presence" | "renderer-inferred" | "variant"
   rendererSupportStatus: "supported" | "deferred" | "unsupported"
+  /**
+   * Legacy analytics provenance value. Runtime block selection must use `variant`.
+   */
   sectionVariant?: string
   rendererClassName?: string
   provenance: BlockVariantProvenance
@@ -370,6 +374,7 @@ export const APPROVED_V1_MARKETING_CAPABILITY_COVERAGE = [
     capability: "newsletter",
     blockSlug: "contactSection",
     variantId: "contactSection:tailwindPlusNewsletterDetails",
+    variant: "tailwindPlusNewsletterDetails",
     sectionVariant: "tailwind-plus-newsletter-details",
     rendererClassName: "cms-block--source-tailwind-plus-newsletter-details",
     notes: "Newsletter is represented by the approved contactSection contract rather than a separate newsletter block slug.",
@@ -378,6 +383,7 @@ export const APPROVED_V1_MARKETING_CAPABILITY_COVERAGE = [
   capability: Exclude<RequiredV1MarketingBlock, SiteBlockSlug>
   blockSlug: SiteBlockSlug
   variantId: string
+  variant: string
   sectionVariant: string
   rendererClassName: string
   notes: string
@@ -414,6 +420,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     variants: [
       {
         id: "hero:minimal",
+        variant: "minimal",
         label: "Minimal",
         intent: "Text-first hero without image.",
         dataSignal: "field-presence",
@@ -422,9 +429,10 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       },
       {
         id: "hero:tailwindPlusSimpleCentered",
+        variant: "tailwindPlusSimpleCentered",
         label: "Tailwind Plus simple centered",
         intent: "Centered marketing hero adapted from the public free Tailwind Plus Simple centered block.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "tailwind-plus-simple-centered",
         rendererClassName: "cms-block--source-tailwind-plus-simple-centered",
@@ -471,10 +479,11 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     fixtureCoverage: ["Phase 5 Amblast published snapshot data migration"],
     variants: [
       {
-        id: "mediaHero:amblastShapedOverlay",
+        id: "mediaHero:amblastShapedHero",
+        variant: "amblastShapedHero",
         label: "Amblast shaped overlay",
         intent: "Image-backed hero with overlay and top/bottom shape divider ids.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "amblast-shaped-overlay",
         rendererClassName: "cms-block--source-amblast-shaped-overlay",
@@ -518,17 +527,19 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     variants: [
       {
         id: "featureList:services",
+        variant: "services",
         label: "Services",
         intent: "Service or value proposition grid.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         provenance: siabOwnedProvenance("SIAB services grid"),
       },
       {
         id: "featureList:tailwindPlusCentered2x2",
+        variant: "tailwindPlusCentered2x2",
         label: "Tailwind Plus centered 2x2",
         intent: "Centered feature grid adapted from the public free Tailwind Plus Centered 2x2 grid block.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "tailwind-plus-centered-2x2",
         rendererClassName: "cms-block--source-tailwind-plus-centered-2x2",
@@ -584,9 +595,10 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     variants: [
       {
         id: "infoCardList:amblastImageBoxes",
+        variant: "amblastImageBoxes",
         label: "Amblast image boxes",
         intent: "Icon/text boxes for hours, phone/email, location, and contact facts.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "amblast-image-boxes",
         rendererClassName: "cms-block--source-amblast-image-boxes",
@@ -640,9 +652,10 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     variants: [
       {
         id: "serviceCarousel:amblastSwiperServices",
+        variant: "amblastSwiperServices",
         label: "Amblast Swiper services",
         intent: "Service-card carousel with icon media, paragraphs, CTA, autoplay, and pagination settings.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "amblast-swiper-services",
         rendererClassName: "cms-block--source-amblast-swiper-services",
@@ -688,9 +701,10 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     variants: [
       {
         id: "beforeAfterGallery:amblastPortfolio",
+        variant: "amblastPortfolio",
         label: "Amblast portfolio comparisons",
         intent: "Portfolio image comparisons with labels, 50 percent initial ratio, and horizontal handle.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "amblast-portfolio-comparisons",
         rendererClassName: "cms-block--source-amblast-portfolio-comparisons",
@@ -746,9 +760,10 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     variants: [
       {
         id: "contactDetails:amblastContactCards",
+        variant: "amblastContactCards",
         label: "Amblast contact cards",
         intent: "Contact cards and legal details alongside form sections.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "amblast-contact-cards",
         rendererClassName: "cms-block--source-amblast-contact-cards",
@@ -778,6 +793,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     variants: [
       {
         id: "richText:prose",
+        variant: "prose",
         label: "Prose",
         intent: "General editorial content and imported legacy copy.",
         dataSignal: "field-presence",
@@ -786,9 +802,10 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       },
       {
         id: "richText:tailblocksContentA",
+        variant: "tailblocksContentA",
         label: "Tailblocks content A",
         intent: "Centered content section adapted from Tailblocks Content A.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "tailblocks-content-a",
         rendererClassName: "cms-block--source-tailblocks-content-a",
@@ -821,6 +838,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     variants: [
       {
         id: "cta:quote",
+        variant: "quote",
         label: "Quote request",
         intent: "Primary conversion action to an internal page or form anchor.",
         dataSignal: "renderer-inferred",
@@ -829,9 +847,10 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       },
       {
         id: "cta:tailblocksCtaA",
+        variant: "tailblocksCtaA",
         label: "Tailblocks CTA A",
         intent: "Inline heading and action adapted from Tailblocks CTA A.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "tailblocks-cta-a",
         rendererClassName: "cms-block--source-tailblocks-cta-a",
@@ -889,6 +908,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     variants: [
       {
         id: "contactSection:form",
+        variant: "form",
         label: "Form",
         intent: "Lead-capture form with text, email, phone, and textarea fields.",
         dataSignal: "field-presence",
@@ -897,9 +917,10 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       },
       {
         id: "contactSection:tailwindPlusNewsletterDetails",
+        variant: "tailwindPlusNewsletterDetails",
         label: "Tailwind Plus newsletter details",
         intent: "Dark side-by-side newsletter/contact capture section adapted from public free Tailwind Plus.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "tailwind-plus-newsletter-details",
         rendererClassName: "cms-block--source-tailwind-plus-newsletter-details",
@@ -911,9 +932,10 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       },
       {
         id: "contactSection:hyperUiNewsletterCentered",
+        variant: "hyperUiNewsletterCentered",
         label: "HyperUI newsletter centered",
         intent: "Centered newsletter signup adapted from HyperUI's public marketing CTA component.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "hyperui-newsletter-centered",
         rendererClassName: "cms-block--source-hyperui-newsletter-centered",
@@ -926,9 +948,10 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       },
       {
         id: "contactSection:prelineCenteredNewsletter",
+        variant: "prelineCenteredNewsletter",
         label: "Preline centered newsletter",
         intent: "Centered newsletter signup adapted from Preline's Free centered newsletter block.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "preline-centered-newsletter",
         rendererClassName: "cms-block--source-preline-centered-newsletter",
@@ -971,6 +994,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     variants: [
       {
         id: "faq:accordion",
+        variant: "accordion",
         label: "Accordion",
         intent: "Expandable question-and-answer list.",
         dataSignal: "field-presence",
@@ -979,9 +1003,10 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       },
       {
         id: "faq:mambaFaq1",
+        variant: "mambaFaq1",
         label: "Mamba FAQ 1",
         intent: "Centered FAQ section adapted from Mamba UI FAQ 1.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "mamba-faq-1",
         rendererClassName: "cms-block--source-mamba-faq-1",
@@ -1021,6 +1046,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     variants: [
       {
         id: "testimonials:cards",
+        variant: "cards",
         label: "Cards",
         intent: "Grid of customer quotes or social proof.",
         dataSignal: "field-presence",
@@ -1029,9 +1055,10 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       },
       {
         id: "testimonials:mambaTestimonial1",
+        variant: "mambaTestimonial1",
         label: "Mamba testimonial 1",
         intent: "Two-column testimonial quote layout adapted from Mamba UI Testimonial 1.",
-        dataSignal: "analytics.sectionVariant",
+        dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "mamba-testimonial-1",
         rendererClassName: "cms-block--source-mamba-testimonial-1",
@@ -1080,7 +1107,7 @@ export function isApprovedSourceBackedVariant(variant: SiteBlockCatalogVariant) 
     sourceBackedAccessTypes.includes(variant.provenance.sourceAccessType) &&
     ["reviewed-adapted-exact-style", "reviewed-exact-source"].includes(variant.provenance.visualExactnessStatus) &&
     variant.rendererSupportStatus === "supported" &&
-    Boolean(variant.sectionVariant) &&
+    Boolean(variant.variant) &&
     Boolean(variant.rendererClassName) &&
     Boolean(variant.provenance.retrieval) &&
     Boolean(variant.provenance.visualSourceNotes)
@@ -1095,6 +1122,7 @@ export const SITE_SOURCE_BACKED_BLOCK_VARIANTS = SITE_BLOCK_CATALOG.flatMap((ent
       return {
         slug: entry.slug,
         variantId: catalogVariant.id,
+        variant: catalogVariant.variant,
         label: catalogVariant.label,
         sectionVariant: catalogVariant.sectionVariant,
         rendererClassName: catalogVariant.rendererClassName,

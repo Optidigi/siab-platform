@@ -33,6 +33,7 @@ describe("site generation catalog governance", () => {
 
   it("passes only approved source-backed variants to the model input", () => {
     const input = buildSiteGenerationModelInput(normalizedIntake)
+    expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.every((variant) => variant.variant && !variant.variant.includes(":"))).toBe(true)
     const approved = SITE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => ({
       blockType: variant.slug,
       sectionVariant: variant.sectionVariant,

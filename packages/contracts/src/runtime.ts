@@ -92,6 +92,28 @@ export const SITE_SECTION_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
   ]),
 ) as unknown as Record<SiteGenerationBlockSlug, ReadonlySet<string>>
 
+export const SITE_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
+  SITE_GENERATION_BLOCK_SLUGS.map((slug) => [
+    slug,
+    new Set(
+      SITE_GENERATION_BLOCK_CATALOG
+        .filter((entry) => entry.slug === slug)
+        .flatMap((entry) => entry.variants as readonly SiteBlockCatalogVariant[])
+        .map((variant) => variant.variant)
+        .filter((variant): variant is string => typeof variant === "string" && variant.length > 0),
+    ),
+  ]),
+) as unknown as Record<SiteGenerationBlockSlug, ReadonlySet<string>>
+
+export const isSupportedBlockVariant = (
+  blockType: string,
+  variant: string | null | undefined,
+): boolean => {
+  if (!variant) return true
+  if (!SITE_GENERATION_BLOCK_SLUGS.includes(blockType as SiteGenerationBlockSlug)) return false
+  return SITE_VARIANTS_BY_BLOCK_SLUG[blockType as SiteGenerationBlockSlug]?.has(variant) ?? false
+}
+
 export const isSupportedBlockSectionVariant = (
   blockType: string,
   sectionVariant: string | null | undefined,
@@ -237,6 +259,9 @@ export const AnalyticsBlockMetadataSchema: z.ZodType<AnalyticsBlockMetadata> = s
   contentSignature: nullableString,
 })
 
+const BlockInstanceTokensSchema = jsonRecordSchema.nullable().optional()
+const BlockInstanceMetadataSchema = jsonRecordSchema.nullable().optional()
+
 export const LinkRefSchema: z.ZodType<LinkRef> = strictObject({
   label: nullableString,
   href: nullableString,
@@ -263,6 +288,9 @@ const generatedBlockSourceSchema = z.enum(["ai", "cms", "import", "operator"]).o
 const baseBlockShape = {
   id: z.string().optional(),
   source: generatedBlockSourceSchema,
+  variant: nullableString,
+  tokens: BlockInstanceTokensSchema,
+  metadata: BlockInstanceMetadataSchema,
   analytics: AnalyticsBlockMetadataSchema.nullable().optional(),
   anchor: nullableString,
 }
@@ -497,7 +525,10 @@ const GeneratedBlockSchemaBase = z.union([
   ContactSectionBlockSchema,
 ])
 
-const refineGeneratedBlock = (block: { blockType: string; analytics?: AnalyticsBlockMetadata | null }, ctx: z.RefinementCtx) => {
+const refineGeneratedBlock = (
+  block: { blockType: string; variant?: string | null; analytics?: AnalyticsBlockMetadata | null },
+  ctx: z.RefinementCtx,
+) => {
   for (const key of ["className", "classes", "rawHtml", "html", "component", "sourceCode", "filePath"]) {
     if (Object.prototype.hasOwnProperty.call(block, key)) {
       ctx.addIssue({
@@ -508,8 +539,17 @@ const refineGeneratedBlock = (block: { blockType: string; analytics?: AnalyticsB
     }
   }
 
+  const variant = block.variant
+  if (typeof variant === "string" && variant.length > 0 && !isSupportedBlockVariant(block.blockType, variant)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["variant"],
+      message: `Unsupported variant "${variant}" for block type "${block.blockType}"`,
+    })
+  }
+
   const sectionVariant = block.analytics?.sectionVariant
-  if (typeof sectionVariant === "string" && sectionVariant.length > 0 && !isSupportedBlockSectionVariant(block.blockType, sectionVariant)) {
+  if (!variant && typeof sectionVariant === "string" && sectionVariant.length > 0 && !isSupportedBlockSectionVariant(block.blockType, sectionVariant)) {
     ctx.addIssue({
       code: "custom",
       path: ["analytics", "sectionVariant"],

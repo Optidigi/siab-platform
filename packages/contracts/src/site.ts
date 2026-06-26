@@ -52,6 +52,18 @@ export type AnalyticsBlockMetadata = {
   contentSignature?: string | null
 }
 
+export type BlockInstanceTokens = Record<string, unknown>
+
+export type BlockInstanceMetadata = Record<string, unknown>
+
+export type BlockInstanceBase = {
+  variant?: string | null
+  tokens?: BlockInstanceTokens | null
+  metadata?: BlockInstanceMetadata | null
+  analytics?: AnalyticsBlockMetadata | null
+  anchor?: string | null
+}
+
 export type LinkRef = { label?: string | null; href?: string | null }
 
 export type FormProviderConfig = {
@@ -80,10 +92,8 @@ export type FooterCompositionColumn = {
   items?: FooterCompositionItem[] | null
 }
 
-export type HeroBlock = {
+export type HeroBlock = BlockInstanceBase & {
   blockType: "hero"
-  analytics?: AnalyticsBlockMetadata | null
-  anchor?: string | null
   eyebrow?: RtRoot | null
   headline: RtRoot
   subheadline?: RtRoot | null
@@ -92,10 +102,8 @@ export type HeroBlock = {
   image?: MediaRef
 }
 
-export type MediaHeroBlock = {
+export type MediaHeroBlock = BlockInstanceBase & {
   blockType: "mediaHero"
-  analytics?: AnalyticsBlockMetadata | null
-  anchor?: string | null
   eyebrow?: RtRoot | null
   headline: RtRoot
   subheadline?: RtRoot | null
@@ -117,10 +125,8 @@ export type MediaHeroBlock = {
   priority?: boolean | null
 }
 
-export type FeatureListBlock = {
+export type FeatureListBlock = BlockInstanceBase & {
   blockType: "featureList"
-  analytics?: AnalyticsBlockMetadata | null
-  anchor?: string | null
   title?: RtRoot | null
   intro?: RtRoot | null
   features: Array<{
@@ -130,10 +136,8 @@ export type FeatureListBlock = {
   }>
 }
 
-export type InfoCardListBlock = {
+export type InfoCardListBlock = BlockInstanceBase & {
   blockType: "infoCardList"
-  analytics?: AnalyticsBlockMetadata | null
-  anchor?: string | null
   title?: RtRoot | null
   intro?: RtRoot | null
   layout?: "row" | "grid" | "stack" | null
@@ -148,10 +152,8 @@ export type InfoCardListBlock = {
   }>
 }
 
-export type ServiceCarouselBlock = {
+export type ServiceCarouselBlock = BlockInstanceBase & {
   blockType: "serviceCarousel"
-  analytics?: AnalyticsBlockMetadata | null
-  anchor?: string | null
   title?: RtRoot | null
   intro?: RtRoot | null
   layout?: "carousel" | "grid" | null
@@ -174,10 +176,8 @@ export type ServiceCarouselBlock = {
   } | null
 }
 
-export type BeforeAfterGalleryBlock = {
+export type BeforeAfterGalleryBlock = BlockInstanceBase & {
   blockType: "beforeAfterGallery"
-  analytics?: AnalyticsBlockMetadata | null
-  anchor?: string | null
   title?: RtRoot | null
   intro?: RtRoot | null
   pairs: Array<{
@@ -191,10 +191,8 @@ export type BeforeAfterGalleryBlock = {
   }>
 }
 
-export type ContactDetailsBlock = {
+export type ContactDetailsBlock = BlockInstanceBase & {
   blockType: "contactDetails"
-  analytics?: AnalyticsBlockMetadata | null
-  anchor?: string | null
   title?: RtRoot | null
   intro?: RtRoot | null
   layout?: "cards" | "split" | "list" | null
@@ -214,10 +212,8 @@ export type ContactDetailsBlock = {
   } | null
 }
 
-export type TestimonialsBlock = {
+export type TestimonialsBlock = BlockInstanceBase & {
   blockType: "testimonials"
-  analytics?: AnalyticsBlockMetadata | null
-  anchor?: string | null
   title?: string | null
   items: Array<{
     quote: string
@@ -227,18 +223,14 @@ export type TestimonialsBlock = {
   }>
 }
 
-export type FAQBlock = {
+export type FAQBlock = BlockInstanceBase & {
   blockType: "faq"
-  analytics?: AnalyticsBlockMetadata | null
-  anchor?: string | null
   title?: RtRoot | null
   items: Array<{ question: RtRoot; answer: RtRoot }>
 }
 
-export type CTABlock = {
+export type CTABlock = BlockInstanceBase & {
   blockType: "cta"
-  analytics?: AnalyticsBlockMetadata | null
-  anchor?: string | null
   eyebrow?: RtRoot | null
   headline: RtRoot
   description?: RtRoot | null
@@ -247,17 +239,13 @@ export type CTABlock = {
   backgroundImage?: MediaRef
 }
 
-export type RichTextBlock = {
+export type RichTextBlock = BlockInstanceBase & {
   blockType: "richText"
-  analytics?: AnalyticsBlockMetadata | null
-  anchor?: string | null
   body: RtRoot
 }
 
-export type ContactSectionBlock = {
+export type ContactSectionBlock = BlockInstanceBase & {
   blockType: "contactSection"
-  analytics?: AnalyticsBlockMetadata | null
-  anchor?: string | null
   title?: RtRoot | null
   description?: RtRoot | null
   formName: string
