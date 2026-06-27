@@ -33,8 +33,6 @@ export function buildAnalyticsConfig({ snapshot, page, pathname }) {
     analytics.posthogProjectToken,
     analytics.projectToken,
     analytics.token,
-    analytics.apiKey,
-    analytics.projectApiKey,
     analytics.publicKey,
   )
   const posthogHost = firstString(analytics.posthogHost, analytics.apiHost, analytics.host)

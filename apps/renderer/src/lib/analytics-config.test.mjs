@@ -65,6 +65,49 @@ test("omits analytics config when snapshot settings have no analytics block", ()
   assert.equal(analyticsConfigJson(config), null)
 })
 
+test("ignores private-looking PostHog token aliases when public token fields exist", () => {
+  const config = buildAnalyticsConfig({
+    snapshot: {
+      ...baseSnapshot,
+      settings: {
+        ...baseSnapshot.settings,
+        analytics: {
+          ...baseSnapshot.settings.analytics,
+          token: "phc_public",
+          apiKey: "private_api_key",
+          projectApiKey: "private_project_api_key",
+        },
+      },
+    },
+    page,
+    pathname: "/",
+  })
+
+  assert.equal(config.posthogProjectToken, "phc_public")
+})
+
+test("omits analytics config when only private-looking PostHog token aliases exist", () => {
+  const config = buildAnalyticsConfig({
+    snapshot: {
+      ...baseSnapshot,
+      settings: {
+        ...baseSnapshot.settings,
+        analytics: {
+          provider: "posthog",
+          apiHost: "https://eu.posthog.com",
+          apiKey: "private_api_key",
+          projectApiKey: "private_project_api_key",
+        },
+      },
+    },
+    page,
+    pathname: "/",
+  })
+
+  assert.equal(config, null)
+  assert.equal(analyticsConfigJson(config), null)
+})
+
 test("omits unsupported analytics providers", () => {
   const config = buildAnalyticsConfig({
     snapshot: {

@@ -49,13 +49,15 @@ HOST=0.0.0.0 PORT=4321 node ./dist/server/entry.mjs
 The Docker image exposes `4321`, runs as the non-root `node` user, and exposes
 `GET /healthz` for Docker healthchecks.
 
-The Phase 2 staging compose template routes only:
+The live renderer compose routes the official tenant domains:
 
-- `amicare.optidigi.nl`
-- `amblast.optidigi.nl`
+- `ami-care.nl`
+- `amblast.nl`
 
-Do not route `ami-care.nl` or existing legacy Amblast production traffic to the
-renderer in this phase.
+Before enabling these routes in production, remove or disable any legacy
+Traefik routers for the same hosts. `www` aliases are not part of the current
+compose rule and require explicit DNS/certificate confirmation before adding a
+redirect or host alias.
 
 The production edge proxy must forward the original public host through
 `Host` and should also pass `X-Forwarded-Host`. The renderer sends the observed
