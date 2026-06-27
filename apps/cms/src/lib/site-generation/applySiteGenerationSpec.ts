@@ -294,9 +294,45 @@ const DEFAULT_GENERATION_MANIFEST: RtManifest = {
   typeStyles: [],
 }
 
+const scanRichTextCapabilities = (value: unknown, result = { blockquote: false, themedNodeIds: new Set<string>() }) => {
+  if (!value || typeof value !== "object") return result
+  if (Array.isArray(value)) {
+    for (const item of value) scanRichTextCapabilities(item, result)
+    return result
+  }
+
+  const record = value as Record<string, unknown>
+  if (record.t === "blockquote") result.blockquote = true
+  if (record.t === "themed" && typeof record.id === "string") result.themedNodeIds.add(record.id)
+
+  for (const entry of Object.values(record)) scanRichTextCapabilities(entry, result)
+  return result
+}
+
+const manifestCapabilitiesForSpec = (spec: SiteGenerationSpec): Pick<RtManifest, "blockTypes" | "themedNodes"> => {
+  const capabilities = scanRichTextCapabilities(spec.pages)
+  return {
+    blockTypes: {
+      ...DEFAULT_GENERATION_MANIFEST.blockTypes,
+      ...(capabilities.blockquote ? { blockquote: true } : {}),
+    },
+    ...(capabilities.themedNodeIds.size > 0
+      ? {
+          themedNodes: Array.from(capabilities.themedNodeIds).sort().map((id) => ({
+            id,
+            label: id === "eyebrow" ? "Eyebrow" : id,
+            fields: [{ name: "text", type: "text", required: true }],
+          })),
+        }
+      : {}),
+  }
+}
+
 const siteManifestForSpec = (spec: SiteGenerationSpec, idempotencyKey: string): RtManifest & Record<string, unknown> => {
+  const capabilities = manifestCapabilitiesForSpec(spec)
   const manifest = {
     ...DEFAULT_GENERATION_MANIFEST,
+    ...capabilities,
     blocks: spec.blocks?.map((block) => ({
       slug: block.slug,
       ...(block.label ? { label: block.label } : {}),

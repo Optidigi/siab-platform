@@ -181,6 +181,48 @@ describe("applySiteGenerationSpec", () => {
     expect([...calls.create, ...calls.update].every((call) => call.context?.skipProjection === true)).toBe(true)
   })
 
+  it("enables manifest capabilities required by generated rich-text content", async () => {
+    const { payload, store } = createPayloadStub()
+    const spec = fixtureSpec()
+
+    const result = await applySiteGenerationSpec(payload, {
+      ...spec,
+      pages: [
+        {
+          ...spec.pages[0]!,
+          blocks: [
+            ...spec.pages[0]!.blocks,
+            {
+              blockType: "richText",
+              body: {
+                t: "root",
+                variant: "block",
+                children: [
+                  { t: "themed", id: "eyebrow", props: { text: "Over mij" } },
+                  {
+                    t: "blockquote",
+                    children: [
+                      {
+                        t: "paragraph",
+                        children: [{ t: "text", v: "Jeugdzorg werkt wanneer een jongere zich gezien voelt." }],
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    } as SiteGenerationSpec)
+
+    expect(result.ok).toBe(true)
+    expect(store.tenants[0]!.siteManifest.blockTypes.blockquote).toBe(true)
+    expect(store.tenants[0]!.siteManifest.themedNodes).toEqual([
+      { id: "eyebrow", label: "Eyebrow", fields: [{ name: "text", type: "text", required: true }] },
+    ])
+  })
+
   it("omits generated media paths that are not existing Payload media ids", async () => {
     const { payload, store } = createPayloadStub()
     const spec = fixtureSpec()
