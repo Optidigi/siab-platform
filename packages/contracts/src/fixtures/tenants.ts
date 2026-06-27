@@ -572,7 +572,7 @@ const amblastSettings: GeneratedSiteSettings = {
       logo: { id: "amblast-logo", url: "/uploads/logo/cropped-AMBlast_logo.png", filename: "cropped-AMBlast_logo.png", alt: "Amblast logo", width: 714, height: 179 },
       tagline: "Manage your facility",
       copyright: "Copyright © 2026 Amblast",
-      legalLinks: [{ label: "Privacy verklaring", href: "#" }],
+      legalLinks: [{ label: "Privacy verklaring", href: "/privacy" }],
       columns: [
         { id: "brand", items: [{ type: "brand", label: "Amblast", text: "Manage your facility" }] },
         { id: "menu", items: [{ type: "navigation", label: "Menu" }] },

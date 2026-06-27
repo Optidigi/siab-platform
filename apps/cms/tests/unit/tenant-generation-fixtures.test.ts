@@ -176,7 +176,10 @@ describe("legacy tenant generation fixtures", () => {
       "contactDetails",
     ]))
     expect(amblastSiteGenerationSpec.blocks?.map((block) => block.slug)).toEqual(amblastPublishedSiteSnapshot.blocks?.map((block) => block.slug))
-    expect(amblastPublishedSiteSnapshot.settings.chrome?.footer?.legalLinks?.[0]).toMatchObject({ label: "Privacy verklaring" })
+    expect(amblastPublishedSiteSnapshot.settings.chrome?.footer?.legalLinks?.[0]).toMatchObject({
+      label: "Privacy verklaring",
+      href: "/privacy",
+    })
     expect(amblastPublishedSiteSnapshot.settings.seoJsonLd?.localBusiness?.serviceArea).toContain("Limburg")
 
     const portfolio = amblastPublishedSiteSnapshot.pages.find((page) => page.slug === "portfolio")
