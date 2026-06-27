@@ -118,6 +118,8 @@ describe("renderer seed profiles", () => {
     expect(amblastSnapshot.domain).toBe("amblast.nl")
     expect(amblastSnapshot.siteUrl).toBe("https://amblast.nl")
     expect(JSON.stringify(amblastSnapshot.pages)).toContain("https://amblast.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
+    expect(JSON.stringify(amblastSnapshot.pages)).toContain("Bericht via amblast.nl")
+    expect(JSON.stringify(amblastSnapshot.pages)).not.toContain("amblast.optidigi.nl")
     expect(JSON.stringify(amblastSnapshot.pages)).not.toContain("https://amblast.siteinabox.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
   })
 

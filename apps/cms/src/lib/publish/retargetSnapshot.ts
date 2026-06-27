@@ -33,6 +33,21 @@ function rewriteRelativeMediaUrls(value: unknown, mediaBaseUrl: string): unknown
   )
 }
 
+function rewriteSnapshotDomainStrings(
+  value: unknown,
+  replacements: Array<[from: string, to: string]>,
+): unknown {
+  if (typeof value === "string") {
+    return replacements.reduce((next, [from, to]) => (from && from !== to ? next.split(from).join(to) : next), value)
+  }
+  if (Array.isArray(value)) return value.map((item) => rewriteSnapshotDomainStrings(item, replacements))
+  if (!value || typeof value !== "object") return value
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, rewriteSnapshotDomainStrings(entry, replacements)]),
+  )
+}
+
 export function retargetPublishedSiteSnapshot(
   source: PublishedSiteSnapshot,
   options: RetargetPublishedSnapshotOptions,
@@ -40,6 +55,7 @@ export function retargetPublishedSiteSnapshot(
   const siteUrl = options.siteUrl ?? `https://${options.domain}`
   const tenantId = String(options.tenantId)
   const snapshot = structuredClone(source)
+  const sourceSiteUrl = source.siteUrl ?? source.settings?.siteUrl ?? `https://${source.domain}`
 
   snapshot.tenantId = tenantId
   snapshot.tenantSlug = options.tenantSlug
@@ -68,9 +84,14 @@ export function retargetPublishedSiteSnapshot(
       : snapshot.settings.seoJsonLd,
   }
 
+  const domainRetargetedSnapshot = rewriteSnapshotDomainStrings(snapshot, [
+    [sourceSiteUrl, siteUrl],
+    [source.domain, options.domain],
+  ]) as PublishedSiteSnapshot
+
   const retargetedSnapshot = options.mediaBaseUrl
-    ? rewriteRelativeMediaUrls(snapshot, options.mediaBaseUrl)
-    : snapshot
+    ? rewriteRelativeMediaUrls(domainRetargetedSnapshot, options.mediaBaseUrl)
+    : domainRetargetedSnapshot
 
   return PublishedSiteSnapshotSchema.parse(retargetedSnapshot)
 }
