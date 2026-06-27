@@ -30,6 +30,7 @@ const ARRAY_ROW_KEYS = new Set([
   "features",      // FeatureList.features
   "fields",        // ContactSection.fields
   "pairs",         // BeforeAfterGallery.pairs
+  "hiddenFields",  // ContactSection.provider.hiddenFields
   "social",        // SiteSettings.contact.social — future-proofs pages
                    // should they ever embed it
   "pills"          // Hero.pills

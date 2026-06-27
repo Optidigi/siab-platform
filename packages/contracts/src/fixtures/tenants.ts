@@ -259,6 +259,7 @@ const amicarePages: GeneratedPageSpec[] = [
     blocks: [
       {
         blockType: "hero",
+        variant: "minimal",
         anchor: "top",
         eyebrow: inlineText("Amicare-Zorg"),
         headline: inlineText("Jeugdzorg met hart en toewijding"),
@@ -269,6 +270,7 @@ const amicarePages: GeneratedPageSpec[] = [
       },
       {
         blockType: "featureList",
+        variant: "services",
         anchor: "werkwijze",
         title: inlineText("Werkwijze"),
         intro: blockText("Amicare werkt met duidelijke afspraken, korte lijnen en aandacht voor wat een jongere nodig heeft."),
@@ -280,6 +282,7 @@ const amicarePages: GeneratedPageSpec[] = [
       },
       {
         blockType: "richText",
+        variant: "prose",
         anchor: "over",
         body: blockRichText([
           {
@@ -294,6 +297,7 @@ const amicarePages: GeneratedPageSpec[] = [
       },
       {
         blockType: "cta",
+        variant: "quote",
         anchor: "wat-telt",
         eyebrow: inlineText("Kennismaken"),
         headline: inlineText("Bespreek wat er nodig is"),
@@ -302,6 +306,7 @@ const amicarePages: GeneratedPageSpec[] = [
       },
       {
         blockType: "contactSection",
+        variant: "form",
         anchor: "contact",
         title: inlineText("Neem contact op"),
         description: blockText("Stuur een bericht om rustig te bespreken welke ondersteuning passend is."),
@@ -351,6 +356,7 @@ const contactFields = [
 
 const quoteContactBlock = {
   blockType: "contactSection" as const,
+  variant: "form",
   anchor: "contact-form",
   title: inlineText("Vraag hier uw vrijblijvende offerte aan"),
   description: blockText("Neem gerust contact met ons op en wij zoeken de beste optie voor u en uw project."),
@@ -361,6 +367,7 @@ const quoteContactBlock = {
 
 const directContactBlock = {
   blockType: "contactSection" as const,
+  variant: "form",
   anchor: "contact-form",
   title: inlineText("Neem gerust contact op"),
   description: blockText("Neem gerust contact met ons op en wij zoeken de beste optie voor u en uw project."),
@@ -787,6 +794,7 @@ const amblastServiceCarouselItems = [
 
 const amblastContactFactCards = {
   blockType: "infoCardList" as const,
+  variant: "amblastImageBoxes",
   anchor: "contactgegevens",
   analytics: { sectionVariant: "amblast-image-boxes" },
   layout: "grid" as const,
@@ -804,6 +812,7 @@ const amblastRendererPages: GeneratedPageSpec[] = [
     blocks: [
       {
         blockType: "mediaHero",
+        variant: "amblastShapedHero",
         anchor: "top",
         analytics: { sectionVariant: "amblast-shaped-overlay" },
         headline: inlineText("Specialist in industriële schoonmaak"),
@@ -819,6 +828,7 @@ const amblastRendererPages: GeneratedPageSpec[] = [
       },
       {
         blockType: "infoCardList",
+        variant: "amblastImageBoxes",
         anchor: "bereikbaarheid",
         analytics: { sectionVariant: "amblast-image-boxes" },
         layout: "row",
@@ -831,6 +841,7 @@ const amblastRendererPages: GeneratedPageSpec[] = [
       },
       {
         blockType: "serviceCarousel",
+        variant: "amblastSwiperServices",
         anchor: "diensten",
         analytics: { sectionVariant: "amblast-swiper-services" },
         title: inlineText("Waarvoor kunt u bij ons terecht?"),
@@ -851,6 +862,7 @@ const amblastRendererPages: GeneratedPageSpec[] = [
       },
       {
         blockType: "richText",
+        variant: "prose",
         anchor: "papierindustrie",
         body: blockRichText([{ heading: "Industriële reiniging in de papierindustrie", text: "Amblast helpt productiebedrijven hun machines, productielijnen en werkvloeren schoon, veilig en efficiënt te houden." }]),
       },
@@ -862,6 +874,7 @@ const amblastRendererPages: GeneratedPageSpec[] = [
     blocks: [
       {
         blockType: "mediaHero",
+        variant: "amblastShapedHero",
         anchor: "top",
         analytics: { sectionVariant: "amblast-shaped-overlay" },
         headline: inlineText("Over ons"),
@@ -874,6 +887,7 @@ const amblastRendererPages: GeneratedPageSpec[] = [
       },
       {
         blockType: "richText",
+        variant: "prose",
         anchor: "over",
         body: blockRichText([
           { heading: "Amblast manages your facility.", text: "Amblast is een familiebedrijf en gespecialiseerd in industriële reiniging. Wij zijn actief in sectoren zoals de papierindustrie en voedingsindustrie, waar schoonmaak onmisbaar is om veilig en efficiënt te kunnen produceren." },
@@ -884,6 +898,7 @@ const amblastRendererPages: GeneratedPageSpec[] = [
       },
       {
         blockType: "infoCardList",
+        variant: "amblastImageBoxes",
         anchor: "waarden",
         analytics: { sectionVariant: "amblast-image-boxes" },
         layout: "grid",
@@ -896,6 +911,7 @@ const amblastRendererPages: GeneratedPageSpec[] = [
       },
       {
         blockType: "cta",
+        variant: "quote",
         anchor: "diensten",
         headline: inlineText("Bekijk onze diensten"),
         description: blockText("Van facility management tot specialistische industriële schoonmaak."),
@@ -909,6 +925,7 @@ const amblastRendererPages: GeneratedPageSpec[] = [
     blocks: [
       {
         blockType: "mediaHero",
+        variant: "amblastShapedHero",
         anchor: "top",
         analytics: { sectionVariant: "amblast-shaped-overlay" },
         headline: inlineText("Onze diensten"),
@@ -921,6 +938,7 @@ const amblastRendererPages: GeneratedPageSpec[] = [
       },
       {
         blockType: "serviceCarousel",
+        variant: "amblastSwiperServices",
         anchor: "diensten",
         analytics: { sectionVariant: "amblast-swiper-services" },
         title: inlineText("Facility services voor productieomgevingen"),
@@ -941,6 +959,7 @@ const amblastRendererPages: GeneratedPageSpec[] = [
     blocks: [
       {
         blockType: "mediaHero",
+        variant: "amblastShapedHero",
         anchor: "top",
         analytics: { sectionVariant: "amblast-shaped-overlay" },
         headline: inlineText("Portfolio"),
@@ -953,11 +972,13 @@ const amblastRendererPages: GeneratedPageSpec[] = [
       },
       {
         blockType: "richText",
+        variant: "prose",
         anchor: "werk",
         body: blockRichText([{ heading: "Hoe we het al meer dan 8 jaar doen", text: "Neem hier een kijkje naar het werk dat wij verrichten." }]),
       },
       {
         blockType: "beforeAfterGallery",
+        variant: "amblastPortfolio",
         anchor: "voor-en-na",
         analytics: { sectionVariant: "amblast-portfolio-comparisons" },
         title: inlineText("Voor en na"),
@@ -974,6 +995,7 @@ const amblastRendererPages: GeneratedPageSpec[] = [
     blocks: [
       {
         blockType: "mediaHero",
+        variant: "amblastShapedHero",
         anchor: "top",
         analytics: { sectionVariant: "amblast-shaped-overlay" },
         headline: inlineText("Contact"),
@@ -986,6 +1008,7 @@ const amblastRendererPages: GeneratedPageSpec[] = [
       },
       {
         blockType: "contactDetails",
+        variant: "amblastContactCards",
         anchor: "amblast",
         analytics: { sectionVariant: "amblast-contact-cards" },
         title: inlineText("Neem gerust contact op"),
@@ -1025,7 +1048,7 @@ export const amicareSiteGenerationSpec: SiteGenerationSpec = {
   tenant: { name: "Amicare-Zorg", slug: "amicare", domain: "ami-care.nl", status: "active" },
   theme: amicareTheme,
   settings: amicareSettings,
-  pages: amicarePages,
+  pages: amicareRendererPages,
   blocks: canonicalBlocks.filter((block) => ["hero", "featureList", "richText", "cta", "contactSection"].includes(block.slug)),
   assets: [
     { id: "amicare-bedroom", url: "/media/bedroom.jpg", filename: "bedroom.jpg", alt: "Rustige kinderkamer" },
@@ -1067,8 +1090,8 @@ export const amblastSiteGenerationSpec: SiteGenerationSpec = {
   tenant: { name: "Amblast | Facility Services", slug: "amblast", domain: "amblast.nl", status: "active" },
   theme: amblastTheme,
   settings: amblastSettings,
-  pages: amblastPages,
-  blocks: canonicalBlocks,
+  pages: amblastRendererPages,
+  blocks: rendererParityBlocks,
   assets: [
     ...Object.values(amblastMedia),
   ],
@@ -1076,14 +1099,8 @@ export const amblastSiteGenerationSpec: SiteGenerationSpec = {
   generator: { name: "legacy-tenant-migration", version: "phase-5" },
 }
 
-export const amicarePublishedSiteSnapshot = toSnapshot(amicareSiteGenerationSpec, "tenant-amicare", {
-  pages: amicareRendererPages,
-})
-export const amblastPublishedSiteSnapshot = toSnapshot(amblastSiteGenerationSpec, "tenant-amblast", {
-  pages: amblastRendererPages,
-  blocks: rendererParityBlocks,
-  assets: Object.values(amblastMedia),
-})
+export const amicarePublishedSiteSnapshot = toSnapshot(amicareSiteGenerationSpec, "tenant-amicare")
+export const amblastPublishedSiteSnapshot = toSnapshot(amblastSiteGenerationSpec, "tenant-amblast")
 
 export const tenantSiteGenerationSpecs = [amicareSiteGenerationSpec, amblastSiteGenerationSpec] as const
 export const tenantPublishedSiteSnapshots = [amicarePublishedSiteSnapshot, amblastPublishedSiteSnapshot] as const

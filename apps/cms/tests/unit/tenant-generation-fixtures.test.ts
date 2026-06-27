@@ -88,6 +88,10 @@ describe("legacy tenant generation fixtures", () => {
       expect(snapshot.settings).toEqual(spec.settings)
       expect(snapshot.theme).toEqual(spec.theme)
       expect(snapshot.pages.map((page) => page.slug)).toEqual(spec.pages.map((page) => page.slug))
+      expect(snapshot.pages.map((page) => page.blocks.map((block) => [block.blockType, block.variant ?? null]))).toEqual(
+        spec.pages.map((page) => page.blocks.map((block) => [block.blockType, block.variant ?? null])),
+      )
+      expect(snapshot.blocks).toEqual(spec.blocks)
       expect(snapshot.manifest.entries.filter((entry) => entry.type === "page").map((entry) => entry.key)).toEqual(
         spec.pages.map((page) => page.slug),
       )
@@ -95,7 +99,7 @@ describe("legacy tenant generation fixtures", () => {
     }
   })
 
-  it("represents Amblast legacy pages, SEO, navigation, services, contact, and media as canonical data", () => {
+  it("represents Amblast legacy pages, SEO, navigation, services, contact, and media as styled block data", () => {
     expect(amblastSiteGenerationSpec.pages.map((page) => page.slug)).toEqual([
       "index",
       "over-ons",
@@ -117,8 +121,19 @@ describe("legacy tenant generation fixtures", () => {
     expect(amblastSiteGenerationSpec.settings.navHeader?.[0]?.href).toBe("/")
 
     const allBlocks = amblastSiteGenerationSpec.pages.flatMap((page) => page.blocks)
-    expect(allBlocks.some((block) => block.blockType === "featureList")).toBe(true)
+    expect(allBlocks.some((block) => block.blockType === "mediaHero")).toBe(true)
+    expect(allBlocks.some((block) => block.blockType === "infoCardList")).toBe(true)
+    expect(allBlocks.some((block) => block.blockType === "serviceCarousel")).toBe(true)
+    expect(allBlocks.some((block) => block.blockType === "beforeAfterGallery")).toBe(true)
+    expect(allBlocks.some((block) => block.blockType === "contactDetails")).toBe(true)
     expect(allBlocks.some((block) => block.blockType === "contactSection")).toBe(true)
+    expect(allBlocks.map((block) => block.variant).filter(Boolean)).toEqual(expect.arrayContaining([
+      "amblastShapedHero",
+      "amblastImageBoxes",
+      "amblastSwiperServices",
+      "amblastPortfolio",
+      "amblastContactCards",
+    ]))
     expect(JSON.stringify(allBlocks)).toContain("Papierindustrie")
     expect(JSON.stringify(allBlocks)).toContain("Vloeren reiniging")
     expect(JSON.stringify(allBlocks)).toContain("/uploads/portfolio/1-olie-scaled.jpg")
@@ -131,6 +146,11 @@ describe("legacy tenant generation fixtures", () => {
     })
     if (contactForm?.blockType !== "contactSection") throw new Error("Expected contact section")
     expect(contactForm.fields.map((field) => field.name)).toEqual(["name", "email", "subject", "message"])
+    expect(contactForm.provider).toMatchObject({
+      provider: "web3forms",
+      action: "https://api.web3forms.com/submit",
+      honeypotField: "botcheck",
+    })
     expect(JSON.stringify(contactPage?.blocks)).toContain("Heinsbergerweg 172")
     expect(amblastSiteGenerationSpec.settings.contact?.address).toBe("Heinsbergerweg 172, 6045 CK Roermond")
   })
@@ -154,6 +174,7 @@ describe("legacy tenant generation fixtures", () => {
       "beforeAfterGallery",
       "contactDetails",
     ]))
+    expect(amblastSiteGenerationSpec.blocks?.map((block) => block.slug)).toEqual(amblastPublishedSiteSnapshot.blocks?.map((block) => block.slug))
     expect(amblastPublishedSiteSnapshot.settings.chrome?.footer?.legalLinks?.[0]).toMatchObject({ label: "Privacy verklaring" })
     expect(amblastPublishedSiteSnapshot.settings.seoJsonLd?.localBusiness?.serviceArea).toContain("Limburg")
 

@@ -1,4 +1,5 @@
 import { Mail } from "lucide-react"
+import { validateSafeHref } from "@/lib/security/safeHref"
 import { firstRichText, truncate, type BlockWithMeta } from "./_summary"
 import { blockBaseFields } from "./baseFields"
 
@@ -34,7 +35,32 @@ export const ContactSection: BlockWithMeta = {
           { label: "Tel", value: "tel" },
           { label: "Textarea", value: "textarea" }
         ]},
-      { name: "required", type: "checkbox", defaultValue: false }
+      { name: "required", type: "checkbox", defaultValue: false },
+      { name: "placeholder", type: "text" },
+      { name: "maxLength", type: "number", min: 1 }
+    ]},
+    { name: "provider", type: "group", fields: [
+      { name: "provider", type: "select", options: [
+        { label: "SIAB", value: "siab" },
+        { label: "Web3Forms", value: "web3forms" },
+        { label: "Custom", value: "custom" },
+        { label: "Mailto", value: "mailto" }
+      ]},
+      { name: "action", type: "text", validate: validateSafeHref },
+      { name: "method", type: "select", options: [
+        { label: "GET", value: "GET" },
+        { label: "POST", value: "POST" }
+      ]},
+      { name: "hiddenFields", type: "array", fields: [
+        { name: "name", type: "text", required: true },
+        { name: "value", type: "text" }
+      ]},
+      { name: "honeypotField", type: "text" },
+      { name: "fallbackHref", type: "text", validate: validateSafeHref },
+      { name: "successMessage", type: "text" },
+      { name: "errorMessage", type: "text" },
+      { name: "requiresConsent", type: "checkbox", defaultValue: false },
+      { name: "analyticsEnabled", type: "checkbox", defaultValue: false }
     ]},
     ...blockBaseFields("contact"),
   ],
