@@ -3,9 +3,20 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { SitePageRenderer, buildPageSeoMetadata } from "@siteinabox/site-renderer"
 import "../styles/site.css"
 import { normalizeRequestHost, resolvePublishedPage } from "../lib/snapshot"
+import * as amblastLegacy from "../lib/legacy-tenants/amblast/legacy-response.js"
+import * as amicareLegacy from "../lib/legacy-tenants/amicare/legacy-response"
 
 const pathname = `/${Astro.params.path ?? ""}`
 const host = normalizeRequestHost(Astro.request.headers.get("x-forwarded-host") ?? Astro.request.headers.get("host"))
+
+if (amblastLegacy.isAmblastLegacyHost(host)) {
+  return await amblastLegacy.createAmblastLegacyResponseOrNotFound(pathname)
+}
+
+if (amicareLegacy.isAmicareLegacyHost(host)) {
+  return await amicareLegacy.createAmicareLegacyResponseOrNotFound(pathname)
+}
+
 const resolved = await resolvePublishedPage(pathname, host)
 
 if (!resolved) {

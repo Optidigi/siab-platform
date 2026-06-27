@@ -8,6 +8,8 @@ on:
       - "packages/contracts/**"
       - "packages/site-renderer/**"
       - "packages/ui/**"
+      - "sites/ami-care/**"
+      - "sites/amblast/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -60,7 +62,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            SITE_URL=https://amicare.optidigi.nl
+            RENDERER_SITE_URL=https://renderer.siteinabox.nl
+            AMICARE_SITE_URL=https://ami-care.nl
+            AMBLAST_SITE_URL=https://amblast.optidigi.nl
 
       - name: Smoke start pushed image
         env:
@@ -78,11 +82,20 @@ jobs:
             -p 4321:4321 \
             "$image_tag"
           trap 'docker rm -f siteinabox-renderer-smoke >/dev/null 2>&1 || true' EXIT
+          healthy=0
           for attempt in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:4321/healthz; then
-              exit 0
+              healthy=1
+              break
             fi
             sleep 1
           done
-          docker logs siteinabox-renderer-smoke
-          exit 1
+          if [ "$healthy" != "1" ]; then
+            docker logs siteinabox-renderer-smoke
+            exit 1
+          fi
+          curl -fsS -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/over-ons | grep -q 'class="amb-'
+          curl -fsS -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/_astro/amb-base.DVDYrGRd.css >/dev/null
+          test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/portfolio-1)" = "301"
+          curl -fsS -H 'Host: amicare.optidigi.nl' http://127.0.0.1:4321/ | grep -q 'Amicare-Zorg'
+          curl -fsS -H 'Host: amicare.optidigi.nl' http://127.0.0.1:4321/robots.txt | grep -q 'Sitemap: https://ami-care.nl/sitemap-index.xml'

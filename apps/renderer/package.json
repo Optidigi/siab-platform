@@ -11,7 +11,8 @@
     "build": "astro check && astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "typecheck": "astro check"
+    "typecheck": "astro check",
+    "test": "node --test src/lib/legacy-tenants/amblast/legacy-response.test.mjs src/lib/legacy-tenants/amicare/legacy-response.test.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^10.1.0",

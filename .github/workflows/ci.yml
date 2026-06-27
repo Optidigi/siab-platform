@@ -130,6 +130,7 @@ jobs:
           node-version: 26
       - run: pnpm install --frozen-lockfile
       - run: pnpm renderer:typecheck
+      - run: pnpm renderer:test
       - run: pnpm renderer:build
 
   tenant-snapshots:

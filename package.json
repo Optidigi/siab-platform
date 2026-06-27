@@ -17,6 +17,7 @@
     "landing:test": "pnpm --dir apps/landing --ignore-workspace test",
     "packages:typecheck": "pnpm contracts:typecheck && pnpm ui:typecheck && pnpm site-renderer:typecheck",
     "renderer:build": "pnpm --dir apps/renderer build",
+    "renderer:test": "pnpm --dir apps/renderer test",
     "renderer:typecheck": "pnpm --dir apps/renderer typecheck",
     "site-renderer:typecheck": "pnpm --dir packages/site-renderer typecheck",
     "site:build": "pnpm landing:build",
