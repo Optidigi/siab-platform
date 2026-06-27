@@ -15,7 +15,9 @@ import {
   SiteGenerationSpecSchema,
 } from "@siteinabox/contracts/generation"
 import { SITE_GENERATION_BLOCK_SLUGS } from "@siteinabox/contracts/site"
+import type { MediaRef } from "@siteinabox/contracts/site"
 import type { Payload } from "payload"
+import { assertSafeMediaFilename } from "@/lib/mediaFilename"
 import { DEFAULT_FONT_FAMILIES, manifestSchema, type RtManifest } from "@/lib/richText/manifest"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { themeSchema, type ThemeTokens } from "@/lib/theme/schema"
@@ -224,7 +226,7 @@ export const validateSiteGenerationSpecForCms = (spec: SiteGenerationSpec): Vali
 
 const findOne = async (
   payload: Payload,
-  collection: "tenants" | "pages" | "site-settings",
+  collection: "tenants" | "pages" | "site-settings" | "media",
   where: Record<string, unknown>,
 ) => {
   const found = await payload.find({
@@ -357,27 +359,119 @@ const siteManifestForSpec = (spec: SiteGenerationSpec, idempotencyKey: string): 
 const isPayloadMediaId = (value: unknown): value is string | number =>
   typeof value === "number" || (typeof value === "string" && /^\d+$/.test(value))
 
-const normalizeMediaRef = (value: unknown): unknown => {
+type GeneratedMediaObject = Exclude<MediaRef, string | number | null>
+type MediaIdMap = Map<string, string | number>
+
+const mediaFilename = (value: unknown): string | undefined => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined
+  const filename = (value as { filename?: unknown }).filename
+  if (typeof filename !== "string" || filename.length === 0) return undefined
+  return assertSafeMediaFilename(filename)
+}
+
+const collectGeneratedMediaRefs = (
+  value: unknown,
+  refs = new Map<string, GeneratedMediaObject>(),
+): Map<string, GeneratedMediaObject> => {
+  if (!value || typeof value !== "object") return refs
+  if (Array.isArray(value)) {
+    for (const item of value) collectGeneratedMediaRefs(item, refs)
+    return refs
+  }
+
+  const filename = mediaFilename(value)
+  if (filename && !refs.has(filename)) refs.set(filename, value as GeneratedMediaObject)
+
+  for (const entry of Object.values(value as Record<string, unknown>)) {
+    collectGeneratedMediaRefs(entry, refs)
+  }
+  return refs
+}
+
+const mimeTypeForFilename = (filename: string): string | undefined => {
+  const extension = filename.split(".").pop()?.toLowerCase()
+  if (!extension) return undefined
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg"
+  if (extension === "png") return "image/png"
+  if (extension === "webp") return "image/webp"
+  if (extension === "gif") return "image/gif"
+  if (extension === "svg") return "image/svg+xml"
+  return undefined
+}
+
+const upsertGeneratedMediaRefs = async (
+  payload: Payload,
+  tenantId: string | number,
+  spec: SiteGenerationSpec,
+): Promise<MediaIdMap> => {
+  const refs = collectGeneratedMediaRefs({
+    assets: spec.assets,
+    settings: spec.settings,
+    pages: spec.pages,
+  })
+  const ids: MediaIdMap = new Map()
+
+  for (const [filename, ref] of refs) {
+    const mimeType = mimeTypeForFilename(filename)
+    const data = {
+      tenant: tenantId,
+      filename,
+      ...(typeof ref.alt === "string" ? { alt: ref.alt } : {}),
+      ...(typeof ref.width === "number" ? { width: ref.width } : {}),
+      ...(typeof ref.height === "number" ? { height: ref.height } : {}),
+      ...(mimeType ? { mimeType } : {}),
+    }
+    const existing = await findOne(payload, "media", {
+      and: [{ tenant: { equals: tenantId } }, { filename: { equals: filename } }],
+    })
+    if (existing) {
+      const updated = await payload.update({
+        collection: "media",
+        id: existing.id,
+        data,
+        depth: 0,
+        overrideAccess: true,
+        context: DRAFT_IMPORT_CONTEXT,
+      } as any)
+      ids.set(filename, (updated as any).id)
+    } else {
+      const created = await payload.create({
+        collection: "media",
+        data,
+        depth: 0,
+        overrideAccess: true,
+        context: DRAFT_IMPORT_CONTEXT,
+      } as any)
+      ids.set(filename, (created as any).id)
+    }
+  }
+
+  return ids
+}
+
+const normalizeMediaRef = (value: unknown, mediaIds?: MediaIdMap): unknown => {
   if (value && typeof value === "object" && "id" in value) {
     const id = relationshipId(value)
-    return isPayloadMediaId(id) ? id : undefined
+    if (isPayloadMediaId(id)) return id
   }
+  const filename = mediaFilename(value)
+  if (filename && mediaIds?.has(filename)) return mediaIds.get(filename)
   return isPayloadMediaId(value) ? value : undefined
 }
 
-const normalizeBlock = (block: Record<string, unknown>): Record<string, unknown> => {
+const normalizeBlock = (block: Record<string, unknown>, mediaIds?: MediaIdMap): Record<string, unknown> => {
   const { id: _id, source: _source, ...rest } = block
   const normalized: Record<string, unknown> = { ...rest }
   for (const key of ["image", "avatar", "backgroundImage", "foregroundImage", "before", "after"]) {
-    if (key in normalized) normalized[key] = normalizeMediaRef(normalized[key])
+    if (key in normalized) normalized[key] = normalizeMediaRef(normalized[key], mediaIds)
   }
   if (Array.isArray(normalized.items)) {
     normalized.items = normalized.items.map((item) =>
       item && typeof item === "object"
         ? {
             ...(item as Record<string, unknown>),
-            image: normalizeMediaRef((item as Record<string, unknown>).image),
-            avatar: normalizeMediaRef((item as Record<string, unknown>).avatar),
+            image: normalizeMediaRef((item as Record<string, unknown>).image, mediaIds),
+            avatar: normalizeMediaRef((item as Record<string, unknown>).avatar, mediaIds),
           }
         : item,
     )
@@ -387,8 +481,8 @@ const normalizeBlock = (block: Record<string, unknown>): Record<string, unknown>
       pair && typeof pair === "object"
         ? {
             ...(pair as Record<string, unknown>),
-            before: normalizeMediaRef((pair as Record<string, unknown>).before),
-            after: normalizeMediaRef((pair as Record<string, unknown>).after),
+            before: normalizeMediaRef((pair as Record<string, unknown>).before, mediaIds),
+            after: normalizeMediaRef((pair as Record<string, unknown>).after, mediaIds),
           }
         : pair,
     )
@@ -396,16 +490,16 @@ const normalizeBlock = (block: Record<string, unknown>): Record<string, unknown>
   return normalized
 }
 
-const normalizePageData = (tenantId: string | number, page: GeneratedPageSpec) => ({
+const normalizePageData = (tenantId: string | number, page: GeneratedPageSpec, mediaIds?: MediaIdMap) => ({
   tenant: tenantId,
   title: page.title,
   slug: page.slug,
   status: "draft",
-  blocks: page.blocks.map((block) => normalizeBlock(block as Record<string, unknown>)),
+  blocks: page.blocks.map((block) => normalizeBlock(block as Record<string, unknown>, mediaIds)),
   seo: page.seo
     ? {
         ...page.seo,
-        ogImage: normalizeMediaRef(page.seo.ogImage),
+        ogImage: normalizeMediaRef(page.seo.ogImage, mediaIds),
       }
     : undefined,
 })
@@ -454,6 +548,7 @@ const normalizeSettingsData = (
   tenantId: string | number,
   settings: GeneratedSiteSettings,
   pageBySlug: Map<string, ExistingPage>,
+  mediaIds?: MediaIdMap,
 ) => ({
   tenant: tenantId,
   siteName: settings.siteName,
@@ -465,8 +560,8 @@ const normalizeSettingsData = (
   branding: settings.branding
     ? {
         ...settings.branding,
-        logo: normalizeMediaRef(settings.branding.logo),
-        favicon: normalizeMediaRef(settings.branding.favicon),
+        logo: normalizeMediaRef(settings.branding.logo, mediaIds),
+        favicon: normalizeMediaRef(settings.branding.favicon, mediaIds),
       }
     : undefined,
   chrome: settings.chrome
@@ -475,13 +570,13 @@ const normalizeSettingsData = (
         header: settings.chrome.header
           ? {
               ...settings.chrome.header,
-              logo: normalizeMediaRef(settings.chrome.header.logo),
+              logo: normalizeMediaRef(settings.chrome.header.logo, mediaIds),
             }
           : undefined,
         footer: settings.chrome.footer
           ? {
               ...settings.chrome.footer,
-              logo: normalizeMediaRef(settings.chrome.footer.logo),
+              logo: normalizeMediaRef(settings.chrome.footer.logo, mediaIds),
             }
           : undefined,
       }
@@ -537,11 +632,11 @@ const upsertTenant = async (
   return { doc: created as any, operation: "created" as const }
 }
 
-const upsertPages = async (payload: Payload, tenantId: string | number, pages: GeneratedPageSpec[]) => {
+const upsertPages = async (payload: Payload, tenantId: string | number, pages: GeneratedPageSpec[], mediaIds?: MediaIdMap) => {
   const results: Array<{ doc: ExistingPage; operation: ApplyOperation }> = []
 
   for (const page of pages) {
-    const data = normalizePageData(tenantId, page)
+    const data = normalizePageData(tenantId, page, mediaIds)
     const existing = await findOne(payload, "pages", {
       and: [{ tenant: { equals: tenantId } }, { slug: { equals: page.slug } }],
     })
@@ -575,8 +670,9 @@ const upsertSettings = async (
   tenantId: string | number,
   settings: GeneratedSiteSettings,
   pageBySlug: Map<string, ExistingPage>,
+  mediaIds?: MediaIdMap,
 ) => {
-  const data = normalizeSettingsData(tenantId, settings, pageBySlug)
+  const data = normalizeSettingsData(tenantId, settings, pageBySlug, mediaIds)
   const existing = await findOne(payload, "site-settings", { tenant: { equals: tenantId } })
   if (existing) {
     const updated = await payload.update({
@@ -636,9 +732,10 @@ export async function applySiteGenerationSpec(
   const siteManifest = siteManifestForSpec(parsedSpec, idempotencyKey)
   const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme)
   const tenantId = tenant.doc.id as string | number
-  const pages = await upsertPages(payload, tenantId, parsedSpec.pages)
+  const mediaIds = await upsertGeneratedMediaRefs(payload, tenantId, parsedSpec)
+  const pages = await upsertPages(payload, tenantId, parsedSpec.pages, mediaIds)
   const pageBySlug = new Map(pages.map(({ doc }) => [doc.slug, doc]))
-  const settings = await upsertSettings(payload, tenantId, parsedSpec.settings, pageBySlug)
+  const settings = await upsertSettings(payload, tenantId, parsedSpec.settings, pageBySlug, mediaIds)
   const retainedPages = await retainedPagesForTenant(
     payload,
     tenantId,

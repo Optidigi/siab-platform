@@ -108,11 +108,12 @@ const matchesWhere = (doc: any, where: any): boolean => {
 
 const createPayloadStub = () => {
   let nextId = 1
-  type CollectionSlug = "tenants" | "pages" | "site-settings"
+  type CollectionSlug = "tenants" | "pages" | "site-settings" | "media"
   const store: Record<CollectionSlug, any[]> = {
     tenants: [],
     pages: [],
     "site-settings": [],
+    media: [],
   }
   const calls = {
     create: [] as any[],
@@ -223,7 +224,7 @@ describe("applySiteGenerationSpec", () => {
     ])
   })
 
-  it("omits generated media paths that are not existing Payload media ids", async () => {
+  it("upserts generated media refs with filenames and keeps bare paths omitted", async () => {
     const { payload, store } = createPayloadStub()
     const spec = fixtureSpec()
 
@@ -231,7 +232,10 @@ describe("applySiteGenerationSpec", () => {
       ...spec,
       settings: {
         ...spec.settings,
-        branding: { logo: "/logo.png" } as any,
+        branding: {
+          logo: { id: "generated-logo", url: "/logo.png", filename: "logo.png", alt: "Logo" },
+          favicon: "/favicon.ico",
+        } as any,
       },
       pages: [
         {
@@ -251,9 +255,15 @@ describe("applySiteGenerationSpec", () => {
     })
 
     expect(result.ok).toBe(true)
+    expect(store.media).toHaveLength(2)
+    const heroMedia = store.media.find((media) => media.filename === "hero.jpg")!
+    const logoMedia = store.media.find((media) => media.filename === "logo.png")!
+    expect(heroMedia).toMatchObject({ tenant: store.tenants[0]!.id, filename: "hero.jpg", alt: "Hero", mimeType: "image/jpeg" })
+    expect(logoMedia).toMatchObject({ tenant: store.tenants[0]!.id, filename: "logo.png", alt: "Logo", mimeType: "image/png" })
     expect(store.pages[0]!.seo.ogImage).toBeUndefined()
-    expect(store.pages[0]!.blocks[0].image).toBeUndefined()
-    expect(store["site-settings"][0]!.branding.logo).toBeUndefined()
+    expect(store.pages[0]!.blocks[0].image).toBe(heroMedia.id)
+    expect(store["site-settings"][0]!.branding.logo).toBe(logoMedia.id)
+    expect(store["site-settings"][0]!.branding.favicon).toBeUndefined()
   })
 
   it("updates existing records on repeat apply instead of creating duplicates", async () => {

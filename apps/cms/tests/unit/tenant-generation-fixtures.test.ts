@@ -26,11 +26,12 @@ const matchesWhere = (doc: any, where: any): boolean => {
 
 const createPayloadStub = () => {
   let nextId = 1
-  type CollectionSlug = "tenants" | "pages" | "site-settings"
+  type CollectionSlug = "tenants" | "pages" | "site-settings" | "media"
   const store: Record<CollectionSlug, any[]> = {
     tenants: [],
     pages: [],
     "site-settings": [],
+    media: [],
   }
   const payload = {
     find: async (args: any) => {
