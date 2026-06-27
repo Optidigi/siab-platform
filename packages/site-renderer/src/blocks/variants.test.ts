@@ -1,5 +1,6 @@
 import * as React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import type { Page } from "@siteinabox/contracts"
 import { ComparisonBlockRenderer } from "./Comparison"
 import { FAQBlockRenderer } from "./FAQ"
 import { HeroBlockRenderer } from "./Hero"
@@ -10,10 +11,17 @@ import {
   SITE_SOURCE_BACKED_BLOCK_VARIANTS,
   SITE_SOURCE_BACKED_CHROME_VARIANTS,
 } from "@siteinabox/contracts/block-catalog"
-import { amblastSiteGenerationSpec, amicareSiteGenerationSpec } from "@siteinabox/contracts/fixtures/tenants"
+import {
+  amblastPublishedSiteSnapshot,
+  amblastSiteGenerationSpec,
+  amicarePublishedSiteSnapshot,
+  amicareSiteGenerationSpec,
+} from "@siteinabox/contracts/fixtures/tenants"
 import { GeneratedSiteSettingsSchema } from "@siteinabox/contracts/generation"
 import { SiteBanner, SiteFooter, SiteHeader } from "../chrome"
-import { v1FixtureSettings } from "../fixtures/v1"
+import { v1FixturePage, v1FixtureSettings } from "../fixtures/v1"
+import { resolveLegacyTenant } from "../legacy-tenants/resolve"
+import { SitePageRenderer } from "../SitePageRenderer"
 import { rendererVariantClassName, resolveBlockVariant, runtimeVariantDataAttribute } from "./variants"
 
 function assertEqual<T>(actual: T, expected: T, label: string) {
@@ -416,8 +424,179 @@ function runAmblastScopeTests() {
   assertEqual(portfolioBlocks.some((block) => block.blockType === "beforeAfterGallery" && block.variant === "amblastPortfolio"), true, "Amblast portfolio comparison fixture")
 }
 
+function runLegacyRendererDispatchTests() {
+  assertEqual(
+    resolveLegacyTenant({
+      tenantSlug: "amicare",
+      domain: "amicare.optidigi.nl",
+      settings: amicarePublishedSiteSnapshot.settings,
+    }),
+    "amicare",
+    "Amicare tenant resolves to legacy renderer",
+  )
+  assertEqual(
+    resolveLegacyTenant({
+      tenantSlug: "fixture-studio",
+      domain: "renderer.example.test",
+      settings: v1FixtureSettings,
+    }),
+    null,
+    "generic fixture does not resolve to legacy renderer",
+  )
+  assertEqual(
+    resolveLegacyTenant({
+      tenantSlug: "generic-amblast-inspired",
+      domain: "generic.example.test",
+      settings: {
+        ...v1FixtureSettings,
+        siteName: "Amblast style landing page",
+        siteUrl: "https://amblast.nl",
+        chrome: {
+          ...v1FixtureSettings.chrome,
+          header: { ...v1FixtureSettings.chrome?.header, variant: "amblastIndustrial" },
+          footer: { ...v1FixtureSettings.chrome?.footer, variant: "amblastIndustrial" },
+        },
+      },
+    }),
+    null,
+    "generic tenant with Amblast-looking mutable settings does not resolve to legacy renderer",
+  )
+  assertEqual(
+    resolveLegacyTenant({
+      tenantSlug: "generic-care-provider",
+      domain: "generic-care.example.test",
+      settings: {
+        ...v1FixtureSettings,
+        siteName: "Amicare inspired zorg",
+        siteUrl: "https://ami-care.nl",
+        chrome: {
+          ...v1FixtureSettings.chrome,
+          header: { ...v1FixtureSettings.chrome?.header, variant: "amicareZen" },
+          footer: { ...v1FixtureSettings.chrome?.footer, variant: "amicareZen" },
+        },
+      },
+    }),
+    null,
+    "generic tenant with Amicare-looking mutable settings does not resolve to legacy renderer",
+  )
+  assertEqual(
+    resolveLegacyTenant({
+      tenantSlug: "amblast",
+      domain: "amblast.optidigi.nl",
+      settings: amblastPublishedSiteSnapshot.settings,
+    }),
+    "amblast",
+    "Amblast tenant resolves to legacy renderer",
+  )
+
+  const amicareFixturePage = amicarePublishedSiteSnapshot.pages.find((page) => page.slug === "index")
+  if (!amicareFixturePage) throw new Error("Amicare published fixture index page exists")
+  const amicarePage = {
+    ...amicareFixturePage,
+    updatedAt: amicareFixturePage.updatedAt ?? amicarePublishedSiteSnapshot.publishedAt ?? "2026-01-01T00:00:00.000Z",
+  } satisfies Page
+
+  const amicareMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: amicarePage,
+      settings: amicarePublishedSiteSnapshot.settings,
+      theme: amicarePublishedSiteSnapshot.theme,
+      tenantSlug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+    }),
+  )
+  assertIncludes(amicareMarkup, 'data-legacy-tenant="amicare"', "Amicare legacy root attribute")
+  assertIncludes(amicareMarkup, "data-amicare-nav", "Amicare exact nav marker")
+  assertIncludes(amicareMarkup, "cms-block--cta-quote", "Amicare exact quote CTA class")
+  assertIncludes(amicareMarkup, "cookie-consent-banner", "Amicare cookie consent markup")
+  assertIncludes(amicareMarkup, "info@ami-care.nl", "Amicare exact contact email")
+  assertEqual(
+    amicareMarkup.includes("site-header--source-amicare-zen"),
+    false,
+    "Amicare legacy renderer bypasses generic chrome approximation",
+  )
+
+  const amblastHomeFixturePage = amblastPublishedSiteSnapshot.pages.find((page) => page.slug === "index")
+  if (!amblastHomeFixturePage) throw new Error("Amblast published fixture index page exists")
+  const amblastHomePage = {
+    ...amblastHomeFixturePage,
+    updatedAt: amblastHomeFixturePage.updatedAt ?? amblastPublishedSiteSnapshot.publishedAt ?? "2026-01-01T00:00:00.000Z",
+  } satisfies Page
+
+  const amblastHomeMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: amblastHomePage,
+      settings: amblastPublishedSiteSnapshot.settings,
+      theme: amblastPublishedSiteSnapshot.theme,
+      tenantSlug: amblastPublishedSiteSnapshot.tenantSlug,
+      domain: amblastPublishedSiteSnapshot.domain,
+    }),
+  )
+  assertIncludes(amblastHomeMarkup, 'data-legacy-tenant="amblast"', "Amblast legacy root attribute")
+  assertIncludes(amblastHomeMarkup, 'data-amblast-page-id="845"', "Amblast home exact page ID")
+  assertIncludes(amblastHomeMarkup, 'id="amb-page-flag"', "Amblast exact page wrapper")
+  assertIncludes(amblastHomeMarkup, "amb-page-home", "Amblast home body class preserved on wrapper")
+  assertIncludes(amblastHomeMarkup, "amb-info-carousel", "Amblast service carousel exact class")
+  assertIncludes(amblastHomeMarkup, "swiper-wrapper", "Amblast carousel swiper structure")
+  assertIncludes(amblastHomeMarkup, 'data-amblast-behavior="site-client"', "Amblast behavior bootstrap")
+  assertEqual(
+    amblastHomeMarkup.includes("site-header--source-amblast-industrial"),
+    false,
+    "Amblast legacy renderer bypasses generic chrome approximation",
+  )
+
+  const amblastPortfolioFixturePage = amblastPublishedSiteSnapshot.pages.find((page) => page.slug === "portfolio")
+  if (!amblastPortfolioFixturePage) throw new Error("Amblast published fixture portfolio page exists")
+  const amblastPortfolioPage = {
+    ...amblastPortfolioFixturePage,
+    updatedAt: amblastPortfolioFixturePage.updatedAt ?? amblastPublishedSiteSnapshot.publishedAt ?? "2026-01-01T00:00:00.000Z",
+  } satisfies Page
+  const amblastPortfolioMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: amblastPortfolioPage,
+      settings: amblastPublishedSiteSnapshot.settings,
+      theme: amblastPublishedSiteSnapshot.theme,
+      tenantSlug: amblastPublishedSiteSnapshot.tenantSlug,
+      domain: amblastPublishedSiteSnapshot.domain,
+    }),
+  )
+  assertIncludes(amblastPortfolioMarkup, 'data-amblast-page-id="886"', "Amblast portfolio exact page ID")
+  assertIncludes(amblastPortfolioMarkup, 'data-widget_type="amb-compare.default"', "Amblast portfolio comparison widget")
+  assertIncludes(amblastPortfolioMarkup, "amb-compare-handle", "Amblast before-after handle")
+  assertIncludes(amblastPortfolioMarkup, "Voor", "Amblast before label")
+  assertIncludes(amblastPortfolioMarkup, "Na", "Amblast after label")
+
+  const genericMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: v1FixturePage,
+      settings: v1FixtureSettings,
+    }),
+  )
+  assertEqual(genericMarkup.includes("data-legacy-tenant="), false, "generic fixture has no legacy root")
+  assertEqual(genericMarkup.includes("data-amicare-nav"), false, "generic fixture has no Amicare nav")
+  assertEqual(genericMarkup.includes("cookie-consent-banner"), false, "generic fixture has no Amicare cookie consent")
+  assertEqual(genericMarkup.includes("amb-page-flag"), false, "generic fixture has no Amblast wrapper")
+  assertEqual(genericMarkup.includes("amb-info-carousel"), false, "generic fixture has no Amblast carousel")
+
+  const genericLegacyNameMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: v1FixturePage,
+      settings: {
+        ...v1FixtureSettings,
+        siteName: "Amblast style landing page",
+        siteUrl: "https://amblast.nl",
+      },
+      tenantSlug: "generic-amblast-inspired",
+      domain: "generic.example.test",
+    }),
+  )
+  assertEqual(genericLegacyNameMarkup.includes("data-legacy-tenant="), false, "legacy-looking generic tenant has no legacy root")
+  assertEqual(genericLegacyNameMarkup.includes("amb-page-flag"), false, "legacy-looking generic tenant has no Amblast wrapper")
+}
+
 runVariantResolverTests()
 runBlockRenderTests()
 runChromeRenderTests()
 runAmicareScopeTests()
 runAmblastScopeTests()
+runLegacyRendererDispatchTests()

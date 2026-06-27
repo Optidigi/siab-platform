@@ -17,9 +17,10 @@ const settingsDoc = {
   navFooter: [{ type: "page", page: 100, label: "Home" }],
   updatedAt: "2026-06-25T20:00:00.000Z",
 }
+let mockedSettingsDoc = settingsDoc
 
 vi.mock("@/lib/queries/settings", () => ({
-  getOrCreateSiteSettings: vi.fn(async () => settingsDoc),
+  getOrCreateSiteSettings: vi.fn(async () => mockedSettingsDoc),
 }))
 
 const inlineText = (text: string) => ({
@@ -40,6 +41,8 @@ const matchesWhere = (doc: any, where: any): boolean => {
 }
 
 const createPayloadStub = () => {
+  const siteSettings = structuredClone(settingsDoc)
+  mockedSettingsDoc = siteSettings
   const tenant: Tenant = {
     id: 1,
     name: "Snapshot Studio",
@@ -113,7 +116,7 @@ const createPayloadStub = () => {
         const docs = snapshots.filter((snapshot) => matchesWhere(snapshot, where))
         return { docs, totalDocs: docs.length }
       }
-      if (collection === "site-settings") return { docs: [settingsDoc], totalDocs: 1 }
+      if (collection === "site-settings") return { docs: [siteSettings], totalDocs: 1 }
       return { docs: [], totalDocs: 0 }
     }),
     create: vi.fn(async ({ collection, data }: any) => {
@@ -132,7 +135,7 @@ const createPayloadStub = () => {
       return snapshot
     }),
   }
-  return { payload: payload as any, tenant, pages, generationRuns, snapshots }
+  return { payload: payload as any, tenant, pages, generationRuns, snapshots, siteSettings }
 }
 
 describe("published site snapshots", () => {
@@ -398,6 +401,49 @@ describe("published site snapshots", () => {
     tenant.status = "archived"
     await expect(publishSiteSnapshot(payload, { tenantId: 1, generationRunId: 500, activate: false })).rejects.toThrow("Cannot publish an archived or suspended tenant.")
     expect(inactive.snapshot.status).toBe("drafted")
+  })
+
+  it("keeps renderer resolution on the active snapshot while newer CMS changes are only drafted", async () => {
+    const { activatePublishedSnapshot, publishSiteSnapshot, resolvePublishedSnapshotByHost } = await import("@/lib/publish/siteSnapshots")
+    const { payload, tenant, pages, siteSettings } = createPayloadStub()
+
+    tenant.theme = {
+      palette: { accent: "#0f766e", bg: "#ffffff", ink: "#111827" },
+    } as any
+    const active = await publishSiteSnapshot(payload, { tenantId: 1, generationRunId: 500, activate: true })
+    expect(active.snapshot.status).toBe("active")
+
+    pages[0]!.title = "Drafted page change"
+    pages[0]!.blocks = [{ blockType: "hero", headline: inlineText("Draft-only content") }]
+    siteSettings.siteName = "Drafted Settings"
+    ;(siteSettings as any).navHeader = [{ type: "custom", url: "/draft-only", label: "Draft only" }]
+    tenant.theme = {
+      palette: { accent: "#e11d48", bg: "#fff7ed", ink: "#111827" },
+    } as any
+
+    const drafted = await publishSiteSnapshot(payload, { tenantId: 1, generationRunId: 500, activate: false })
+    expect(tenant.status).toBe("active")
+    expect(tenant.activeSnapshot).toBe(active.snapshot.id)
+    const resolvedBeforeActivation = await resolvePublishedSnapshotByHost(payload, "www.snapshot.test")
+
+    expect(drafted.snapshot.status).toBe("drafted")
+    expect(drafted.snapshot.snapshot.pages[0]?.title).toBe("Drafted page change")
+    expect(drafted.snapshot.snapshot.settings.siteName).toBe("Drafted Settings")
+    expect(drafted.snapshot.snapshot.theme?.colors?.accent).toBe("#e11d48")
+    expect(resolvedBeforeActivation?.snapshotId).toBe(active.snapshot.id)
+    expect(resolvedBeforeActivation?.snapshot.pages[0]?.title).toBe("Home")
+    expect(JSON.stringify(resolvedBeforeActivation?.snapshot.pages[0]?.blocks)).toContain("First publish")
+    expect(resolvedBeforeActivation?.snapshot.settings.siteName).toBe("Snapshot Studio")
+    expect(resolvedBeforeActivation?.snapshot.settings.navHeader?.[0]?.label).toBe("Home")
+    expect(resolvedBeforeActivation?.snapshot.theme?.colors?.accent).toBe("#0f766e")
+
+    await activatePublishedSnapshot(payload, { snapshotId: drafted.snapshot.id })
+    const resolvedAfterActivation = await resolvePublishedSnapshotByHost(payload, "www.snapshot.test")
+
+    expect(resolvedAfterActivation?.snapshotId).toBe(drafted.snapshot.id)
+    expect(resolvedAfterActivation?.snapshot.pages[0]?.title).toBe("Drafted page change")
+    expect(resolvedAfterActivation?.snapshot.settings.siteName).toBe("Drafted Settings")
+    expect(resolvedAfterActivation?.snapshot.theme?.colors?.accent).toBe("#e11d48")
   })
 
   it("blocks direct snapshot update/delete access and immutable field mutation", async () => {

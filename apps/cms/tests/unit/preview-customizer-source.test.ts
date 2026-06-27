@@ -9,7 +9,7 @@ describe("preview customizer source contract", () => {
       "utf8",
     )
     const routeSource = fs.readFileSync(
-      path.resolve(process.cwd(), "src/app/(frontend)/preview/[token]/page.tsx"),
+      path.resolve(process.cwd(), "src/app/(frontend)/(site-preview)/preview/[token]/page.tsx"),
       "utf8",
     )
 

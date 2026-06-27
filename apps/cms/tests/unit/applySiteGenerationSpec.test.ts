@@ -747,5 +747,28 @@ describe("applySiteGenerationSpec", () => {
       expect(store.pages, field.key).toHaveLength(0)
       expect(store["site-settings"], field.key).toHaveLength(0)
     }
+
+    const blockedStructuredFields = [
+      { key: "tokens", value: { className: "p-[99px]", spacing: "compact" } },
+      { key: "tokens", value: { nested: { classes: ["grid", "md:grid-cols-7"] } } },
+      { key: "metadata", value: { rawHtml: "<div>Generated HTML</div>" } },
+      { key: "metadata", value: { nested: { component: "export function GeneratedBlock() { return null }" } } },
+      { key: "metadata", value: { sourceCode: "const classes = 'p-24'" } },
+      { key: "metadata", value: { filePath: "sites/new-tenant/src/pages/index.tsx" } },
+    ]
+
+    for (const field of blockedStructuredFields) {
+      const { payload, store } = createPayloadStub()
+      const spec = fixtureSpec()
+      ;(spec.pages[0]!.blocks[0]! as any)[field.key] = field.value
+
+      const result = await applySiteGenerationSpec(payload, spec)
+
+      expect(result.ok, `${field.key}:${JSON.stringify(field.value)}`).toBe(false)
+      expect(result.validation.issues.map((entry) => entry.code), field.key).toContain("invalid_contract_shape")
+      expect(store.tenants, field.key).toHaveLength(0)
+      expect(store.pages, field.key).toHaveLength(0)
+      expect(store["site-settings"], field.key).toHaveLength(0)
+    }
   })
 })

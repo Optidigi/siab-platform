@@ -61,6 +61,19 @@ const asPublishedPage = (page: (typeof tenantPublishedSiteSnapshots)[number]["pa
   updatedAt: page.updatedAt ?? "2026-06-25T00:00:00.000Z",
 })
 
+const collectMediaFilenames = (value: unknown, filenames = new Set<string>()): Set<string> => {
+  if (!value || typeof value !== "object") return filenames
+  if (Array.isArray(value)) {
+    for (const item of value) collectMediaFilenames(item, filenames)
+    return filenames
+  }
+
+  const record = value as Record<string, unknown>
+  if (typeof record.filename === "string" && record.filename.length > 0) filenames.add(record.filename)
+  for (const entry of Object.values(record)) collectMediaFilenames(entry, filenames)
+  return filenames
+}
+
 describe("legacy tenant generation fixtures", () => {
   it("validates Amicare and Amblast SiteGenerationSpec data for CMS apply", () => {
     for (const spec of tenantSiteGenerationSpecs) {
@@ -286,6 +299,38 @@ describe("legacy tenant generation fixtures", () => {
       expect(store.tenants[0]?.theme?.palette?.accent).toBe(spec.theme.colors?.accent)
       expect(store.pages).toHaveLength(spec.pages.length)
       expect(store["site-settings"][0]?.navHeader).toHaveLength(spec.settings.navHeader?.length ?? 0)
+    }
+  })
+
+  it("applies Amicare and Amblast fixtures idempotently without duplicating CMS records", async () => {
+    for (const sourceSpec of tenantSiteGenerationSpecs) {
+      const spec = structuredClone(sourceSpec)
+      const { payload, store } = createPayloadStub()
+      const first = await applySiteGenerationSpec(payload, spec)
+      const second = await applySiteGenerationSpec(payload, spec)
+      const expectedFilenames = Array.from(collectMediaFilenames({
+        assets: spec.assets,
+        settings: spec.settings,
+        pages: spec.pages,
+      })).sort()
+
+      expect(first.ok).toBe(true)
+      expect(second.ok).toBe(true)
+      expect(second.tenantId).toBe(first.tenantId)
+      expect(second.pageIds).toEqual(first.pageIds)
+      expect(second.settingsId).toBe(first.settingsId)
+      expect(first.operations?.tenant).toBe("created")
+      expect(second.operations?.tenant).toBe("updated")
+      expect(first.operations?.settings).toBe("created")
+      expect(second.operations?.settings).toBe("updated")
+      expect(first.operations?.pages?.map((page) => page.operation)).toEqual(spec.pages.map(() => "created"))
+      expect(second.operations?.pages?.map((page) => page.operation)).toEqual(spec.pages.map(() => "updated"))
+
+      expect(store.tenants).toHaveLength(1)
+      expect(store.pages).toHaveLength(spec.pages.length)
+      expect(store["site-settings"]).toHaveLength(1)
+      expect(store.media).toHaveLength(expectedFilenames.length)
+      expect(store.media.map((entry) => entry.filename).sort()).toEqual(expectedFilenames)
     }
   })
 })

@@ -37,6 +37,8 @@ export function PreviewCustomizer({
   theme,
   approval,
   payment,
+  tenantSlug,
+  domain,
 }: {
   access: PreviewCustomizerAccess
   pages: PreviewPageSummary[]
@@ -46,6 +48,8 @@ export function PreviewCustomizer({
   theme: ThemeTokens | null
   approval: PreviewApprovalState | null
   payment: PreviewPaymentState | null
+  tenantSlug?: string | null
+  domain?: string | null
 }) {
   const nonce = useCspNonce()
   const [themeState, setThemeState] = React.useState<ThemeTokens | null>(() => normalizeThemeForSave(theme))
@@ -190,6 +194,8 @@ export function PreviewCustomizer({
           settings={settings}
           theme={rendererTheme}
           nonce={nonce}
+          tenantSlug={tenantSlug}
+          domain={domain}
           canvasClassName="preview-customizer-canvas min-h-full [&_a[href]]:pointer-events-none"
           formAction="#"
         />

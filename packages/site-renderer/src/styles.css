@@ -1,9 +1,25 @@
+@import "./legacy-tenants/amblast/amb-base.scoped.css";
+
 :root {
   color-scheme: light;
   background: #f8fafc;
   color: #111827;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
+}
+
+@theme {
+  --color-bg: #f8fafc;
+  --color-ink: #111827;
+  --color-ink-muted: #64748b;
+  --color-accent: #0f766e;
+  --color-rule: rgba(15, 23, 42, 0.14);
+  --color-card: #ffffff;
+  --color-secondary: #e2e8f0;
+
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-serif: Georgia, "Times New Roman", serif;
+  --font-script: "Comic Sans MS", "Segoe Print", cursive;
 }
 
 * {
@@ -45,6 +61,194 @@ svg {
   --radius-lg: 1rem;
   background: var(--color-bg);
   color: var(--color-ink);
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .rt-canvas {
+  --color-accent: #a04e32;
+  --color-bg: #fbf7f0;
+  --color-ink: #1f1a14;
+  --color-ink-muted: #5a4f44;
+  --color-card: #ffffff;
+  --color-secondary: #efe9dd;
+  --color-rule: rgba(31, 26, 20, 0.12);
+  --font-title: var(--font-serif);
+  --font-heading: var(--font-serif);
+  --font-text: var(--font-sans);
+  --font-script: "Comic Sans MS", "Segoe Print", cursive;
+  --radius-md: 0.5rem;
+  --radius-sm: calc(var(--radius-md) - 0.25rem);
+  --radius-lg: calc(var(--radius-md) + 0.5rem);
+  font-family: var(--font-text);
+  font-size: 17px;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] ::selection {
+  background: rgba(160, 78, 50, 0.18);
+}
+
+@keyframes amicare-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes amicare-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes amicare-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .animate-fade-up {
+  animation: amicare-fade-up 0.6s ease-out both;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .animate-fade {
+  animation: amicare-fade 0.6s ease-out both;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .animate-float {
+  animation: amicare-float 4s ease-in-out infinite;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .rt-color-accent {
+  color: var(--color-accent);
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .rt-color-ink {
+  color: var(--color-ink);
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .rt-color-muted {
+  color: var(--color-ink-muted);
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .rt-font-title {
+  font-family: var(--font-title);
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .rt-font-heading {
+  font-family: var(--font-heading);
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .rt-font-text {
+  font-family: var(--font-text);
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .rt-font-script {
+  font-family: var(--font-script);
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .rt-type-highlight {
+  position: relative;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .rt-type-highlight::after {
+  position: absolute;
+  bottom: -0.25rem;
+  left: 0;
+  z-index: -10;
+  width: 100%;
+  height: 0.75rem;
+  background-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  content: "";
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'><path d='M0 5 Q 50 10 100 5' stroke='black' stroke-width='8' fill='none' stroke-linecap='round'/></svg>");
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .prose {
+  color: color-mix(in srgb, var(--color-ink) 90%, transparent);
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .rt-themed-eyebrow {
+  display: block;
+  max-width: calc(100% - 3rem);
+  margin-right: auto;
+  margin-left: auto;
+  text-align: center;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .prose > .rt-themed-eyebrow:first-child {
+  margin-top: 4rem;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .rt-themed-eyebrow + .rt-h-2,
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .rt-themed-eyebrow + .rt-h-3,
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .rt-themed-eyebrow + .rt-h-4 {
+  max-width: calc(100% - 3rem);
+  margin-top: 0.75rem;
+  margin-right: auto;
+  margin-left: auto;
+  text-align: center;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .rt-h {
+  color: var(--color-ink);
+  font-family: var(--font-heading);
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .rt-h-2 {
+  font-size: clamp(2.125rem, 1.76rem + 1.6vw, 2.75rem);
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .rt-h-3,
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .rt-h-4 {
+  font-size: clamp(1.5rem, 1.32rem + 0.8vw, 2rem);
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .rt-p {
+  color: color-mix(in srgb, var(--color-ink) 90%, transparent);
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .prose > .rt-p:last-child {
+  margin-bottom: 4rem;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .rt-i,
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .rt-link {
+  color: var(--color-accent);
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .rt-link {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 6px;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--richtext .rt-quote {
+  padding-left: 1.5rem;
+  border-left: 2px solid var(--color-accent);
+  color: var(--color-ink);
+  font-family: var(--font-heading);
+  font-size: clamp(1.1875rem, 1.05rem + 0.6vw, 1.375rem);
+  font-style: italic;
 }
 
 .site-frame-root {

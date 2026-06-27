@@ -46,6 +46,8 @@ export default async function PreviewPage({
         theme={data.theme}
         approval={data.approval}
         payment={data.payment}
+        tenantSlug={data.tenant.slug}
+        domain={data.tenant.domain}
       />
     </>
   )

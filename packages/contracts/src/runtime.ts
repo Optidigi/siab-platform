@@ -77,6 +77,8 @@ const SITE_HEADER_FOOTER_CHROME_VARIANTS = [...SITE_SHARED_CHROME_VARIANTS, "ami
 const strictObject = <T extends z.ZodRawShape>(shape: T) => z.object(shape).strict()
 const nullableString = z.string().nullable().optional()
 const jsonRecordSchema = z.record(z.string(), z.unknown())
+const FORBIDDEN_GENERATED_PAYLOAD_KEYS = ["className", "classes", "rawHtml", "html", "component", "sourceCode", "filePath"] as const
+const FORBIDDEN_GENERATED_PAYLOAD_KEY_SET = new Set<string>(FORBIDDEN_GENERATED_PAYLOAD_KEYS)
 const hostnameSchema = z
   .string()
   .trim()
@@ -690,7 +692,7 @@ const refineGeneratedBlock = (
   block: { blockType: string; variant?: string | null; analytics?: AnalyticsBlockMetadata | null },
   ctx: z.RefinementCtx,
 ) => {
-  for (const key of ["className", "classes", "rawHtml", "html", "component", "sourceCode", "filePath"]) {
+  for (const key of FORBIDDEN_GENERATED_PAYLOAD_KEYS) {
     if (Object.prototype.hasOwnProperty.call(block, key)) {
       ctx.addIssue({
         code: "custom",
@@ -699,6 +701,8 @@ const refineGeneratedBlock = (
       })
     }
   }
+  addForbiddenGeneratedPayloadIssues((block as Record<string, unknown>).tokens, ctx, ["tokens"])
+  addForbiddenGeneratedPayloadIssues((block as Record<string, unknown>).metadata, ctx, ["metadata"])
 
   const variant = block.variant
   if (typeof variant === "string" && variant.length > 0 && !isSupportedBlockVariant(block.blockType, variant)) {
@@ -723,6 +727,30 @@ export const BlockSchema: z.ZodType<Block> = BlockSchemaBase.superRefine(refineG
 
 export const GeneratedBlockSpecSchema: z.ZodType<GeneratedBlockSpec> =
   GeneratedBlockSchemaBase.superRefine(refineGeneratedBlock)
+
+function addForbiddenGeneratedPayloadIssues(
+  value: unknown,
+  ctx: z.RefinementCtx,
+  path: Array<string | number>,
+): void {
+  if (!value || typeof value !== "object") return
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => addForbiddenGeneratedPayloadIssues(item, ctx, [...path, index]))
+    return
+  }
+
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    const entryPath = [...path, key]
+    if (FORBIDDEN_GENERATED_PAYLOAD_KEY_SET.has(key)) {
+      ctx.addIssue({
+        code: "custom",
+        path: entryPath,
+        message: `Generated structured data must not include ${key}`,
+      })
+    }
+    addForbiddenGeneratedPayloadIssues(entry, ctx, entryPath)
+  }
+}
 
 export const ThemeTokenSpecSchema: z.ZodType<ThemeTokenSpec> = strictObject({
   colors: strictObject({
@@ -875,7 +903,7 @@ export const SiteSettingsSchema: z.ZodType<SiteSettings> = strictObject({
   }).nullable().optional(),
   updatedAt: z.string().optional(),
 }).superRefine((settings, ctx) => {
-  for (const key of ["className", "classes", "rawHtml", "html", "component", "sourceCode", "filePath"]) {
+  for (const key of FORBIDDEN_GENERATED_PAYLOAD_KEYS) {
     if (Object.prototype.hasOwnProperty.call(settings.chrome?.header ?? {}, key)) {
       ctx.addIssue({
         code: "custom",
