@@ -10,10 +10,18 @@ import { FAQCanvas } from "@/components/editor/canvas/blocks/FAQ"
 import { TestimonialsCanvas } from "@/components/editor/canvas/blocks/Testimonials"
 import {
   BeforeAfterGalleryCanvas,
+  BlogCardsCanvas,
+  ComparisonCanvas,
   ContactDetailsCanvas,
+  GalleryCanvas,
   InfoCardListCanvas,
+  LogoCloudCanvas,
   MediaHeroCanvas,
+  PricingCanvas,
+  ProcessStepsCanvas,
   ServiceCarouselCanvas,
+  StatsCanvas,
+  TeamCanvas,
 } from "@/components/editor/canvas/blocks/GenerationBlocks"
 
 export interface CanvasBlockRendererProps {
@@ -47,6 +55,14 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = (props) =
     case "contactSection": return <ContactSectionCanvas {...augmented} />
     case "faq":            return <FAQCanvas {...augmented} />
     case "testimonials":   return <TestimonialsCanvas {...augmented} />
+    case "pricing":        return <PricingCanvas {...augmented} />
+    case "stats":          return <StatsCanvas {...augmented} />
+    case "logoCloud":      return <LogoCloudCanvas {...augmented} />
+    case "gallery":        return <GalleryCanvas {...augmented} />
+    case "team":           return <TeamCanvas {...augmented} />
+    case "blogCards":      return <BlogCardsCanvas {...augmented} />
+    case "processSteps":   return <ProcessStepsCanvas {...augmented} />
+    case "comparison":     return <ComparisonCanvas {...augmented} />
     case "mediaHero":      return <MediaHeroCanvas {...augmented} />
     case "infoCardList":   return <InfoCardListCanvas {...augmented} />
     case "serviceCarousel": return <ServiceCarouselCanvas {...augmented} />

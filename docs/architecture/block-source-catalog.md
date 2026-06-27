@@ -4,6 +4,37 @@ Phase 2 provenance record for generated-site source-backed renderer variants.
 Generated sites consume structured tenant/page/block data only; this catalog does
 not allow generated tenant source files.
 
+## Source Archive vs Renderer Catalog
+
+There are two separate concepts:
+
+- `packages/contracts/block-sources/` is the local source archive. It stores
+  exact upstream/provider artifacts that SIAB can use as block build material.
+- `SITE_SOURCE_BACKED_BLOCK_VARIANTS` is the renderer-ready page-block subset.
+  A block enters this export only after contracts, editable fields, renderer
+  markup/CSS, provenance, and tests are in place.
+- `SITE_CHROME_CATALOG` and `SITE_SOURCE_BACKED_CHROME_VARIANTS` are the
+  renderer-ready header, footer, and announcement banner subset. Chrome stays in
+  `SiteSettings.chrome` instead of becoming page blocks, so generated sites
+  still choose approved nav/footer/banner styles through structured settings.
+
+Refreshing the archive must not expose new variants to AI generation by itself.
+Use:
+
+```bash
+pnpm blocks:archive-sources
+```
+
+Current local archive, retrieved on 2026-06-27:
+
+| Provider | Archived source artifacts | Intended use |
+| --- | ---: | --- |
+| Tailwind Plus free/downloadable | 36 | Operator-approved free/downloadable Tailwind snippets. Current renderer variants use renderer-owned Tailwind utility maps; future interactive snippets require Tailwind Plus Elements. |
+| HyperUI | 130 | Copy-paste Tailwind v4 HTML examples. Current renderer variants use renderer-owned Tailwind utility maps and no runtime package. |
+| Preline free | 89 | Free Preline iframe/source payloads. Current renderer variants use renderer-owned Preline/Tailwind utility maps plus the supported Preline CSS/forms path. |
+| Tailblocks | 126 | Public MIT GitHub source files. Current renderer variants use renderer-owned Tailwind utility maps and no runtime package. |
+| Mamba UI | 16 | Public component pages/source references. Current renderer variants use renderer-owned Tailwind utility maps and no runtime package. |
+
 ## Approval Gate
 
 `SITE_SOURCE_BACKED_BLOCK_VARIANTS` may include only variants whose provenance is:
@@ -21,6 +52,90 @@ not allow generated tenant source files.
 
 Paid, locked, unavailable, operator-archive-only, license-incompatible, deferred,
 or visually unaudited variants must stay out of the exported source-backed list.
+
+## Current Runtime Route
+
+The current approved source-backed renderer variants render structured
+`@siteinabox/site-renderer` React components. Provider styling is selected by
+approved variant IDs and mapped to renderer-owned Tailwind/Preline utility
+classes in `packages/site-renderer/src/blocks/native-classes.ts`. AI and CMS
+data never supply arbitrary class strings or provider HTML.
+
+The public renderer uses `apps/renderer/src/styles/site.css` with Tailwind v4
+through `@tailwindcss/vite`, app-local Preline theme/variant imports, the
+`@tailwindcss/forms` plugin, and `@source` coverage for
+`packages/site-renderer/src`. CMS preview/customizer uses
+`apps/cms/src/styles/site-renderer-preview.css` for the same renderer utility
+coverage while keeping `apps/cms/src/styles/globals.css` as the protected
+shadcn/SIAB import shell.
+
+Archived provider source under `packages/contracts/block-sources/` is provenance
+and review material only. It is not a production Tailwind scan target because
+archived provider pages can contain demo/pro asset URLs and unapproved sibling
+components. Runtime CSS scans renderer-owned implementation files only.
+
+Current external page-block and chrome variants are cataloged with native
+runtime kinds:
+
+- Tailwind Plus, HyperUI, Tailblocks, and Mamba UI use `copy-paste-tailwind`
+  or Tailwind Plus static runtime metadata.
+- Preline variants use `preline-ui` with `preline`,
+  `@tailwindcss/forms`, app-local `node_modules/preline/css/themes/theme.css`,
+  and app-local `node_modules/preline/variants.css`.
+
+`@siteinabox/site-renderer/styles.css` remains the base/fallback renderer CSS
+and the parity CSS home for Amicare/Amblast tenant-exclusive variants.
+
+## Chrome Catalog Decision
+
+Header, footer, and announcement/banner are global site chrome. They remain in
+`SiteSettings.chrome.header`, `SiteSettings.chrome.footer`, and
+`SiteSettings.chrome.banner`; they are not page blocks and are not listed in
+`SITE_BLOCK_SLUGS`. The editable data is limited to approved structured fields:
+logo, behavior, active mode, mobile menu, navigation arrays, footer composition,
+message/title/link, dismissibility, and visibility.
+
+The first source-backed chrome style is `hyperUiSimple` for:
+
+- `header:hyperUiSimple`, sourced from
+  `packages/contracts/block-sources/hyperui/marketing/headers/headers-1/example.html`;
+- `footer:hyperUiSimple`, sourced from
+  `packages/contracts/block-sources/hyperui/marketing/footers/footers-1/example.html`;
+- `banner:hyperUiSimple`, sourced from
+  `packages/contracts/block-sources/hyperui/marketing/announcements/announcements-1/example.html`.
+
+These variants render through `@siteinabox/site-renderer` chrome components and
+renderer-owned native class maps. Generated settings must not include raw HTML,
+component names, source code, file paths, or class strings for chrome.
+
+## Provider-Native Integration Rules
+
+The clean implementation path is provider-specific:
+
+- Tailwind Plus free/downloadable: use the downloaded HTML/Tailwind snippet in
+  renderer-owned components. If the snippet includes `@tailwindplus/elements`,
+  `el-*` elements, `command`, `commandfor`, disclosures, menus, dialogs, tabs, or
+  similar interactive behavior, the renderer/CMS preview app must install or
+  load `@tailwindplus/elements` before that variant is marked native-ready.
+- HyperUI: copy/paste Tailwind v4 markup. No HyperUI package or runtime is
+  expected. If a component declares official Tailwind plugin assumptions, record
+  them in the variant provenance before using it.
+- Tailblocks: copy/paste Tailwind source from the public MIT repository. No
+  Tailblocks package or runtime is expected.
+- Mamba UI: copy/paste Tailwind source material. No Mamba runtime is expected.
+  Because public docs/source have moved over time, use the archived source path
+  as the local reference for review.
+- Preline: use the supported Preline installation route. Current static Preline
+  blocks require `preline`, `@tailwindcss/forms`, app-local imports for
+  `node_modules/preline/css/themes/theme.css` and
+  `node_modules/preline/variants.css`, and renderer-source scanning. Interactive
+  Preline components also require `preline/dist` and
+  `window.HSStaticMethods.autoInit()` after client render.
+
+For Astro apps, copy-paste Tailwind provider blocks require Tailwind v4 through
+`@tailwindcss/vite`, an app CSS entry with `@import "tailwindcss"`, and `@source`
+coverage for renderer component files that contain provider utility classes.
+The structured renderer does not render arbitrary archived provider HTML.
 
 ## Source Access Findings
 
@@ -54,6 +169,16 @@ Current approved variants:
   `64ac58e032276db96bf343a8d4f332a8`, "Centered 2x2 grid".
 - `contactSection:tailwindPlusNewsletterDetails`:
   `82fc139db99143307df48bb9fe6152c5`, "Side-by-side with details".
+- `pricing:tailwindPlusSimpleTiers`:
+  `4a9182e85945751476472f12356adb68`, "Simple pricing tiers".
+- `stats:tailwindPlusSimple`:
+  `b5eb58f5c8fd565cc54bf488d647f02b`, "Stats section".
+- `logoCloud:tailwindPlusSimple`:
+  `6b864c393af88d7b8a2ac53eaebf6403`, "Logo cloud".
+- `team:tailwindPlusGrid`:
+  `1ea7e52a3e89a3cf7b4a0a4fd2dcdf84`, "Team grid".
+- `blogCards:tailwindPlusThreeColumn`:
+  `b8172652fa29dc3eac306c2a8a922323`, "Three-column blog section".
 
 The public Tailwind Plus category pages expose the selected components in the
 server-rendered `data-page` payload with public preview/snippet data and
@@ -66,15 +191,27 @@ Retrieval process:
    - `https://tailwindcss.com/plus/ui-blocks/marketing/sections/heroes`
    - `https://tailwindcss.com/plus/ui-blocks/marketing/sections/feature-sections`
    - `https://tailwindcss.com/plus/ui-blocks/marketing/sections/newsletter-sections`
+   - `https://tailwindcss.com/plus/ui-blocks/marketing/sections/pricing`
+   - `https://tailwindcss.com/plus/ui-blocks/marketing/sections/stats-sections`
+   - `https://tailwindcss.com/plus/ui-blocks/marketing/sections/logo-clouds`
+   - `https://tailwindcss.com/plus/ui-blocks/marketing/sections/team-sections`
+   - `https://tailwindcss.com/plus/ui-blocks/marketing/sections/blog-sections`
 2. Parse the `#app[data-page]` JSON.
 3. Find the component by `upstreamId`.
 4. Accept it only when the component is public/free/downloadable and exposes
    public snippet/preview payload data.
 
-No local operator-provided archive is required for the three current variants as
-of this verification. If Tailwind Plus removes public payload access later, these
-variants must move to `operator-archive-required` or be removed from the
-source-backed export until an approved local archive process exists.
+No local operator-provided archive is required for the current Tailwind Plus
+variants as of this verification. If Tailwind Plus removes public payload access
+later, affected variants must move to `operator-archive-required` or be removed
+from the source-backed export until an approved local archive process exists.
+
+The archived "Simple centered" Tailwind Plus hero includes header/mobile-menu
+Elements markup in the source snippet. SIAB currently maps only the centered
+hero section into renderer-owned native utility classes and renders header
+chrome as a separate structured settings concern. Any future literal Tailwind
+Plus header or mobile-menu variant must include Tailwind Plus Elements support
+before being marked renderer-ready.
 
 ### Tailblocks
 
@@ -116,22 +253,29 @@ variant is approved as public-page-copy source.
 
 ### Preline
 
-Current approved variant:
+Current approved variants:
 
 - `contactSection:prelineCenteredNewsletter`:
   `https://preline.co/blocks/forms/newsletter-signup-forms/#centered-newsletter-signup`.
+- `gallery:prelineSquareGrid`:
+  `https://preline.co/blocks/marketing/gallery-grids/#square-image-grid-with-four-columns`.
 
-The block page is publicly reachable, shows free/pro distinction in the page UI,
-and exposes the current centered newsletter block markup in an embedded source
-area. Preline remains a mixed catalog source: only free-badged public blocks are
-eligible, and the dual MIT/Fair Use terms must remain explicit in provenance.
-Pro blocks remain unavailable.
+The block pages are publicly reachable, show free/pro distinction in the page
+UI, and expose the current free block markup in embedded source areas. Preline
+remains a mixed catalog source: only free-badged public blocks are eligible, and
+the dual MIT/Fair Use terms must remain explicit in provenance. Pro blocks
+remain unavailable. The current approved Preline variants are static Preline
+sections, so they use Preline CSS/forms plus renderer-owned utility maps and do
+not initialize Preline JS. Any future interactive Preline block must add the
+documented JS init path before approval.
 
 ## Visual Review Notes
 
-Local review compared the renderer classes in `packages/site-renderer/src/styles.css`
-and block components against the approved source structure at desktop and mobile
-widths to the extent practical without a maintained screenshot-diff harness.
+Local review compared the renderer classes in
+`packages/site-renderer/src/blocks/native-classes.ts`,
+`packages/site-renderer/src/styles.css`, and block components against the
+approved source structure at desktop and mobile widths to the extent practical
+without a maintained screenshot-diff harness.
 
 All current external entries are `adapted-exact-style`, not literal upstream
 source copies. SIAB keeps structured contract props, normalized renderer DOM,
@@ -155,8 +299,8 @@ Before adding or changing a catalog variant:
    deferred, renderer-unsupported, or visually unaudited variants as ineligible
    for `SITE_SOURCE_BACKED_BLOCK_VARIANTS`.
 4. Implement or verify renderer support with a stable
-   `cms-block--source-*` class and fixture coverage in
-   `packages/site-renderer`.
+   `cms-block--source-*` class, native utility mapping where the provider route
+   is Tailwind/Preline-native, and fixture coverage in `packages/site-renderer`.
 5. Compare desktop and mobile output against the exact source/style. Set
    `visualExactnessStatus` only after review.
 6. Add/update tests that prove the variant is accepted only for its canonical

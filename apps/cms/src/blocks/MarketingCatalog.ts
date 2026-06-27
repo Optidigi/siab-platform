@@ -1,0 +1,201 @@
+import {
+  BadgeDollarSign,
+  BarChart3,
+  GalleryHorizontalEnd,
+  GitCompare,
+  Images,
+  Newspaper,
+  Route,
+  Users,
+} from "lucide-react"
+import { validateSafeHref } from "@/lib/security/safeHref"
+import { firstRichText, truncate, type BlockWithMeta } from "./_summary"
+import { blockBaseFields } from "./baseFields"
+
+const richInline = (name: string, description: string) => ({
+  name,
+  type: "json" as const,
+  admin: { editor: "richTextInline", description } as any,
+})
+
+const richBlock = (name: string, description: string) => ({
+  name,
+  type: "json" as const,
+  admin: { editor: "richTextBlock", description } as any,
+})
+
+const linkFields = () => [
+  { name: "label", type: "text" as const },
+  { name: "href", type: "text" as const, validate: validateSafeHref },
+]
+
+const titleSummary = (field = "title") => (v: Record<string, unknown>) => {
+  const text = firstRichText(v[field])
+  return text ? truncate(text.trim(), 40) : undefined
+}
+
+export const Pricing: BlockWithMeta = {
+  slug: "pricing",
+  icon: BadgeDollarSign,
+  description: "Structured pricing plans",
+  interfaceName: "PricingBlock",
+  fields: [
+    richInline("title", "Section heading for the pricing plans."),
+    richBlock("intro", "Introductory text above the pricing plans."),
+    { name: "plans", type: "array", required: true, fields: [
+      richInline("title", "Plan name."),
+      richBlock("description", "Short plan description."),
+      { name: "price", type: "text" },
+      { name: "period", type: "text" },
+      { name: "features", type: "array", fields: [
+        richInline("label", "Feature label."),
+        { name: "included", type: "checkbox", defaultValue: true },
+      ]},
+      { name: "cta", type: "group", fields: linkFields() },
+      { name: "badge", type: "text" },
+      { name: "highlighted", type: "checkbox", defaultValue: false },
+    ]},
+    ...blockBaseFields("pricing"),
+  ],
+  summary: titleSummary(),
+}
+
+export const Stats: BlockWithMeta = {
+  slug: "stats",
+  icon: BarChart3,
+  description: "Metric row",
+  interfaceName: "StatsBlock",
+  fields: [
+    richInline("title", "Section heading for metrics."),
+    richBlock("intro", "Introductory text above metrics."),
+    { name: "items", type: "array", required: true, fields: [
+      { name: "value", type: "text", required: true },
+      { name: "label", type: "text", required: true },
+      richBlock("description", "Optional metric explanation."),
+    ]},
+    ...blockBaseFields("stats"),
+  ],
+  summary: titleSummary(),
+}
+
+export const LogoCloud: BlockWithMeta = {
+  slug: "logoCloud",
+  icon: GalleryHorizontalEnd,
+  description: "Partner or customer logos",
+  interfaceName: "LogoCloudBlock",
+  fields: [
+    richInline("title", "Section heading for logos."),
+    richBlock("intro", "Introductory text above logos."),
+    { name: "logos", type: "array", required: true, fields: [
+      { name: "name", type: "text", required: true },
+      { name: "image", type: "upload", relationTo: "media", required: true },
+      { name: "href", type: "text", validate: validateSafeHref },
+    ]},
+    ...blockBaseFields("partners"),
+  ],
+  summary: titleSummary(),
+}
+
+export const Gallery: BlockWithMeta = {
+  slug: "gallery",
+  icon: Images,
+  description: "Image gallery grid",
+  interfaceName: "GalleryBlock",
+  fields: [
+    richInline("title", "Section heading for the gallery."),
+    richBlock("intro", "Introductory text above gallery images."),
+    { name: "images", type: "array", required: true, fields: [
+      { name: "image", type: "upload", relationTo: "media", required: true },
+      richBlock("caption", "Optional image caption."),
+      { name: "link", type: "group", fields: linkFields() },
+    ]},
+    { name: "cta", type: "group", fields: linkFields() },
+    ...blockBaseFields("gallery"),
+  ],
+  summary: titleSummary(),
+}
+
+export const Team: BlockWithMeta = {
+  slug: "team",
+  icon: Users,
+  description: "Team member cards",
+  interfaceName: "TeamBlock",
+  fields: [
+    richInline("title", "Section heading for the team."),
+    richBlock("intro", "Introductory text above team members."),
+    { name: "members", type: "array", required: true, fields: [
+      { name: "name", type: "text", required: true },
+      { name: "role", type: "text" },
+      richBlock("bio", "Short team member bio."),
+      { name: "image", type: "upload", relationTo: "media" },
+      { name: "links", type: "array", fields: linkFields() },
+    ]},
+    ...blockBaseFields("team"),
+  ],
+  summary: titleSummary(),
+}
+
+export const BlogCards: BlockWithMeta = {
+  slug: "blogCards",
+  icon: Newspaper,
+  description: "Article or update cards",
+  interfaceName: "BlogCardsBlock",
+  fields: [
+    richInline("title", "Section heading for posts."),
+    richBlock("intro", "Introductory text above post cards."),
+    { name: "posts", type: "array", required: true, fields: [
+      richInline("title", "Post title."),
+      richBlock("excerpt", "Short post excerpt."),
+      { name: "image", type: "upload", relationTo: "media" },
+      { name: "href", type: "text", validate: validateSafeHref },
+      { name: "date", type: "text" },
+      { name: "author", type: "text" },
+      { name: "cta", type: "group", fields: linkFields() },
+    ]},
+    ...blockBaseFields("updates"),
+  ],
+  summary: titleSummary(),
+}
+
+export const ProcessSteps: BlockWithMeta = {
+  slug: "processSteps",
+  icon: Route,
+  description: "Step-by-step process",
+  interfaceName: "ProcessStepsBlock",
+  fields: [
+    richInline("title", "Section heading for the process."),
+    richBlock("intro", "Introductory text above process steps."),
+    { name: "steps", type: "array", required: true, fields: [
+      richInline("title", "Step title."),
+      richBlock("description", "Step description."),
+      { name: "icon", type: "text" },
+      { name: "image", type: "upload", relationTo: "media" },
+      { name: "cta", type: "group", fields: linkFields() },
+    ]},
+    ...blockBaseFields("process"),
+  ],
+  summary: titleSummary(),
+}
+
+export const Comparison: BlockWithMeta = {
+  slug: "comparison",
+  icon: GitCompare,
+  description: "Structured comparison matrix",
+  interfaceName: "ComparisonBlock",
+  fields: [
+    richInline("title", "Section heading for the comparison."),
+    richBlock("intro", "Introductory text above the comparison."),
+    { name: "columns", type: "array", required: true, fields: [
+      richInline("title", "Column title."),
+      richBlock("description", "Column description."),
+      { name: "cta", type: "group", fields: linkFields() },
+    ]},
+    { name: "rows", type: "array", required: true, fields: [
+      { name: "label", type: "text", required: true },
+      { name: "values", type: "json",
+        admin: { description: "Array of structured comparison values matching the column order." } },
+    ]},
+    ...blockBaseFields("compare"),
+  ],
+  summary: titleSummary(),
+}

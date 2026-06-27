@@ -261,12 +261,12 @@ describe("legacy tenant generation fixtures", () => {
 
     expect(amicareSeo).toMatchObject({
       title: "Amicare-Zorg",
-      canonical: "https://ami-care.nl/",
+      canonical: "https://amicare.optidigi.nl/",
     })
     expect(amicareSeo.openGraph?.images?.[0]?.url).toBe("/og-default.png")
     expect(amblastSeo).toMatchObject({
       title: "Portfolio | Amblast",
-      canonical: "https://amblast.nl/portfolio",
+      canonical: "https://amblast.optidigi.nl/portfolio",
     })
     expect(amblastPublishedSiteSnapshot.theme?.colors?.accent).toBe("#ffd500")
     expect(amblastPublishedSiteSnapshot.settings.branding?.logo).toMatchObject({ filename: "cropped-AMBlast_logo.png" })

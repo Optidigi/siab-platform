@@ -1,7 +1,7 @@
 ---
 import { renderToStaticMarkup } from "react-dom/server"
 import { SitePageRenderer, buildPageSeoMetadata } from "@siteinabox/site-renderer"
-import "@siteinabox/site-renderer/styles.css"
+import "../styles/site.css"
 import { normalizeRequestHost, resolvePublishedPage } from "../lib/snapshot"
 
 const pathname = `/${Astro.params.path ?? ""}`

@@ -2,6 +2,7 @@ import * as React from "react"
 import type { TestimonialsBlock } from "@siteinabox/contracts"
 import { sectionAnalyticsAttrs } from "../analytics"
 import { resolveMedia } from "../media"
+import { cx, nativeBlockClassName } from "./native-classes"
 import type { BlockRenderOptions } from "./types"
 import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variants"
 
@@ -12,27 +13,27 @@ export function TestimonialsBlockRenderer({ block, options }: { block: Testimoni
   return (
     <section
       id={block.anchor || undefined}
-      className={`cms-block cms-block--testimonials ${sourceVariant}`.trim()}
+      className={cx("cms-block cms-block--testimonials", sourceVariant, nativeBlockClassName(block, "section"))}
       data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "testimonials", options.index)}
     >
       {block.title && (
-        <h2 className="cms-block__title" style={{ fontFamily: "var(--font-heading)" }}>
+        <h2 className={cx("cms-block__title", nativeBlockClassName(block, "title"))} style={{ fontFamily: "var(--font-heading)" }}>
           {block.title}
         </h2>
       )}
-      <ul className="cms-block__testimonials-list">
+      <ul className={cx("cms-block__testimonials-list", nativeBlockClassName(block, "list"))}>
         {block.items.map((item, i) => {
           const avatar = resolveMedia(item.avatar ?? null, options.mediaResolver)
           return (
-            <li key={i} className="cms-block__testimonial" style={{ borderRadius: "var(--radius-lg)" }}>
+            <li key={i} className={cx("cms-block__testimonial", nativeBlockClassName(block, "item"))} style={{ borderRadius: "var(--radius-lg)" }}>
               <blockquote className="cms-block__testimonial-quote" style={{ fontFamily: "var(--font-text)" }}>
                 {item.quote}
               </blockquote>
               <figcaption className="cms-block__testimonial-attrib">
                 {avatar && (
-                  <span className="cms-block__testimonial-avatar" style={{ borderRadius: "var(--radius-lg)" }}>
+                  <span className={cx("cms-block__testimonial-avatar", nativeBlockClassName(block, "avatar"))} style={{ borderRadius: "var(--radius-lg)" }}>
                     <img src={avatar.src} alt={avatar.alt ?? item.author} loading="lazy" decoding="async" />
                   </span>
                 )}

@@ -3,6 +3,7 @@ import type { FeatureListBlock } from "@siteinabox/contracts"
 import { sectionAnalyticsAttrs } from "../analytics"
 import { RichTextRenderer } from "../rich-text"
 import { resolveIcon } from "./icons"
+import { cx, nativeBlockClassName } from "./native-classes"
 import type { BlockRenderOptions } from "./types"
 import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variants"
 
@@ -13,28 +14,28 @@ export function FeatureListBlockRenderer({ block, options }: { block: FeatureLis
   return (
     <section
       id={block.anchor || undefined}
-      className={`cms-block cms-block--featurelist ${sourceVariant}`.trim()}
+      className={cx("cms-block cms-block--featurelist", sourceVariant, nativeBlockClassName(block, "section"))}
       data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "featureList", options.index)}
     >
       {block.title && (
-        <h2 className="cms-block__title" style={{ fontFamily: "var(--font-heading)" }}>
+        <h2 className={cx("cms-block__title", nativeBlockClassName(block, "title"))} style={{ fontFamily: "var(--font-heading)" }}>
           <RichTextRenderer value={block.title} />
         </h2>
       )}
       {block.intro && (
-        <div className="cms-block__intro" style={{ fontFamily: "var(--font-text)" }}>
+        <div className={cx("cms-block__intro", nativeBlockClassName(block, "intro"))} style={{ fontFamily: "var(--font-text)" }}>
           <RichTextRenderer value={block.intro} />
         </div>
       )}
-      <ul className="cms-block__features">
+      <ul className={cx("cms-block__features", nativeBlockClassName(block, "list"))}>
         {block.features.map((feature, i) => {
           const Icon = resolveIcon(feature.icon)
           return (
-            <li key={i} className="cms-block__feature" style={{ borderRadius: "var(--radius-lg)" }}>
+            <li key={i} className={cx("cms-block__feature", nativeBlockClassName(block, "item"))} style={{ borderRadius: "var(--radius-lg)" }}>
               {Icon && (
-                <span className="cms-block__feature-icon" aria-hidden="true">
+                <span className={cx("cms-block__feature-icon", nativeBlockClassName(block, "icon"))} aria-hidden="true">
                   <Icon />
                 </span>
               )}

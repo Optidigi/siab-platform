@@ -3,6 +3,7 @@ import type { HeroBlock } from "@siteinabox/contracts"
 import { actionAnalyticsAttrs, sectionAnalyticsAttrs } from "../analytics"
 import { resolveMedia } from "../media"
 import { RichTextRenderer } from "../rich-text"
+import { cx, nativeBlockClassName } from "./native-classes"
 import type { BlockRenderOptions } from "./types"
 import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variants"
 
@@ -15,21 +16,21 @@ export function HeroBlockRenderer({ block, options }: { block: HeroBlock; option
   return (
     <section
       id={block.anchor || undefined}
-      className={`cms-block cms-block--hero ${sourceVariant}`.trim()}
+      className={cx("cms-block cms-block--hero", sourceVariant, nativeBlockClassName(block, "section"))}
       data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "hero", options.index)}
     >
       {block.eyebrow && (
-        <div className="cms-block__eyebrow">
+        <div className={cx("cms-block__eyebrow", nativeBlockClassName(block, "eyebrow"))}>
           <RichTextRenderer value={block.eyebrow} />
         </div>
       )}
-      <h1 className="cms-block__title" style={{ fontFamily: "var(--font-title)" }}>
+      <h1 className={cx("cms-block__title", nativeBlockClassName(block, "title"))} style={{ fontFamily: "var(--font-title)" }}>
         <RichTextRenderer value={block.headline} />
       </h1>
       {block.subheadline && (
-        <div className="cms-block__subheadline" style={{ fontFamily: "var(--font-text)" }}>
+        <div className={cx("cms-block__subheadline", nativeBlockClassName(block, "intro"))} style={{ fontFamily: "var(--font-text)" }}>
           <RichTextRenderer value={block.subheadline} />
         </div>
       )}
@@ -44,7 +45,7 @@ export function HeroBlockRenderer({ block, options }: { block: HeroBlock; option
       )}
       {ctaLabel && ctaHref && (
         <a
-          className="cms-block__cta"
+          className={cx("cms-block__cta", nativeBlockClassName(block, "cta"))}
           href={ctaHref}
           style={{ borderRadius: "var(--radius-md)" }}
           {...actionAnalyticsAttrs("primary", ctaLabel)}
@@ -53,7 +54,7 @@ export function HeroBlockRenderer({ block, options }: { block: HeroBlock; option
         </a>
       )}
       {image && (
-        <figure className="cms-block__image" style={{ borderRadius: "var(--radius-lg)" }}>
+        <figure className={cx("cms-block__image", nativeBlockClassName(block, "image"))} style={{ borderRadius: "var(--radius-lg)" }}>
           <img src={image.src} alt={image.alt ?? ""} loading="eager" decoding="async" />
         </figure>
       )}

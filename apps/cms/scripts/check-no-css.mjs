@@ -19,6 +19,7 @@ const UI_PACKAGE_SRC = join(PLATFORM_ROOT, "packages/ui/src")
 const ALLOWED_CSS_FILES = new Set([
   "src/styles/globals.css",
   "src/styles/shadcn.css",
+  "src/styles/site-renderer-preview.css",
   "src/styles/siab.css",
   "packages/ui/src/styles/shadcn.css",
 ])

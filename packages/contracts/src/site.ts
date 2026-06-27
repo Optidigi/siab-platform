@@ -8,9 +8,22 @@ export const SITE_BLOCK_SLUGS = [
   "cta",
   "richText",
   "contactSection",
+  "pricing",
+  "stats",
+  "logoCloud",
+  "gallery",
+  "team",
+  "blogCards",
+  "processSteps",
+  "comparison",
 ] as const
 
 export type SiteBlockSlug = (typeof SITE_BLOCK_SLUGS)[number]
+
+export const SITE_DEFERRED_MARKETING_BLOCK_SLUGS = [
+] as const
+
+export type SiteDeferredMarketingBlockSlug = (typeof SITE_DEFERRED_MARKETING_BLOCK_SLUGS)[number]
 
 export const SITE_PARITY_BLOCK_SLUGS = [
   "mediaHero",
@@ -22,6 +35,7 @@ export const SITE_PARITY_BLOCK_SLUGS = [
 
 export const SITE_GENERATION_BLOCK_SLUGS = [
   ...SITE_BLOCK_SLUGS,
+  ...SITE_DEFERRED_MARKETING_BLOCK_SLUGS,
   ...SITE_PARITY_BLOCK_SLUGS,
 ] as const
 
@@ -261,6 +275,112 @@ export type ContactSectionBlock = BlockInstanceBase & {
   provider?: FormProviderConfig | null
 }
 
+export type PricingBlock = BlockInstanceBase & {
+  blockType: "pricing"
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  plans: Array<{
+    title: RtRoot
+    description?: RtRoot | null
+    price?: string | null
+    period?: string | null
+    features?: Array<{ label: RtRoot; included?: boolean | null }> | null
+    cta?: LinkRef | null
+    badge?: string | null
+    highlighted?: boolean | null
+  }>
+}
+
+export type StatsBlock = BlockInstanceBase & {
+  blockType: "stats"
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  items: Array<{
+    value: string
+    label: string
+    description?: RtRoot | null
+  }>
+}
+
+export type LogoCloudBlock = BlockInstanceBase & {
+  blockType: "logoCloud"
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  logos: Array<{
+    name: string
+    image: MediaRef
+    href?: string | null
+  }>
+}
+
+export type GalleryBlock = BlockInstanceBase & {
+  blockType: "gallery"
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  images: Array<{
+    image: MediaRef
+    caption?: RtRoot | null
+    link?: LinkRef | null
+  }>
+  cta?: LinkRef | null
+}
+
+export type TeamBlock = BlockInstanceBase & {
+  blockType: "team"
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  members: Array<{
+    name: string
+    role?: string | null
+    bio?: RtRoot | null
+    image?: MediaRef
+    links?: LinkRef[] | null
+  }>
+}
+
+export type BlogCardsBlock = BlockInstanceBase & {
+  blockType: "blogCards"
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  posts: Array<{
+    title: RtRoot
+    excerpt?: RtRoot | null
+    image?: MediaRef
+    href?: string | null
+    date?: string | null
+    author?: string | null
+    cta?: LinkRef | null
+  }>
+}
+
+export type ProcessStepsBlock = BlockInstanceBase & {
+  blockType: "processSteps"
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  steps: Array<{
+    title: RtRoot
+    description?: RtRoot | null
+    icon?: string | null
+    image?: MediaRef
+    cta?: LinkRef | null
+  }>
+}
+
+export type ComparisonBlock = BlockInstanceBase & {
+  blockType: "comparison"
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  columns: Array<{
+    title: RtRoot
+    description?: RtRoot | null
+    cta?: LinkRef | null
+  }>
+  rows: Array<{
+    label: string
+    values: Array<string | boolean | null>
+  }>
+}
+
 export type Block =
   | HeroBlock
   | MediaHeroBlock
@@ -274,6 +394,14 @@ export type Block =
   | CTABlock
   | RichTextBlock
   | ContactSectionBlock
+  | PricingBlock
+  | StatsBlock
+  | LogoCloudBlock
+  | GalleryBlock
+  | TeamBlock
+  | BlogCardsBlock
+  | ProcessStepsBlock
+  | ComparisonBlock
 
 export type Page = {
   id?: string
@@ -312,6 +440,17 @@ export type SocialLink = { platform: string; url: string }
 export type NavLink = { label: string; href: string; external?: boolean }
 export type Alias = { host: string }
 export type ServiceAreaEntry = { name: string }
+
+export type SiteChromeVariant = "default" | "hyperUiSimple" | "amicareZen" | "amblastIndustrial"
+
+export type SiteChromeBanner = {
+  variant?: SiteChromeVariant | null
+  visible?: boolean | null
+  title?: string | null
+  message: string
+  link?: LinkRef | null
+  dismissible?: boolean | null
+}
 
 export type JsonLdSettings = {
   organization?: {
@@ -358,6 +497,7 @@ export type SiteSettings = {
   } | null
   chrome?: {
     header?: {
+      variant?: SiteChromeVariant | null
       logo?: MediaRef
       behavior?: "static" | "sticky" | null
       activeMode?: "path" | "anchor" | "none" | null
@@ -365,12 +505,14 @@ export type SiteSettings = {
       cta?: LinkRef | null
     } | null
     footer?: {
+      variant?: SiteChromeVariant | null
       logo?: MediaRef
       tagline?: string | null
       copyright?: string | null
       legalLinks?: LinkRef[] | null
       columns?: FooterCompositionColumn[] | null
     } | null
+    banner?: SiteChromeBanner | null
   } | null
   maintenance?: {
     enabled?: boolean | null

@@ -3,6 +3,7 @@ import type { CTABlock } from "@siteinabox/contracts"
 import { actionAnalyticsAttrs, sectionAnalyticsAttrs } from "../analytics"
 import { resolveMedia } from "../media"
 import { RichTextRenderer } from "../rich-text"
+import { cx, nativeBlockClassName } from "./native-classes"
 import type { BlockRenderOptions } from "./types"
 import { rendererVariantClassName, resolveBlockVariant, runtimeVariantDataAttribute } from "./variants"
 
@@ -13,7 +14,7 @@ function fallbackPresentationVariantFor(href: string | null | undefined): "conta
 
 function presentationVariantFor(block: CTABlock, href: string | null | undefined): "contact" | "quote" {
   const variant = resolveBlockVariant(block).variant
-  if (variant === "quote" || variant === "tailblocksCtaA") return "quote"
+  if (variant === "quote" || variant === "tailblocksCtaA" || variant === "amicareQuoteContact") return "quote"
   return fallbackPresentationVariantFor(href)
 }
 
@@ -29,21 +30,21 @@ export function CTABlockRenderer({ block, options }: { block: CTABlock; options:
   return (
     <section
       id={block.anchor || undefined}
-      className={`cms-block cms-block--cta cms-block--cta-${variant} ${sourceVariant}`.trim()}
+      className={cx("cms-block cms-block--cta", `cms-block--cta-${variant}`, sourceVariant, nativeBlockClassName(block, "section"))}
       data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "cta", options.index)}
     >
       {block.eyebrow && (
-        <div className="cms-block__eyebrow" style={{ fontFamily: "var(--font-script)" }}>
+        <div className={cx("cms-block__eyebrow", nativeBlockClassName(block, "eyebrow"))} style={{ fontFamily: "var(--font-script)" }}>
           <RichTextRenderer value={block.eyebrow} />
         </div>
       )}
-      <h2 className="cms-block__title" style={{ fontFamily: "var(--font-heading)" }}>
+      <h2 className={cx("cms-block__title", nativeBlockClassName(block, "title"))} style={{ fontFamily: "var(--font-heading)" }}>
         <RichTextRenderer value={block.headline} />
       </h2>
       {block.description && (
-        <div className="cms-block__description" style={{ fontFamily: "var(--font-text)" }}>
+        <div className={cx("cms-block__description", nativeBlockClassName(block, "description"))} style={{ fontFamily: "var(--font-text)" }}>
           <RichTextRenderer value={block.description} />
         </div>
       )}
@@ -57,10 +58,10 @@ export function CTABlockRenderer({ block, options }: { block: CTABlock; options:
           decoding="async"
         />
       )}
-      <div className="cms-block__cta-actions">
+      <div className={cx("cms-block__cta-actions", nativeBlockClassName(block, "actions"))}>
         {primaryLabel && primaryHref && (
           <a
-            className="cms-block__cta cms-block__cta--primary"
+            className={cx("cms-block__cta cms-block__cta--primary", nativeBlockClassName(block, "ctaPrimary"), nativeBlockClassName(block, "cta"))}
             href={primaryHref}
             style={{ borderRadius: "var(--radius-md)" }}
             {...actionAnalyticsAttrs("primary", primaryLabel)}
@@ -70,7 +71,7 @@ export function CTABlockRenderer({ block, options }: { block: CTABlock; options:
         )}
         {secondaryLabel && secondaryHref && (
           <a
-            className="cms-block__cta cms-block__cta--secondary"
+            className={cx("cms-block__cta cms-block__cta--secondary", nativeBlockClassName(block, "ctaSecondary"))}
             href={secondaryHref}
             style={{ borderRadius: "var(--radius-md)" }}
             {...actionAnalyticsAttrs("secondary", secondaryLabel)}

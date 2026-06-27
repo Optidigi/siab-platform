@@ -17,6 +17,12 @@ const inlineText = (text: string): RtInlineRoot => ({
   children: [{ t: "text", v: text }],
 })
 
+const inlineParts = (parts: Array<{ text: string; marks?: Array<"bold" | "italic" | "underline"> }>): RtInlineRoot => ({
+  t: "root",
+  variant: "inline",
+  children: parts.map((part) => ({ t: "text", v: part.text, ...(part.marks ? { marks: part.marks } : {}) })),
+})
+
 const blockText = (text: string): RtBlockRoot => ({
   t: "root",
   variant: "block",
@@ -42,6 +48,42 @@ const blockRichText = (parts: Array<{ heading?: string; text?: string }>): RtBlo
     }
     return nodes
   }),
+})
+
+const amicareEditorialBody = (): RtBlockRoot => ({
+  t: "root",
+  variant: "block",
+  children: [
+    { t: "themed", id: "eyebrow", props: { text: "Over mij" } },
+    { t: "heading", level: 2, children: [{ t: "text", v: "Het vak waar mijn hart ligt." }] },
+    {
+      t: "paragraph",
+      children: [
+        {
+          t: "text",
+          v: "Amicare-Zorg biedt begeleiding vanuit betrokkenheid, duidelijkheid en respect voor de persoonlijke situatie van ieder kind en gezin.",
+        },
+      ],
+    },
+    {
+      t: "paragraph",
+      children: [
+        {
+          t: "text",
+          v: "Ik geloof in rust, vertrouwen en kleine stappen die jongeren helpen om weer grip te krijgen op hun dag.",
+        },
+      ],
+    },
+    {
+      t: "blockquote",
+      children: [
+        {
+          t: "paragraph",
+          children: [{ t: "text", v: "Jeugdzorg werkt wanneer een jongere zich gezien voelt." }],
+        },
+      ],
+    },
+  ],
 })
 
 const manifestEntries = (tenantId: string, settings: GeneratedSiteSettings, pages: GeneratedPageSpec[]) => ({
@@ -172,19 +214,21 @@ const rendererParityBlocks: SiteBlockManifestItem[] = [
 
 const amicareSettings: GeneratedSiteSettings = {
   siteName: "Amicare-Zorg",
-  siteUrl: "https://ami-care.nl",
+  siteUrl: "https://amicare.optidigi.nl",
   description: "Amicare-Zorg - werken in de jeugdzorg met hart en toewijding.",
   language: "nl",
   contactEmail: "info@ami-care.nl",
   branding: { primaryColor: "#a04e32" },
   chrome: {
     header: {
+      variant: "amicareZen",
       behavior: "sticky",
       activeMode: "anchor",
       mobileMenu: "dropdown",
       cta: { label: "Contact", href: "#contact" },
     },
     footer: {
+      variant: "amicareZen",
       tagline: "Jeugdzorg met hart en toewijding.",
       copyright: "© Amicare-Zorg",
       columns: [
@@ -229,7 +273,7 @@ const amicareSettings: GeneratedSiteSettings = {
       enabled: true,
       type: "Organization",
       name: "Amicare-Zorg",
-      url: "https://ami-care.nl",
+      url: "https://amicare.optidigi.nl",
       logo: { id: "amicare-og", url: "/og-default.png", filename: "og-default.png", alt: "Amicare-Zorg" },
     },
     localBusiness: {
@@ -259,10 +303,15 @@ const amicarePages: GeneratedPageSpec[] = [
     blocks: [
       {
         blockType: "hero",
-        variant: "minimal",
+        variant: "amicareZenHero",
         anchor: "top",
+        analytics: { sectionVariant: "amicare-zen-hero" },
         eyebrow: inlineText("Amicare-Zorg"),
-        headline: inlineText("Jeugdzorg met hart en toewijding"),
+        headline: inlineParts([
+          { text: "Jeugdzorg met " },
+          { text: "hart", marks: ["italic"] },
+          { text: " en toewijding" },
+        ]),
         subheadline: blockText("Persoonlijke begeleiding, rust en structuur voor jongeren en gezinnen die tijdelijk extra steun nodig hebben."),
         pills: [{ label: "Jeugdzorg" }, { label: "Begeleiding" }, { label: "Vertrouwen" }],
         cta: { label: "Neem contact op", href: "#contact" },
@@ -270,10 +319,11 @@ const amicarePages: GeneratedPageSpec[] = [
       },
       {
         blockType: "featureList",
-        variant: "services",
+        variant: "amicareCareCards",
         anchor: "werkwijze",
-        title: inlineText("Werkwijze"),
-        intro: blockText("Amicare werkt met duidelijke afspraken, korte lijnen en aandacht voor wat een jongere nodig heeft."),
+        analytics: { sectionVariant: "amicare-care-cards" },
+        title: inlineParts([{ text: "Werken vanuit " }, { text: "rust", marks: ["italic"] }]),
+        intro: blockText("Mijn werkwijze"),
         features: [
           { title: inlineText("Veiligheid"), description: blockText("Een rustige basis met voorspelbare begeleiding."), icon: "heart" },
           { title: inlineText("Samenwerking"), description: blockText("Afstemming met gezin, verwijzers en betrokken professionals."), icon: "users" },
@@ -282,32 +332,64 @@ const amicarePages: GeneratedPageSpec[] = [
       },
       {
         blockType: "richText",
-        variant: "prose",
+        variant: "amicareEditorial",
         anchor: "over",
-        body: blockRichText([
-          {
-            heading: "Over Amicare",
-            text: "Amicare-Zorg biedt begeleiding vanuit betrokkenheid, duidelijkheid en respect voor de persoonlijke situatie van ieder kind en gezin.",
-          },
-          {
-            heading: "Wat telt",
-            text: "Een veilige omgeving, eerlijk contact en begeleiding die past bij het tempo van de jongere.",
-          },
-        ]),
+        analytics: { sectionVariant: "amicare-editorial" },
+        body: amicareEditorialBody(),
       },
       {
         blockType: "cta",
-        variant: "quote",
+        variant: "amicareQuoteContact",
         anchor: "wat-telt",
-        eyebrow: inlineText("Kennismaken"),
-        headline: inlineText("Bespreek wat er nodig is"),
+        analytics: { sectionVariant: "amicare-quote-contact" },
+        eyebrow: inlineText("Wat telt"),
+        headline: inlineText("Echt verschil maken voor jongeren en gezinnen."),
         description: blockText("Neem contact op om rustig te bekijken welke ondersteuning passend is."),
-        primary: { label: "Mail Amicare", href: "mailto:info@ami-care.nl" },
+        primary: { label: "Neem contact op", href: "#contact" },
+        secondary: { label: "Mail Amicare", href: "mailto:info@ami-care.nl" },
+        backgroundImage: { id: "amicare-toys", url: "/media/toys.jpg", filename: "toys.jpg", alt: "Speelgoed" },
+      },
+      {
+        blockType: "testimonials",
+        variant: "amicareStoryCards",
+        anchor: "ervaringen",
+        analytics: { sectionVariant: "amicare-story-cards" },
+        title: "Ervaringen",
+        items: [
+          {
+            quote: "Er was meteen rust en duidelijkheid. Dat maakte het voor ons gezin veel makkelijker om stappen te zetten.",
+            author: "Ouder",
+            role: "Begeleidingstraject",
+          },
+          {
+            quote: "De afspraken waren helder en de begeleiding sloot aan bij wat de jongere op dat moment aankon.",
+            author: "Verwijzer",
+            role: "Samenwerking",
+          },
+        ],
+      },
+      {
+        blockType: "faq",
+        variant: "amicareWarmAccordion",
+        anchor: "vragen",
+        analytics: { sectionVariant: "amicare-warm-accordion" },
+        title: inlineText("Veelgestelde vragen"),
+        items: [
+          {
+            question: inlineText("Voor wie is Amicare-Zorg bedoeld?"),
+            answer: blockText("Voor jongeren en gezinnen die tijdelijk extra begeleiding, structuur of afstemming nodig hebben."),
+          },
+          {
+            question: inlineText("Hoe start een kennismaking?"),
+            answer: blockText("We beginnen met rustig contact en bespreken samen welke ondersteuning passend is."),
+          },
+        ],
       },
       {
         blockType: "contactSection",
-        variant: "form",
+        variant: "amicareContactForm",
         anchor: "contact",
+        analytics: { sectionVariant: "amicare-contact-form" },
         title: inlineText("Neem contact op"),
         description: blockText("Stuur een bericht om rustig te bespreken welke ondersteuning passend is."),
         formName: "amicare-contact",
@@ -393,7 +475,7 @@ const withAmblastWeb3FormsProvider = (block: typeof quoteContactBlock | typeof d
     method: "POST" as const,
     hiddenFields: [
       { name: "from_name", value: "Amblast | Facility Services" },
-      { name: "subject", value: "Bericht via amblast.nl" },
+      { name: "subject", value: "Bericht via amblast.optidigi.nl" },
     ],
     honeypotField: "botcheck",
     fallbackHref: "mailto:info@amblast.nl",
@@ -467,7 +549,7 @@ const amblastMedia = {
 
 const amblastSettings: GeneratedSiteSettings = {
   siteName: "Amblast | Facility Services",
-  siteUrl: "https://amblast.nl",
+  siteUrl: "https://amblast.optidigi.nl",
   description: "Specialist in industriële schoonmaak in Limburg.",
   language: "nl-NL",
   contactEmail: "info@amblast.nl",
@@ -478,6 +560,7 @@ const amblastSettings: GeneratedSiteSettings = {
   },
   chrome: {
     header: {
+      variant: "amblastIndustrial",
       logo: { id: "amblast-logo", url: "/uploads/logo/cropped-AMBlast_logo.png", filename: "cropped-AMBlast_logo.png", alt: "Amblast logo", width: 714, height: 179 },
       behavior: "static",
       activeMode: "path",
@@ -485,8 +568,9 @@ const amblastSettings: GeneratedSiteSettings = {
       cta: { label: "Contact", href: "/contact" },
     },
     footer: {
+      variant: "amblastIndustrial",
       logo: { id: "amblast-logo", url: "/uploads/logo/cropped-AMBlast_logo.png", filename: "cropped-AMBlast_logo.png", alt: "Amblast logo", width: 714, height: 179 },
-      tagline: "Specialist in industriële schoonmaak.",
+      tagline: "Manage your facility",
       copyright: "Copyright © 2026 Amblast",
       legalLinks: [{ label: "Privacy verklaring", href: "#" }],
       columns: [
@@ -556,7 +640,7 @@ const amblastSettings: GeneratedSiteSettings = {
       enabled: true,
       type: "HomeAndConstructionBusiness",
       name: "Amblast | Facility Services",
-      url: "https://amblast.nl",
+      url: "https://amblast.optidigi.nl",
       logo: { id: "amblast-logo", url: "/uploads/logo/cropped-AMBlast_logo.png", filename: "cropped-AMBlast_logo.png", alt: "Amblast logo", width: 714, height: 179 },
     },
     localBusiness: {
@@ -879,6 +963,7 @@ const amblastRendererPages: GeneratedPageSpec[] = [
         analytics: { sectionVariant: "amblast-shaped-overlay" },
         headline: inlineText("Over ons"),
         backgroundImage: amblastMedia.heroAbout,
+        foregroundImage: amblastMedia.aboutPortrait,
         overlay: { color: "#111111", opacity: 0.42 },
         minHeight: "tall",
         contentAlign: "left",
@@ -1037,19 +1122,19 @@ export const amicareSiteGenerationSpec: SiteGenerationSpec = {
   intake: {
     businessName: "Amicare-Zorg",
     tenantSlug: "amicare",
-    primaryDomain: "ami-care.nl",
-    siteUrl: "https://ami-care.nl",
+    primaryDomain: "amicare.optidigi.nl",
+    siteUrl: "https://amicare.optidigi.nl",
     language: "nl",
     industry: "Jeugdzorg",
     serviceArea: ["Nederland"],
     goals: ["CMS-backed legacy tenant parity", "Renderer-compatible data validation"],
     requestedPages: [{ slug: "index", title: "Home", purpose: "Homepage" }],
   },
-  tenant: { name: "Amicare-Zorg", slug: "amicare", domain: "ami-care.nl", status: "active" },
+  tenant: { name: "Amicare-Zorg", slug: "amicare", domain: "amicare.optidigi.nl", status: "active" },
   theme: amicareTheme,
   settings: amicareSettings,
   pages: amicareRendererPages,
-  blocks: canonicalBlocks.filter((block) => ["hero", "featureList", "richText", "cta", "contactSection"].includes(block.slug)),
+  blocks: canonicalBlocks,
   assets: [
     { id: "amicare-bedroom", url: "/media/bedroom.jpg", filename: "bedroom.jpg", alt: "Rustige kinderkamer" },
     { id: "amicare-toys", url: "/media/toys.jpg", filename: "toys.jpg", alt: "Speelgoed" },
@@ -1067,8 +1152,8 @@ export const amblastSiteGenerationSpec: SiteGenerationSpec = {
   intake: {
     businessName: "Amblast | Facility Services",
     tenantSlug: "amblast",
-    primaryDomain: "amblast.nl",
-    siteUrl: "https://amblast.nl",
+    primaryDomain: "amblast.optidigi.nl",
+    siteUrl: "https://amblast.optidigi.nl",
     language: "nl-NL",
     industry: "Industriële reiniging",
     serviceArea: ["Limburg"],
@@ -1087,7 +1172,7 @@ export const amblastSiteGenerationSpec: SiteGenerationSpec = {
       assets: [amblastMedia.logo],
     },
   },
-  tenant: { name: "Amblast | Facility Services", slug: "amblast", domain: "amblast.nl", status: "active" },
+  tenant: { name: "Amblast | Facility Services", slug: "amblast", domain: "amblast.optidigi.nl", status: "active" },
   theme: amblastTheme,
   settings: amblastSettings,
   pages: amblastRendererPages,

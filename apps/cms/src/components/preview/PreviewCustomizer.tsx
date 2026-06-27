@@ -1,6 +1,5 @@
 "use client"
 
-import "@siteinabox/site-renderer/styles.css"
 import * as React from "react"
 import { SitePageRenderer } from "@siteinabox/site-renderer"
 import type { Page, SiteSettings, ThemeTokenSpec } from "@siteinabox/contracts"

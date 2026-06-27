@@ -3,7 +3,7 @@ import type { Page, SiteSettings } from "@siteinabox/contracts"
 import type { ThemeTokenSpec } from "@siteinabox/contracts/generation"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { BlockRenderer, type BlockRegistry } from "./blocks"
-import { SiteFooter, SiteHeader } from "./chrome"
+import { SiteBanner, SiteFooter, SiteHeader } from "./chrome"
 import type { MediaResolver } from "./media"
 import { ThemeStyle, themeMode } from "./theme"
 
@@ -46,6 +46,7 @@ export function SitePageRenderer({
       >
         <div className="site-frame-root">
           {header ?? <SiteHeader settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />}
+          <SiteBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
           {page.blocks.map((block, index) => (
             <BlockRenderer
               key={`${block.blockType}-${index}`}

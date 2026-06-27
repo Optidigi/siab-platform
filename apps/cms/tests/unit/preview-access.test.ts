@@ -108,6 +108,8 @@ const createState = () => {
 }
 
 describe("preview access grants", () => {
+  const previewNow = new Date("2026-06-26T12:00:00.000Z")
+
   beforeEach(() => {
     vi.clearAllMocks()
     createState()
@@ -120,7 +122,7 @@ describe("preview access grants", () => {
       clientSlug: "preview-studio",
       email: "Customer@Example.com",
       pageSlug: "index",
-      now: new Date("2026-06-26T12:00:00.000Z"),
+      now: previewNow,
     })
 
     expect(context.customerEmail).toBe("customer@example.com")
@@ -133,23 +135,23 @@ describe("preview access grants", () => {
     const { tenant, grants } = createState()
     const { loadPreviewGrantContext } = await import("@/lib/preview/previewAccess")
 
-    await expect(loadPreviewGrantContext({ clientSlug: "preview-studio", email: "wrong@example.com" }))
+    await expect(loadPreviewGrantContext({ clientSlug: "preview-studio", email: "wrong@example.com", now: previewNow }))
       .rejects.toThrow("Preview access is not available")
-    await expect(loadPreviewGrantContext({ clientSlug: "other-tenant", email: "customer@example.com" }))
+    await expect(loadPreviewGrantContext({ clientSlug: "other-tenant", email: "customer@example.com", now: previewNow }))
       .rejects.toThrow("Preview access is not available")
 
     grants[0]!.expiresAt = "2026-06-25T10:00:00.000Z"
-    await expect(loadPreviewGrantContext({ clientSlug: "preview-studio", email: "customer@example.com" }))
+    await expect(loadPreviewGrantContext({ clientSlug: "preview-studio", email: "customer@example.com", now: previewNow }))
       .rejects.toThrow("Preview access is not available")
 
     grants[0]!.expiresAt = "2026-06-27T10:00:00.000Z"
     grants[0]!.revokedAt = "2026-06-26T11:00:00.000Z"
-    await expect(loadPreviewGrantContext({ clientSlug: "preview-studio", email: "customer@example.com" }))
+    await expect(loadPreviewGrantContext({ clientSlug: "preview-studio", email: "customer@example.com", now: previewNow }))
       .rejects.toThrow("Preview access is not available")
 
     grants[0]!.revokedAt = null
     tenant.status = "suspended"
-    await expect(loadPreviewGrantContext({ clientSlug: "preview-studio", email: "customer@example.com" }))
+    await expect(loadPreviewGrantContext({ clientSlug: "preview-studio", email: "customer@example.com", now: previewNow }))
       .rejects.toThrow("Preview tenant is not available")
   })
 
@@ -160,6 +162,7 @@ describe("preview access grants", () => {
       clientSlug: "preview-studio",
       email: "customer@example.com",
       pageSlug: "about",
+      now: previewNow,
     })).rejects.toThrow("Preview page is not available")
   })
 

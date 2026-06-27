@@ -33,6 +33,7 @@ import * as migration_20260625_210000_add_preview_approval_state from './2026062
 import * as migration_20260625_230000_add_published_site_snapshots from './20260625_230000_add_published_site_snapshots';
 import * as migration_20260626_120000_add_preview_access_grants from './20260626_120000_add_preview_access_grants';
 import * as migration_20260627_120000_add_concrete_block_model_schema from './20260627_120000_add_concrete_block_model_schema';
+import * as migration_20260627_130000_add_marketing_catalog_cms_schema from './20260627_130000_add_marketing_catalog_cms_schema';
 
 export const migrations = [
   {
@@ -183,31 +184,36 @@ export const migrations = [
   {
     up: migration_20260625_163925_add_intake_generation_runs.up,
     down: migration_20260625_163925_add_intake_generation_runs.down,
-    name: '20260625_163925_add_intake_generation_runs'
+    name: '20260625_163925_add_intake_generation_runs',
   },
   {
     up: migration_20260625_190000_add_ai_generation_run_metadata.up,
     down: migration_20260625_190000_add_ai_generation_run_metadata.down,
-    name: '20260625_190000_add_ai_generation_run_metadata'
+    name: '20260625_190000_add_ai_generation_run_metadata',
   },
   {
     up: migration_20260625_210000_add_preview_approval_state.up,
     down: migration_20260625_210000_add_preview_approval_state.down,
-    name: '20260625_210000_add_preview_approval_state'
+    name: '20260625_210000_add_preview_approval_state',
   },
   {
     up: migration_20260625_230000_add_published_site_snapshots.up,
     down: migration_20260625_230000_add_published_site_snapshots.down,
-    name: '20260625_230000_add_published_site_snapshots'
+    name: '20260625_230000_add_published_site_snapshots',
   },
   {
     up: migration_20260626_120000_add_preview_access_grants.up,
     down: migration_20260626_120000_add_preview_access_grants.down,
-    name: '20260626_120000_add_preview_access_grants'
+    name: '20260626_120000_add_preview_access_grants',
   },
   {
     up: migration_20260627_120000_add_concrete_block_model_schema.up,
     down: migration_20260627_120000_add_concrete_block_model_schema.down,
     name: '20260627_120000_add_concrete_block_model_schema'
+  },
+  {
+    up: migration_20260627_130000_add_marketing_catalog_cms_schema.up,
+    down: migration_20260627_130000_add_marketing_catalog_cms_schema.down,
+    name: '20260627_130000_add_marketing_catalog_cms_schema'
   },
 ];

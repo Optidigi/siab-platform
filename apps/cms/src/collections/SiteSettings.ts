@@ -29,6 +29,22 @@ const validatePrimaryColor = (val: unknown) => {
 
 const nonEmpty = (val: unknown) => typeof val === "string" && val.trim() !== ""
 
+const sharedChromeVariantOptions = [
+  { label: "Default", value: "default" },
+  { label: "HyperUI simple", value: "hyperUiSimple" },
+]
+
+const headerFooterChromeVariantOptions = [
+  ...sharedChromeVariantOptions,
+  { label: "Amicare zen", value: "amicareZen" },
+  { label: "Amblast industrial", value: "amblastIndustrial" },
+]
+
+const linkRefFields = () => [
+  { name: "label", type: "text" as const },
+  { name: "href", type: "text" as const, validate: validateSafeHref },
+]
+
 // OBS-20 — a navigation entry is a discriminated union over `type`:
 //   page    → links to a CMS page (label defaults to the page title)
 //   section → links to a `#anchor` (a block's anchor id) within `page`,
@@ -149,17 +165,45 @@ export const SiteSettings: CollectionConfig = {
       admin: { description: "Non-navigation header/footer content edited from the page editor chrome inspector." },
       fields: [
         { name: "header", type: "group", fields: [
+          { name: "variant", type: "select", options: headerFooterChromeVariantOptions,
+            admin: { description: "Approved renderer variant for the header." } },
           { name: "logo", type: "upload", relationTo: "media",
-            admin: { description: "Optional header-specific logo. Falls back to Branding logo." } }
+            admin: { description: "Optional header-specific logo. Falls back to Branding logo." } },
+          { name: "behavior", type: "select", options: [
+            { label: "Static", value: "static" },
+            { label: "Sticky", value: "sticky" },
+          ]},
+          { name: "activeMode", type: "select", options: [
+            { label: "Path", value: "path" },
+            { label: "Anchor", value: "anchor" },
+            { label: "None", value: "none" },
+          ]},
+          { name: "mobileMenu", type: "select", options: [
+            { label: "Dropdown", value: "dropdown" },
+            { label: "Drawer", value: "drawer" },
+          ]},
+          { name: "cta", type: "group", fields: linkRefFields() },
         ]},
         { name: "footer", type: "group", fields: [
+          { name: "variant", type: "select", options: headerFooterChromeVariantOptions,
+            admin: { description: "Approved renderer variant for the footer." } },
           { name: "logo", type: "upload", relationTo: "media",
             admin: { description: "Optional footer-specific logo. Falls back to Branding logo." } },
           { name: "tagline", type: "textarea" },
           { name: "copyright", type: "text" },
+          { name: "legalLinks", type: "array", fields: linkRefFields() },
           { name: "columns", type: "json",
             admin: { description: "Manifest-driven footer column composition edited from the page editor." } }
-        ]}
+        ]},
+        { name: "banner", type: "group", fields: [
+          { name: "variant", type: "select", options: sharedChromeVariantOptions,
+            admin: { description: "Approved renderer variant for the announcement banner." } },
+          { name: "visible", type: "checkbox", defaultValue: false },
+          { name: "title", type: "text" },
+          { name: "message", type: "textarea" },
+          { name: "link", type: "group", fields: linkRefFields() },
+          { name: "dismissible", type: "checkbox", defaultValue: true },
+        ]},
       ]},
     { name: "maintenance", type: "group", fields: [
       { name: "enabled", type: "checkbox", defaultValue: false },

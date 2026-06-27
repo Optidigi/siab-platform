@@ -1,6 +1,7 @@
 import * as React from "react"
 import type { LinkRef, NavLink, SiteSettings } from "@siteinabox/contracts"
 import { actionAnalyticsAttrs } from "./analytics"
+import { cx, nativeChromeClassName } from "./blocks/native-classes"
 import { type MediaResolver, resolveMedia } from "./media"
 
 export type SiteChromeProps = {
@@ -10,6 +11,14 @@ export type SiteChromeProps = {
 }
 
 type HeaderActiveMode = NonNullable<NonNullable<SiteSettings["chrome"]>["header"]>["activeMode"]
+type ChromeVariant = NonNullable<NonNullable<NonNullable<SiteSettings["chrome"]>["header"]>["variant"]>
+
+function chromeVariantClassName(area: "header" | "footer" | "banner", variant: ChromeVariant | null | undefined) {
+  if (variant === "hyperUiSimple") return `site-${area}--source-hyperui-simple`
+  if (variant === "amicareZen" && area !== "banner") return `site-${area}--source-amicare-zen`
+  if (variant === "amblastIndustrial" && area !== "banner") return `site-${area}--source-amblast-industrial`
+  return ""
+}
 
 function normalizePath(value: string): string {
   if (!value || value === "index") return "/"
@@ -55,31 +64,47 @@ export function SiteHeader({ settings, currentSlug, mediaResolver }: SiteChromeP
   const header = settings.chrome?.header
   const logo = resolveMedia(header?.logo ?? settings.branding?.logo ?? null, mediaResolver)
   const activeMode = header?.activeMode ?? "path"
+  const variant = header?.variant ?? "default"
+  const variantClassName = chromeVariantClassName("header", variant)
   const toggleId = `site-header-menu-toggle-${(currentSlug ?? "index").replace(/[^a-zA-Z0-9_-]/g, "-")}`
   const hasChrome = links.length > 0 || logo || header?.cta?.href
   if (!hasChrome) return null
 
   return (
     <header
-      className={`site-chrome site-header site-header--${header?.behavior ?? "static"} site-header--mobile-${header?.mobileMenu ?? "dropdown"}`.trim()}
+      className={cx(
+        "site-chrome site-header",
+        `site-header--${header?.behavior ?? "static"}`,
+        `site-header--mobile-${header?.mobileMenu ?? "dropdown"}`,
+        variantClassName,
+        nativeChromeClassName("header", variant, "root"),
+      )}
+      data-source-variant={variant}
       data-siab-site-header
     >
-      <a className="site-header__brand" href="/" {...actionAnalyticsAttrs("nav", settings.siteName)}>
+      <a className={cx("site-header__brand", nativeChromeClassName("header", variant, "brand"))} href="/" {...actionAnalyticsAttrs("nav", settings.siteName)}>
         {logo ? <img src={logo.src} alt={logo.alt ?? settings.siteName} loading="eager" decoding="async" /> : null}
         <span>{settings.siteName}</span>
       </a>
       <input className="site-header__toggle" type="checkbox" id={toggleId} aria-label="Toggle navigation" />
-      <label className="site-header__toggleButton" htmlFor={toggleId} aria-label="Toggle navigation">
+      <label className={cx("site-header__toggleButton", nativeChromeClassName("header", variant, "toggle"))} htmlFor={toggleId} aria-label="Toggle navigation">
         <span aria-hidden="true" />
       </label>
-      <nav className="site-header__nav" aria-label="Primary">
+      <nav className={cx("site-header__nav", nativeChromeClassName("header", variant, "nav"))} aria-label="Primary">
         {links.map((link) => (
           <React.Fragment key={`${link.label}-${link.href}`}>
-            {renderLink(link, "nav", "site-header__link", isActiveLink(link, currentSlug, activeMode))}
+            {renderLink(
+              link,
+              "nav",
+              cx("site-header__link", nativeChromeClassName("header", variant, "link")),
+              isActiveLink(link, currentSlug, activeMode),
+            )}
           </React.Fragment>
         ))}
       </nav>
-      {header?.cta?.href && header.cta.label ? renderLink(header.cta, "nav", "site-header__cta") : null}
+      {header?.cta?.href && header.cta.label
+        ? renderLink(header.cta, "nav", cx("site-header__cta", nativeChromeClassName("header", variant, "cta")))
+        : null}
     </header>
   )
 }
@@ -90,28 +115,56 @@ export function SiteFooter({ settings, mediaResolver }: SiteChromeProps) {
   const columns = footer?.columns ?? []
   const navFooter = settings.navFooter ?? []
   const legalLinks = footer?.legalLinks ?? []
+  const variant = footer?.variant ?? "default"
+  const variantClassName = chromeVariantClassName("footer", variant)
   const hasChrome = logo || footer?.tagline || footer?.copyright || columns.length > 0 || navFooter.length > 0 || legalLinks.length > 0
   if (!hasChrome) return null
+  const businessLines = [
+    settings.nap?.legalName ? `Handelsnaam: ${settings.nap.legalName}` : null,
+    settings.nap?.kvkNumber ? `KVK ${settings.nap.kvkNumber}` : null,
+    settings.nap?.establishmentNumber ? `Vestigingsnr. ${settings.nap.establishmentNumber}` : null,
+  ].filter((line): line is string => Boolean(line))
+  const fallbackContactLinks = settings.contactEmail
+    ? [{ label: settings.contactEmail, href: `mailto:${settings.contactEmail}` }]
+    : []
+  const hasNavigationColumn = columns.some((column) => column.items?.some((item) => item.type === "navigation"))
 
   return (
-    <footer className="site-chrome site-footer" data-siab-site-footer>
-      <div className="site-footer__inner">
-        <div className="site-footer__brand">
+    <footer className={cx("site-chrome site-footer", variantClassName, nativeChromeClassName("footer", variant, "root"))} data-source-variant={variant} data-siab-site-footer>
+      <div className={cx("site-footer__inner", nativeChromeClassName("footer", variant, "inner"))}>
+        <div className={cx("site-footer__brand", nativeChromeClassName("footer", variant, "brand"))}>
           {logo ? <img src={logo.src} alt={logo.alt ?? settings.siteName} loading="lazy" decoding="async" /> : null}
           <strong>{settings.siteName}</strong>
           {footer?.tagline && <p>{footer.tagline}</p>}
         </div>
-        <div className="site-footer__columns">
+        <div className={cx("site-footer__columns", nativeChromeClassName("footer", variant, "columns"))}>
           {columns.map((column, columnIndex) => (
-            <div key={column.id ?? columnIndex} className="site-footer__column">
+            <div key={column.id ?? columnIndex} className={cx("site-footer__column", nativeChromeClassName("footer", variant, "column"))}>
               {column.items?.map((item, itemIndex) => (
-                <div key={item.id ?? itemIndex} className="site-footer__item" data-item-type={item.type || undefined}>
+                <div key={item.id ?? itemIndex} className={cx("site-footer__item", nativeChromeClassName("footer", variant, "item"))} data-item-type={item.type || undefined}>
                   {item.label && <h2>{item.label}</h2>}
                   {item.text && <p>{item.text}</p>}
+                  {item.type === "business" && !item.text && businessLines.length > 0 && (
+                    <p>{businessLines.join("\n")}</p>
+                  )}
+                  {item.type === "navigation" && navFooter.length > 0 && (
+                    <ul>
+                      {navFooter.map((link) => (
+                        <li key={`${link.label}-${link.href}`}>{renderLink(link, "footer", cx("site-footer__link", nativeChromeClassName("footer", variant, "link")))}</li>
+                      ))}
+                    </ul>
+                  )}
                   {item.links && item.links.length > 0 && (
                     <ul>
                       {item.links.map((link) => (
-                        <li key={`${link.label}-${link.href}`}>{renderLink(link, "footer", "site-footer__link")}</li>
+                        <li key={`${link.label}-${link.href}`}>{renderLink(link, "footer", cx("site-footer__link", nativeChromeClassName("footer", variant, "link")))}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {item.type === "contact" && (!item.links || item.links.length === 0) && fallbackContactLinks.length > 0 && (
+                    <ul>
+                      {fallbackContactLinks.map((link) => (
+                        <li key={`${link.label}-${link.href}`}>{renderLink(link, "footer", cx("site-footer__link", nativeChromeClassName("footer", variant, "link")))}</li>
                       ))}
                     </ul>
                   )}
@@ -119,13 +172,13 @@ export function SiteFooter({ settings, mediaResolver }: SiteChromeProps) {
               ))}
             </div>
           ))}
-          {navFooter.length > 0 && (
-            <div className="site-footer__column">
-              <div className="site-footer__item" data-item-type="navigation">
+          {navFooter.length > 0 && !hasNavigationColumn && (
+            <div className={cx("site-footer__column", nativeChromeClassName("footer", variant, "column"))}>
+              <div className={cx("site-footer__item", nativeChromeClassName("footer", variant, "item"))} data-item-type="navigation">
                 <h2>Navigation</h2>
                 <ul>
                   {navFooter.map((link) => (
-                    <li key={`${link.label}-${link.href}`}>{renderLink(link, "footer", "site-footer__link")}</li>
+                    <li key={`${link.label}-${link.href}`}>{renderLink(link, "footer", cx("site-footer__link", nativeChromeClassName("footer", variant, "link")))}</li>
                   ))}
                 </ul>
               </div>
@@ -134,17 +187,48 @@ export function SiteFooter({ settings, mediaResolver }: SiteChromeProps) {
         </div>
       </div>
       {(footer?.copyright || legalLinks.length > 0) && (
-        <div className="site-footer__bottom">
+        <div className={cx("site-footer__bottom", nativeChromeClassName("footer", variant, "bottom"))}>
           {footer?.copyright && <p>{footer.copyright}</p>}
           {legalLinks.length > 0 && (
             <nav aria-label="Legal">
               {legalLinks.map((link) => (
-                <React.Fragment key={`${link.label}-${link.href}`}>{renderLink(link, "footer", "site-footer__legalLink")}</React.Fragment>
+                <React.Fragment key={`${link.label}-${link.href}`}>
+                  {renderLink(link, "footer", cx("site-footer__legalLink", nativeChromeClassName("footer", variant, "link")))}
+                </React.Fragment>
               ))}
             </nav>
           )}
         </div>
       )}
     </footer>
+  )
+}
+
+export function SiteBanner({ settings }: SiteChromeProps) {
+  const banner = settings.chrome?.banner
+  if (!banner || banner.visible === false || !banner.message) return null
+
+  const variant = banner.variant ?? "default"
+  const variantClassName = chromeVariantClassName("banner", variant)
+  const link = banner.link?.href && banner.link.label ? banner.link : null
+
+  return (
+    <aside
+      className={cx("site-chrome site-banner", variantClassName, nativeChromeClassName("banner", variant, "root"))}
+      data-source-variant={variant}
+      data-dismissible={banner.dismissible ? "true" : undefined}
+      data-siab-site-banner
+    >
+      <p className={cx("site-banner__content", nativeChromeClassName("banner", variant, "content"))}>
+        {banner.title ? <strong>{banner.title}</strong> : null}
+        <span>{banner.message}</span>
+        {link ? renderLink(link, "nav", cx("site-banner__link", nativeChromeClassName("banner", variant, "link"))) : null}
+      </p>
+      {banner.dismissible ? (
+        <button className={cx("site-banner__dismiss", nativeChromeClassName("banner", variant, "dismiss"))} type="button" aria-label="Dismiss announcement">
+          <span aria-hidden="true">x</span>
+        </button>
+      ) : null}
+    </aside>
   )
 }

@@ -5,6 +5,8 @@ import type {
   AnalyticsBlockMetadata,
   Block,
   BeforeAfterGalleryBlock,
+  BlogCardsBlock,
+  ComparisonBlock,
   ContactSectionBlock,
   ContactDetailsBlock,
   CTABlock,
@@ -12,16 +14,22 @@ import type {
   FeatureListBlock,
   FormProviderConfig,
   FooterCompositionColumn,
+  GalleryBlock,
   HeroBlock,
   InfoCardListBlock,
   LinkRef,
+  LogoCloudBlock,
   MediaRef,
   MediaHeroBlock,
   Page,
+  PricingBlock,
+  ProcessStepsBlock,
   RichTextBlock,
   SiteSettings,
   SiteGenerationBlockSlug,
   ServiceCarouselBlock,
+  StatsBlock,
+  TeamBlock,
   TestimonialsBlock,
 } from "./site"
 import type {
@@ -63,6 +71,8 @@ const SLUG_REGEX = /^[a-z0-9-]+$/
 const HEX_OR_CSS_FUNCTION_COLOR_REGEX =
   /^(#[0-9a-fA-F]{3,8}|(oklch|color|rgb[a]?|hsl[a]?)\(.*\)|[a-zA-Z]+)$/
 const CSS_LENGTH_REGEX = /^(0|[0-9]+(\.[0-9]+)?(px|rem|em|%)|var\(--[A-Za-z0-9_-]+\))$/
+const SITE_SHARED_CHROME_VARIANTS = ["default", "hyperUiSimple"] as const
+const SITE_HEADER_FOOTER_CHROME_VARIANTS = [...SITE_SHARED_CHROME_VARIANTS, "amicareZen", "amblastIndustrial"] as const
 
 const strictObject = <T extends z.ZodRawShape>(shape: T) => z.object(shape).strict()
 const nullableString = z.string().nullable().optional()
@@ -495,6 +505,141 @@ export const ContactSectionBlockSchema: z.ZodType<ContactSectionBlock> = strictO
   provider: FormProviderConfigSchema.nullable().optional(),
 })
 
+export const PricingBlockSchema: z.ZodType<PricingBlock> = strictObject({
+  blockType: z.literal("pricing"),
+  ...baseBlockShape,
+  title: RtFieldSchema.optional(),
+  intro: RtFieldSchema.optional(),
+  plans: z
+    .array(strictObject({
+      title: RtRootSchema,
+      description: RtFieldSchema.optional(),
+      price: nullableString,
+      period: nullableString,
+      features: z.array(strictObject({
+        label: RtRootSchema,
+        included: z.boolean().nullable().optional(),
+      })).nullable().optional(),
+      cta: LinkRefSchema.nullable().optional(),
+      badge: nullableString,
+      highlighted: z.boolean().nullable().optional(),
+    }))
+    .min(1),
+})
+
+export const StatsBlockSchema: z.ZodType<StatsBlock> = strictObject({
+  blockType: z.literal("stats"),
+  ...baseBlockShape,
+  title: RtFieldSchema.optional(),
+  intro: RtFieldSchema.optional(),
+  items: z
+    .array(strictObject({
+      value: z.string().min(1),
+      label: z.string().min(1),
+      description: RtFieldSchema.optional(),
+    }))
+    .min(1),
+})
+
+export const LogoCloudBlockSchema: z.ZodType<LogoCloudBlock> = strictObject({
+  blockType: z.literal("logoCloud"),
+  ...baseBlockShape,
+  title: RtFieldSchema.optional(),
+  intro: RtFieldSchema.optional(),
+  logos: z
+    .array(strictObject({
+      name: z.string().min(1),
+      image: MediaRefSchema,
+      href: nullableString,
+    }))
+    .min(1),
+})
+
+export const GalleryBlockSchema: z.ZodType<GalleryBlock> = strictObject({
+  blockType: z.literal("gallery"),
+  ...baseBlockShape,
+  title: RtFieldSchema.optional(),
+  intro: RtFieldSchema.optional(),
+  images: z
+    .array(strictObject({
+      image: MediaRefSchema,
+      caption: RtFieldSchema.optional(),
+      link: LinkRefSchema.nullable().optional(),
+    }))
+    .min(1),
+  cta: LinkRefSchema.nullable().optional(),
+})
+
+export const TeamBlockSchema: z.ZodType<TeamBlock> = strictObject({
+  blockType: z.literal("team"),
+  ...baseBlockShape,
+  title: RtFieldSchema.optional(),
+  intro: RtFieldSchema.optional(),
+  members: z
+    .array(strictObject({
+      name: z.string().min(1),
+      role: nullableString,
+      bio: RtFieldSchema.optional(),
+      image: MediaRefSchema.optional(),
+      links: z.array(LinkRefSchema).nullable().optional(),
+    }))
+    .min(1),
+})
+
+export const BlogCardsBlockSchema: z.ZodType<BlogCardsBlock> = strictObject({
+  blockType: z.literal("blogCards"),
+  ...baseBlockShape,
+  title: RtFieldSchema.optional(),
+  intro: RtFieldSchema.optional(),
+  posts: z
+    .array(strictObject({
+      title: RtRootSchema,
+      excerpt: RtFieldSchema.optional(),
+      image: MediaRefSchema.optional(),
+      href: nullableString,
+      date: nullableString,
+      author: nullableString,
+      cta: LinkRefSchema.nullable().optional(),
+    }))
+    .min(1),
+})
+
+export const ProcessStepsBlockSchema: z.ZodType<ProcessStepsBlock> = strictObject({
+  blockType: z.literal("processSteps"),
+  ...baseBlockShape,
+  title: RtFieldSchema.optional(),
+  intro: RtFieldSchema.optional(),
+  steps: z
+    .array(strictObject({
+      title: RtRootSchema,
+      description: RtFieldSchema.optional(),
+      icon: nullableString,
+      image: MediaRefSchema.optional(),
+      cta: LinkRefSchema.nullable().optional(),
+    }))
+    .min(1),
+})
+
+export const ComparisonBlockSchema: z.ZodType<ComparisonBlock> = strictObject({
+  blockType: z.literal("comparison"),
+  ...baseBlockShape,
+  title: RtFieldSchema.optional(),
+  intro: RtFieldSchema.optional(),
+  columns: z
+    .array(strictObject({
+      title: RtRootSchema,
+      description: RtFieldSchema.optional(),
+      cta: LinkRefSchema.nullable().optional(),
+    }))
+    .min(1),
+  rows: z
+    .array(strictObject({
+      label: z.string().min(1),
+      values: z.array(z.union([z.string(), z.boolean(), z.null()])).min(1),
+    }))
+    .min(1),
+})
+
 const BlockSchemaBase = z.union([
   HeroBlockSchema,
   MediaHeroBlockSchema,
@@ -508,6 +653,14 @@ const BlockSchemaBase = z.union([
   CTABlockSchema,
   RichTextBlockSchema,
   ContactSectionBlockSchema,
+  PricingBlockSchema,
+  StatsBlockSchema,
+  LogoCloudBlockSchema,
+  GalleryBlockSchema,
+  TeamBlockSchema,
+  BlogCardsBlockSchema,
+  ProcessStepsBlockSchema,
+  ComparisonBlockSchema,
 ])
 
 const GeneratedBlockSchemaBase = z.union([
@@ -523,6 +676,14 @@ const GeneratedBlockSchemaBase = z.union([
   CTABlockSchema,
   RichTextBlockSchema,
   ContactSectionBlockSchema,
+  PricingBlockSchema,
+  StatsBlockSchema,
+  LogoCloudBlockSchema,
+  GalleryBlockSchema,
+  TeamBlockSchema,
+  BlogCardsBlockSchema,
+  ProcessStepsBlockSchema,
+  ComparisonBlockSchema,
 ])
 
 const refineGeneratedBlock = (
@@ -622,6 +783,7 @@ export const SiteSettingsSchema: z.ZodType<SiteSettings> = strictObject({
   }).nullable().optional(),
   chrome: strictObject({
     header: strictObject({
+      variant: z.enum(SITE_HEADER_FOOTER_CHROME_VARIANTS).nullable().optional(),
       logo: MediaRefSchema.optional(),
       behavior: z.enum(["static", "sticky"]).nullable().optional(),
       activeMode: z.enum(["path", "anchor", "none"]).nullable().optional(),
@@ -629,11 +791,20 @@ export const SiteSettingsSchema: z.ZodType<SiteSettings> = strictObject({
       cta: LinkRefSchema.nullable().optional(),
     }).nullable().optional(),
     footer: strictObject({
+      variant: z.enum(SITE_HEADER_FOOTER_CHROME_VARIANTS).nullable().optional(),
       logo: MediaRefSchema.optional(),
       tagline: nullableString,
       copyright: nullableString,
       legalLinks: z.array(LinkRefSchema).nullable().optional(),
       columns: z.array(FooterCompositionColumnSchema).nullable().optional(),
+    }).nullable().optional(),
+    banner: strictObject({
+      variant: z.enum(SITE_SHARED_CHROME_VARIANTS).nullable().optional(),
+      visible: z.boolean().nullable().optional(),
+      title: nullableString,
+      message: z.string().min(1),
+      link: LinkRefSchema.nullable().optional(),
+      dismissible: z.boolean().nullable().optional(),
     }).nullable().optional(),
   }).nullable().optional(),
   maintenance: strictObject({
@@ -703,6 +874,30 @@ export const SiteSettingsSchema: z.ZodType<SiteSettings> = strictObject({
     }).nullable().optional(),
   }).nullable().optional(),
   updatedAt: z.string().optional(),
+}).superRefine((settings, ctx) => {
+  for (const key of ["className", "classes", "rawHtml", "html", "component", "sourceCode", "filePath"]) {
+    if (Object.prototype.hasOwnProperty.call(settings.chrome?.header ?? {}, key)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["chrome", "header", key],
+        message: `Generated chrome header must not include ${key}`,
+      })
+    }
+    if (Object.prototype.hasOwnProperty.call(settings.chrome?.footer ?? {}, key)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["chrome", "footer", key],
+        message: `Generated chrome footer must not include ${key}`,
+      })
+    }
+    if (Object.prototype.hasOwnProperty.call(settings.chrome?.banner ?? {}, key)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["chrome", "banner", key],
+        message: `Generated chrome banner must not include ${key}`,
+      })
+    }
+  }
 })
 
 export const GeneratedSiteSettingsSchema: z.ZodType<GeneratedSiteSettings> = SiteSettingsSchema

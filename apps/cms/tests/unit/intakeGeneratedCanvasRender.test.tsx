@@ -57,6 +57,20 @@ const createPayloadStub = () => {
   return { payload: payload as any, store }
 }
 
+const rtInline = (text: string) =>
+  ({
+    t: "root",
+    variant: "inline",
+    children: [{ t: "text", v: text }],
+  }) as any
+
+const rtBlock = (text: string) =>
+  ({
+    t: "root",
+    variant: "block",
+    children: [{ t: "paragraph", children: [{ t: "text", v: text }] }],
+  }) as any
+
 describe("generated intake canvas render smoke", () => {
   it("renders generated draft page blocks through the CMS canvas block components", async () => {
     const { payload, store } = createPayloadStub()
@@ -97,5 +111,45 @@ describe("generated intake canvas render smoke", () => {
     expect(html).not.toContain("cms-block--unknown")
     expect(html).not.toContain("Unknown block type")
     expect(html.length).toBeGreaterThan(2_000)
+  })
+
+  it("renders every reusable catalog block through the CMS canvas dispatcher", () => {
+    const blocks = [
+      {
+        blockType: "pricing",
+        title: rtInline("Pricing"),
+        plans: [{ title: rtInline("Starter"), description: rtBlock("A starter plan."), price: "€499", features: [{ label: rtInline("One page"), included: true }] }],
+      },
+      { blockType: "stats", title: rtInline("Stats"), items: [{ value: "24", label: "Projects", description: rtBlock("Delivered.") }] },
+      { blockType: "logoCloud", title: rtInline("Partners"), logos: [{ name: "Partner", image: 1 }] },
+      { blockType: "gallery", title: rtInline("Gallery"), images: [{ image: 1, caption: rtBlock("Work.") }] },
+      { blockType: "team", title: rtInline("Team"), members: [{ name: "Alex", role: "Founder", bio: rtBlock("Builds sites."), image: 1 }] },
+      { blockType: "blogCards", title: rtInline("Updates"), posts: [{ title: rtInline("Launch"), excerpt: rtBlock("New site."), image: 1, href: "/blog/launch" }] },
+      { blockType: "processSteps", title: rtInline("Process"), steps: [{ title: rtInline("Intake"), description: rtBlock("Gather input."), icon: "clipboard-list" }] },
+      { blockType: "comparison", title: rtInline("Compare"), columns: [{ title: rtInline("Basic") }], rows: [{ label: "Pages", values: ["1"] }] },
+    ]
+
+    const html = renderToStaticMarkup(
+      <CanvasSelectionProvider value={{ view: "sidebar", selected: null, select: () => {} }}>
+        <main>
+          {blocks.map((block: any, index: number) => (
+            <CanvasBlockRenderer
+              key={index}
+              block={block}
+              index={index}
+              isActive={false}
+              manifest={{} as any}
+              onActivate={() => {}}
+              onUpdate={() => {}}
+            />
+          ))}
+        </main>
+      </CanvasSelectionProvider>,
+    )
+
+    expect(html).toContain("cms-block--pricing")
+    expect(html).toContain("cms-block--comparisonMatrix")
+    expect(html).not.toContain("cms-block--unknown")
+    expect(html).not.toContain("Unknown block type")
   })
 })

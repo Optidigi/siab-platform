@@ -3,17 +3,25 @@ import type {
   ContactDetailsBlock,
   CTABlock,
   BeforeAfterGalleryBlock,
+  BlogCardsBlock,
+  ComparisonBlock,
   FAQBlock,
   FeatureListBlock,
+  GalleryBlock,
   HeroBlock,
   InfoCardListBlock,
+  LogoCloudBlock,
   MediaRef,
   MediaHeroBlock,
   Page,
+  PricingBlock,
+  ProcessStepsBlock,
   RichTextBlock,
   SiteGenerationBlockSlug,
   SiteSettings,
   ServiceCarouselBlock,
+  StatsBlock,
+  TeamBlock,
   TestimonialsBlock,
 } from "./site"
 
@@ -130,6 +138,14 @@ export type GeneratedFAQBlockSpec = FAQBlock & GeneratedBlockMetadata
 export type GeneratedCTABlockSpec = CTABlock & GeneratedBlockMetadata
 export type GeneratedRichTextBlockSpec = RichTextBlock & GeneratedBlockMetadata
 export type GeneratedContactSectionBlockSpec = ContactSectionBlock & GeneratedBlockMetadata
+export type GeneratedPricingBlockSpec = PricingBlock & GeneratedBlockMetadata
+export type GeneratedStatsBlockSpec = StatsBlock & GeneratedBlockMetadata
+export type GeneratedLogoCloudBlockSpec = LogoCloudBlock & GeneratedBlockMetadata
+export type GeneratedGalleryBlockSpec = GalleryBlock & GeneratedBlockMetadata
+export type GeneratedTeamBlockSpec = TeamBlock & GeneratedBlockMetadata
+export type GeneratedBlogCardsBlockSpec = BlogCardsBlock & GeneratedBlockMetadata
+export type GeneratedProcessStepsBlockSpec = ProcessStepsBlock & GeneratedBlockMetadata
+export type GeneratedComparisonBlockSpec = ComparisonBlock & GeneratedBlockMetadata
 
 export type GeneratedBlockSpec =
   | GeneratedHeroBlockSpec
@@ -144,6 +160,14 @@ export type GeneratedBlockSpec =
   | GeneratedCTABlockSpec
   | GeneratedRichTextBlockSpec
   | GeneratedContactSectionBlockSpec
+  | GeneratedPricingBlockSpec
+  | GeneratedStatsBlockSpec
+  | GeneratedLogoCloudBlockSpec
+  | GeneratedGalleryBlockSpec
+  | GeneratedTeamBlockSpec
+  | GeneratedBlogCardsBlockSpec
+  | GeneratedProcessStepsBlockSpec
+  | GeneratedComparisonBlockSpec
 
 export type GeneratedPageSpec = Omit<Page, "blocks" | "updatedAt"> & {
   blocks: GeneratedBlockSpec[]

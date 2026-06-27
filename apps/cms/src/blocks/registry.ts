@@ -10,6 +10,16 @@ import { InfoCardList } from "./InfoCardList"
 import { ServiceCarousel } from "./ServiceCarousel"
 import { BeforeAfterGallery } from "./BeforeAfterGallery"
 import { ContactDetails } from "./ContactDetails"
+import {
+  BlogCards,
+  Comparison,
+  Gallery,
+  LogoCloud,
+  Pricing,
+  ProcessSteps,
+  Stats,
+  Team,
+} from "./MarketingCatalog"
 import type { BlockWithMeta } from "./_summary"
 
 export const BLOCKS = [
@@ -20,6 +30,14 @@ export const BLOCKS = [
   CTA,
   RichText,
   ContactSection,
+  Pricing,
+  Stats,
+  LogoCloud,
+  Gallery,
+  Team,
+  BlogCards,
+  ProcessSteps,
+  Comparison,
   MediaHero,
   InfoCardList,
   ServiceCarousel,

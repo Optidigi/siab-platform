@@ -422,6 +422,158 @@ describe("applySiteGenerationSpec", () => {
     expect(report.valid).toBe(true)
   })
 
+  it("preserves generated chrome variants and banner settings during apply", async () => {
+    const { payload, store } = createPayloadStub()
+    const spec = fixtureSpec()
+    spec.settings = {
+      ...spec.settings,
+      chrome: {
+        header: {
+          variant: "hyperUiSimple",
+          behavior: "sticky",
+          activeMode: "path",
+          mobileMenu: "drawer",
+          cta: { label: "Plan intake", href: "/intake" },
+        },
+        footer: {
+          variant: "hyperUiSimple",
+          tagline: "Structured draft footer",
+          copyright: "© Fixture Care",
+          legalLinks: [{ label: "Privacy", href: "/privacy" }],
+          columns: [{ id: "main", items: [{ type: "links", label: "Explore", links: [{ label: "Home", href: "/" }] }] }],
+        },
+        banner: {
+          variant: "hyperUiSimple",
+          visible: true,
+          title: "Launch offer",
+          message: "Book a free intake this month.",
+          link: { label: "Contact", href: "/#contact" },
+          dismissible: true,
+        },
+      },
+    }
+
+    const result = await applySiteGenerationSpec(payload, spec)
+
+    expect(result.ok).toBe(true)
+    expect(store["site-settings"][0]!.chrome).toMatchObject({
+      header: {
+        variant: "hyperUiSimple",
+        behavior: "sticky",
+        activeMode: "path",
+        mobileMenu: "drawer",
+        cta: { label: "Plan intake", href: "/intake" },
+      },
+      footer: {
+        variant: "hyperUiSimple",
+        tagline: "Structured draft footer",
+        legalLinks: [{ label: "Privacy", href: "/privacy" }],
+      },
+      banner: {
+        variant: "hyperUiSimple",
+        visible: true,
+        title: "Launch offer",
+        message: "Book a free intake this month.",
+        link: { label: "Contact", href: "/#contact" },
+        dismissible: true,
+      },
+    })
+  })
+
+  it("validates and applies generated specs with new reusable marketing blocks", async () => {
+    const { payload, store } = createPayloadStub()
+    const spec = fixtureSpec()
+    spec.pages[0]!.blocks = [
+      {
+        blockType: "pricing",
+        variant: "tailwindPlusSimpleTiers",
+        title: rtInline("Pakketten"),
+        intro: rtBlock("Kies een passend pakket."),
+        plans: [{
+          title: rtInline("Basis"),
+          description: rtBlock("Voor starters."),
+          price: "€499",
+          period: "eenmalig",
+          features: [{ label: rtInline("Een pagina"), included: true }],
+          cta: { label: "Start", href: "/intake" },
+          badge: "Populair",
+          highlighted: true,
+        }],
+      } as any,
+      {
+        blockType: "stats",
+        variant: "tailwindPlusSimple",
+        title: rtInline("Resultaten"),
+        intro: rtBlock("Meetbare impact."),
+        items: [{ value: "24", label: "Projecten", description: rtBlock("Opgeleverd dit jaar.") }],
+      } as any,
+      {
+        blockType: "logoCloud",
+        variant: "tailwindPlusSimple",
+        title: rtInline("Partners"),
+        logos: [{ name: "Partner", image: 12, href: "https://example.com" }],
+      } as any,
+      {
+        blockType: "gallery",
+        variant: "prelineSquareGrid",
+        title: rtInline("Werk"),
+        images: [{ image: 13, caption: rtBlock("Recent werk."), link: { label: "Bekijk", href: "/werk" } }],
+        cta: { label: "Alles bekijken", href: "/werk" },
+      } as any,
+      {
+        blockType: "team",
+        variant: "tailwindPlusGrid",
+        title: rtInline("Team"),
+        members: [{ name: "Alex", role: "Founder", bio: rtBlock("Helpt klanten groeien."), image: 14, links: [{ label: "LinkedIn", href: "https://example.com" }] }],
+      } as any,
+      {
+        blockType: "blogCards",
+        variant: "tailwindPlusThreeColumn",
+        title: rtInline("Updates"),
+        posts: [{ title: rtInline("Nieuwe site"), excerpt: rtBlock("Wat er verbeterde."), image: 15, href: "/blog/nieuwe-site", date: "2026-06-27", author: "Alex", cta: { label: "Lees", href: "/blog/nieuwe-site" } }],
+      } as any,
+      {
+        blockType: "processSteps",
+        variant: "mambaSteps",
+        title: rtInline("Proces"),
+        steps: [{ title: rtInline("Intake"), description: rtBlock("We verzamelen de basis."), icon: "clipboard-list", image: 16, cta: { label: "Start", href: "/intake" } }],
+      } as any,
+      {
+        blockType: "comparison",
+        variant: "matrix",
+        title: rtInline("Vergelijking"),
+        columns: [{ title: rtInline("Basis"), description: rtBlock("Instap."), cta: { label: "Kies", href: "/intake" } }],
+        rows: [{ label: "Pagina's", values: ["1"] }],
+      } as any,
+    ]
+    spec.blocks = [
+      { slug: "pricing", label: "Pricing" },
+      { slug: "stats", label: "Stats" },
+      { slug: "logoCloud", label: "Logo cloud" },
+      { slug: "gallery", label: "Gallery" },
+      { slug: "team", label: "Team" },
+      { slug: "blogCards", label: "Blog cards" },
+      { slug: "processSteps", label: "Process steps" },
+      { slug: "comparison", label: "Comparison" },
+    ]
+
+    const report = validateSiteGenerationSpecForCms(spec)
+    expect(report.valid).toBe(true)
+
+    const result = await applySiteGenerationSpec(payload, spec)
+    expect(result.ok).toBe(true)
+    expect(store.pages[0]!.blocks.map((block: any) => block.blockType)).toEqual([
+      "pricing",
+      "stats",
+      "logoCloud",
+      "gallery",
+      "team",
+      "blogCards",
+      "processSteps",
+      "comparison",
+    ])
+  })
+
   it("validates, applies, and projects a parity block with runtime variant intact", async () => {
     const { payload, store } = createPayloadStub()
     const spec = fixtureSpec()

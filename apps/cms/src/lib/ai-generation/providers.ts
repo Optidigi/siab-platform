@@ -5,6 +5,7 @@ import {
   type SiteGenerationSpec,
 } from "@siteinabox/contracts/generation"
 import { SITE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contracts/block-catalog"
+import { SITE_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import { hashStableValue } from "@/lib/intake/normalizeIntake"
 import { loadMockSiteGenerationSpec, type MockGenerationFixture } from "@/lib/intake/mockGeneration"
 import {
@@ -140,6 +141,10 @@ const linkJsonSchema = {
   required: ["label", "href"],
   properties: { label: stringOrNull, href: stringOrNull },
 } as const
+
+const nullableLinkJsonSchema = { anyOf: [linkJsonSchema, { type: "null" }] } as const
+const nullableInlineRichTextJsonSchema = { anyOf: [richTextInlineJsonSchema, { type: "null" }] } as const
+const nullableBlockRichTextJsonSchema = { anyOf: [richTextBlockJsonSchema, { type: "null" }] } as const
 
 const approvedSectionVariantsFor = (blockType: string) =>
   SITE_SOURCE_BACKED_BLOCK_VARIANTS
@@ -314,6 +319,224 @@ const blockJsonSchemas = [
       },
     },
   },
+  {
+    type: "object",
+    additionalProperties: false,
+    required: ["blockType", "anchor", "analytics", "title", "intro", "plans"],
+    properties: {
+      blockType: { type: "string", const: "pricing" },
+      ...baseBlockProperties,
+      analytics: analyticsJsonSchemaFor("pricing"),
+      title: nullableInlineRichTextJsonSchema,
+      intro: nullableBlockRichTextJsonSchema,
+      plans: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["title", "description", "price", "period", "features", "cta", "badge", "highlighted"],
+          properties: {
+            title: richTextInlineJsonSchema,
+            description: nullableBlockRichTextJsonSchema,
+            price: stringOrNull,
+            period: stringOrNull,
+            features: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["label", "included"],
+                properties: { label: richTextInlineJsonSchema, included: { type: ["boolean", "null"] } },
+              },
+            },
+            cta: nullableLinkJsonSchema,
+            badge: stringOrNull,
+            highlighted: { type: ["boolean", "null"] },
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "object",
+    additionalProperties: false,
+    required: ["blockType", "anchor", "analytics", "title", "intro", "items"],
+    properties: {
+      blockType: { type: "string", const: "stats" },
+      ...baseBlockProperties,
+      analytics: analyticsJsonSchemaFor("stats"),
+      title: nullableInlineRichTextJsonSchema,
+      intro: nullableBlockRichTextJsonSchema,
+      items: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["value", "label", "description"],
+          properties: { value: { type: "string" }, label: { type: "string" }, description: nullableBlockRichTextJsonSchema },
+        },
+      },
+    },
+  },
+  {
+    type: "object",
+    additionalProperties: false,
+    required: ["blockType", "anchor", "analytics", "title", "intro", "logos"],
+    properties: {
+      blockType: { type: "string", const: "logoCloud" },
+      ...baseBlockProperties,
+      analytics: analyticsJsonSchemaFor("logoCloud"),
+      title: nullableInlineRichTextJsonSchema,
+      intro: nullableBlockRichTextJsonSchema,
+      logos: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["name", "image", "href"],
+          properties: { name: { type: "string" }, image: mediaRefJsonSchema, href: stringOrNull },
+        },
+      },
+    },
+  },
+  {
+    type: "object",
+    additionalProperties: false,
+    required: ["blockType", "anchor", "analytics", "title", "intro", "images", "cta"],
+    properties: {
+      blockType: { type: "string", const: "gallery" },
+      ...baseBlockProperties,
+      analytics: analyticsJsonSchemaFor("gallery"),
+      title: nullableInlineRichTextJsonSchema,
+      intro: nullableBlockRichTextJsonSchema,
+      images: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["image", "caption", "link"],
+          properties: { image: mediaRefJsonSchema, caption: nullableBlockRichTextJsonSchema, link: nullableLinkJsonSchema },
+        },
+      },
+      cta: nullableLinkJsonSchema,
+    },
+  },
+  {
+    type: "object",
+    additionalProperties: false,
+    required: ["blockType", "anchor", "analytics", "title", "intro", "members"],
+    properties: {
+      blockType: { type: "string", const: "team" },
+      ...baseBlockProperties,
+      analytics: analyticsJsonSchemaFor("team"),
+      title: nullableInlineRichTextJsonSchema,
+      intro: nullableBlockRichTextJsonSchema,
+      members: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["name", "role", "bio", "image", "links"],
+          properties: {
+            name: { type: "string" },
+            role: stringOrNull,
+            bio: nullableBlockRichTextJsonSchema,
+            image: mediaRefJsonSchema,
+            links: { type: "array", items: linkJsonSchema },
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "object",
+    additionalProperties: false,
+    required: ["blockType", "anchor", "analytics", "title", "intro", "posts"],
+    properties: {
+      blockType: { type: "string", const: "blogCards" },
+      ...baseBlockProperties,
+      analytics: analyticsJsonSchemaFor("blogCards"),
+      title: nullableInlineRichTextJsonSchema,
+      intro: nullableBlockRichTextJsonSchema,
+      posts: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["title", "excerpt", "image", "href", "date", "author", "cta"],
+          properties: {
+            title: richTextInlineJsonSchema,
+            excerpt: nullableBlockRichTextJsonSchema,
+            image: mediaRefJsonSchema,
+            href: stringOrNull,
+            date: stringOrNull,
+            author: stringOrNull,
+            cta: nullableLinkJsonSchema,
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "object",
+    additionalProperties: false,
+    required: ["blockType", "anchor", "analytics", "title", "intro", "steps"],
+    properties: {
+      blockType: { type: "string", const: "processSteps" },
+      ...baseBlockProperties,
+      analytics: analyticsJsonSchemaFor("processSteps"),
+      title: nullableInlineRichTextJsonSchema,
+      intro: nullableBlockRichTextJsonSchema,
+      steps: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["title", "description", "icon", "image", "cta"],
+          properties: {
+            title: richTextInlineJsonSchema,
+            description: nullableBlockRichTextJsonSchema,
+            icon: stringOrNull,
+            image: mediaRefJsonSchema,
+            cta: nullableLinkJsonSchema,
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "object",
+    additionalProperties: false,
+    required: ["blockType", "anchor", "analytics", "title", "intro", "columns", "rows"],
+    properties: {
+      blockType: { type: "string", const: "comparison" },
+      ...baseBlockProperties,
+      analytics: analyticsJsonSchemaFor("comparison"),
+      title: nullableInlineRichTextJsonSchema,
+      intro: nullableBlockRichTextJsonSchema,
+      columns: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["title", "description", "cta"],
+          properties: { title: richTextInlineJsonSchema, description: nullableBlockRichTextJsonSchema, cta: nullableLinkJsonSchema },
+        },
+      },
+      rows: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["label", "values"],
+          properties: {
+            label: { type: "string" },
+            values: { type: "array", items: { type: ["string", "boolean", "null"] } },
+          },
+        },
+      },
+    },
+  },
 ] as const
 
 const extractOpenAIOutputText = (response: any): string => {
@@ -432,7 +655,7 @@ export const siteGenerationJsonSchema = {
     settings: {
       type: "object",
       additionalProperties: false,
-      required: ["siteName", "siteUrl", "description", "language", "contactEmail", "navHeader", "navFooter"],
+      required: ["siteName", "siteUrl", "description", "language", "contactEmail", "navHeader", "navFooter", "chrome"],
       properties: {
         siteName: { type: "string" },
         siteUrl: { type: "string" },
@@ -441,6 +664,75 @@ export const siteGenerationJsonSchema = {
         contactEmail: stringOrNull,
         navHeader: { type: "array", items: linkJsonSchema },
         navFooter: { type: "array", items: linkJsonSchema },
+        chrome: {
+          type: "object",
+          additionalProperties: false,
+          required: ["header", "footer", "banner"],
+          properties: {
+            header: {
+              type: "object",
+              additionalProperties: false,
+              required: ["variant", "behavior", "activeMode", "mobileMenu", "cta"],
+              properties: {
+                variant: { type: ["string", "null"], enum: ["default", "hyperUiSimple", null] },
+                behavior: { type: ["string", "null"], enum: ["static", "sticky", null] },
+                activeMode: { type: ["string", "null"], enum: ["path", "anchor", "none", null] },
+                mobileMenu: { type: ["string", "null"], enum: ["dropdown", "drawer", null] },
+                cta: nullableLinkJsonSchema,
+              },
+            },
+            footer: {
+              type: "object",
+              additionalProperties: false,
+              required: ["variant", "tagline", "copyright", "legalLinks", "columns"],
+              properties: {
+                variant: { type: ["string", "null"], enum: ["default", "hyperUiSimple", null] },
+                tagline: stringOrNull,
+                copyright: stringOrNull,
+                legalLinks: { type: "array", items: linkJsonSchema },
+                columns: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["id", "items"],
+                    properties: {
+                      id: stringOrNull,
+                      items: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          additionalProperties: false,
+                          required: ["id", "type", "label", "text", "links"],
+                          properties: {
+                            id: stringOrNull,
+                            type: { type: ["string", "null"], enum: ["brand", "text", "links", "contact", "business", "navigation", null] },
+                            label: stringOrNull,
+                            text: stringOrNull,
+                            links: { type: "array", items: linkJsonSchema },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            banner: {
+              type: "object",
+              additionalProperties: false,
+              required: ["variant", "visible", "title", "message", "link", "dismissible"],
+              properties: {
+                variant: { type: ["string", "null"], enum: ["default", "hyperUiSimple", null] },
+                visible: { type: ["boolean", "null"] },
+                title: stringOrNull,
+                message: { type: "string" },
+                link: nullableLinkJsonSchema,
+                dismissible: { type: ["boolean", "null"] },
+              },
+            },
+          },
+        },
       },
     },
     pages: {
@@ -472,7 +764,7 @@ export const siteGenerationJsonSchema = {
         type: "object",
         additionalProperties: false,
         required: ["slug", "label"],
-        properties: { slug: { type: "string", enum: ["hero", "featureList", "testimonials", "faq", "cta", "richText", "contactSection"] }, label: { type: "string" } },
+        properties: { slug: { type: "string", enum: [...SITE_BLOCK_SLUGS] }, label: { type: "string" } },
       },
     },
     assets: { type: "array", items: mediaRefJsonSchema },

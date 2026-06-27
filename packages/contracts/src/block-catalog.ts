@@ -1,6 +1,6 @@
 import type { SiteBlockEditorField } from "./generation"
 import { SITE_BLOCK_SLUGS } from "./site"
-import type { SiteBlockSlug, SiteGenerationBlockSlug } from "./site"
+import type { SiteBlockSlug, SiteChromeVariant, SiteGenerationBlockSlug } from "./site"
 
 export type BlockReferenceAvailability = "free" | "paid" | "unavailable" | "mixed"
 
@@ -17,6 +17,7 @@ export type SiteBlockCatalogVariant = {
   variant: string
   label: string
   intent: string
+  scope: BlockVariantScope
   dataSignal: "field-presence" | "renderer-inferred" | "variant"
   rendererSupportStatus: "supported" | "deferred" | "unsupported"
   /**
@@ -26,6 +27,10 @@ export type SiteBlockCatalogVariant = {
   rendererClassName?: string
   provenance: BlockVariantProvenance
 }
+
+export type BlockVariantScope =
+  | { kind: "global" }
+  | { kind: "tenant-exclusive"; tenantSlugs: string[] }
 
 export type BlockSourceImplementation = "exact-source" | "adapted-exact-style" | "siab-owned" | "deferred"
 export type BlockSourceAccessType =
@@ -50,6 +55,28 @@ export type BlockVariantVisualExactnessStatus =
   | "needs-browser-comparison"
   | "blocked"
 
+export type BlockSourceIntegrationKind =
+  | "siab-owned"
+  | "copy-paste-tailwind"
+  | "provider-derived-package-css"
+  | "preline-ui"
+  | "tailwind-plus-elements"
+  | "legacy-tenant-source"
+  | "deferred"
+
+export type BlockSourceRuntimeRequirement = {
+  kind: BlockSourceIntegrationKind
+  supportedAstroPath: string
+  tailwindNotes?: string
+  packages?: string[]
+  cssImports?: string[]
+  jsImports?: string[]
+  initializer?: string
+  interactive: boolean
+  docs: string[]
+  notes: string
+}
+
 export type BlockVariantProvenance = {
   sourceName: string
   url: string
@@ -63,10 +90,12 @@ export type BlockVariantProvenance = {
   sourceAccess: string
   implementation: BlockSourceImplementation
   sourcePath?: string
+  localSourcePath?: string
   retrieval: string
   verifiedAt: string
   visualExactnessStatus: BlockVariantVisualExactnessStatus
   visualSourceNotes: string
+  runtime: BlockSourceRuntimeRequirement
   notes: string
 }
 
@@ -86,6 +115,22 @@ export type SiteBlockCatalogEntry = {
   fixtureCoverage: string[]
   variants: SiteBlockCatalogVariant[]
   referenceSources: BlockReferenceSource[]
+}
+
+export type SiteChromeCatalogArea = "header" | "footer" | "banner"
+
+export type SiteChromeCatalogVariant = {
+  id: string
+  area: SiteChromeCatalogArea
+  variant: SiteChromeVariant
+  label: string
+  intent: string
+  scope: BlockVariantScope
+  dataSignal: "settings.chrome.variant"
+  rendererSupportStatus: "supported" | "deferred" | "unsupported"
+  rendererClassName?: string
+  provenance: BlockVariantProvenance
+  editableFields: SiteBlockEditorField[]
 }
 
 const richtext = (
@@ -177,6 +222,99 @@ const blockReferenceSources = {
 
 export const SITE_BLOCK_REFERENCE_SOURCES = blockReferenceSources
 
+const globalVariantScope = { kind: "global" } as const
+const tenantExclusiveVariantScope = (...tenantSlugs: string[]) =>
+  ({ kind: "tenant-exclusive", tenantSlugs } as const)
+
+const siabOwnedRuntime: BlockSourceRuntimeRequirement = {
+  kind: "siab-owned",
+  supportedAstroPath: "Render through @siteinabox/site-renderer React components and package CSS.",
+  interactive: false,
+  docs: ["packages/site-renderer/src"],
+  notes: "No external component runtime. SIAB owns both markup and CSS.",
+}
+
+const legacyTenantRuntime: BlockSourceRuntimeRequirement = {
+  kind: "legacy-tenant-source",
+  supportedAstroPath:
+    "Map legacy tenant Astro/React/CSS source into tenant-exclusive @siteinabox/site-renderer variants; do not create new tenant source branches.",
+  interactive: true,
+  docs: ["sites/ami-care", "sites/amblast"],
+  notes:
+    "Used only for Amicare/Amblast parity blocks. These variants are not available to future generated sites.",
+}
+
+const copyPasteTailwindRuntime = (sourceName: string, docs: string[]): BlockSourceRuntimeRequirement => ({
+  kind: "copy-paste-tailwind",
+  supportedAstroPath:
+    "Use the provider's HTML/Tailwind classes inside renderer-owned React/Astro components with Tailwind v4 compiled by the consuming app.",
+  tailwindNotes:
+    "Astro apps should use @tailwindcss/vite, import tailwindcss in their app CSS, and @source scan packages/site-renderer plus any source-backed component files.",
+  interactive: false,
+  docs,
+  notes: `${sourceName} blocks are source snippets, not app dependencies. Keep exact upstream source archived and map editable CMS fields into the same styled section structure.`,
+})
+
+const providerDerivedPackageCssRuntime = (
+  sourceName: string,
+  docs: string[],
+  providerNativeNotes?: string,
+): BlockSourceRuntimeRequirement => ({
+  kind: "provider-derived-package-css",
+  supportedAstroPath:
+    "Render structured @siteinabox/site-renderer components and import @siteinabox/site-renderer/styles.css in each consuming app.",
+  tailwindNotes:
+    "Current renderer CSS is deterministic package CSS derived from reviewed provider source; consuming apps do not compile provider utility markup for this variant.",
+  interactive: false,
+  docs,
+  notes: `${sourceName} is used as archived block build material. The renderer keeps SIAB structured-data props and provider-derived package CSS, so no provider runtime package is loaded for the current adapted variant.${
+    providerNativeNotes ? ` ${providerNativeNotes}` : ""
+  }`,
+})
+
+const prelineRuntime = (interactive = false): BlockSourceRuntimeRequirement => ({
+  kind: "preline-ui",
+  supportedAstroPath:
+    "Install Preline in any app that renders native Preline components, include Preline variants/forms in Tailwind CSS, and auto-init Preline JS for interactive components.",
+  tailwindNotes:
+    "Tailwind v4 CSS needs @import 'tailwindcss', app-local imports for node_modules/preline/css/themes/theme.css and node_modules/preline/variants.css, @plugin '@tailwindcss/forms', and @source scanning for Preline plus renderer component files. Archived provider source is provenance, not a production Tailwind scan target.",
+  packages: ["preline", "@tailwindcss/forms"],
+  cssImports: ["node_modules/preline/css/themes/theme.css", "node_modules/preline/variants.css"],
+  jsImports: interactive ? ["preline/dist"] : [],
+  initializer: interactive ? "window.HSStaticMethods.autoInit()" : undefined,
+  interactive,
+  docs: ["https://preline.co/docs/index.html", "https://preline.co/docs/frameworks-astro.html"],
+  notes:
+    "Only free-badged Preline blocks can enter the catalog. Non-interactive form sections still require Tailwind/forms styling; interactive Preline UI requires the Preline runtime.",
+})
+
+const tailwindPlusStaticRuntime = (interactive = false): BlockSourceRuntimeRequirement => ({
+  kind: interactive ? "tailwind-plus-elements" : "copy-paste-tailwind",
+  supportedAstroPath: interactive
+    ? "Install @tailwindplus/elements or load the Elements module when rendering Tailwind Plus HTML snippets with commands, dialogs, disclosures, dropdowns, tabs, or menus."
+    : "Use the downloadable Tailwind Plus HTML/Tailwind snippet in renderer-owned components with Tailwind v4 compiled by the consuming app.",
+  tailwindNotes:
+    "Tailwind Plus snippets are Tailwind utility markup. If the snippet includes Elements markup or command attributes, the Elements runtime is part of the supported implementation.",
+  packages: interactive ? ["@tailwindplus/elements"] : undefined,
+  jsImports: interactive ? ["@tailwindplus/elements"] : undefined,
+  interactive,
+  docs: [
+    "https://tailwindcss.com/plus/ui-blocks/marketing",
+    "https://tailwindcss.com/plus/ui-blocks/documentation/using-html",
+    "https://tailwindcss.com/plus/ui-blocks/documentation/elements",
+  ],
+  notes:
+    "Use only free/downloadable Tailwind Plus blocks approved by the operator. Locked or non-downloadable blocks stay out of the usable catalog.",
+})
+
+const deferredRuntime: BlockSourceRuntimeRequirement = {
+  kind: "deferred",
+  supportedAstroPath: "Phase 2 must implement a renderer-owned component before this variant can be marked supported.",
+  interactive: false,
+  docs: ["packages/contracts/src/site.ts", "packages/contracts/src/runtime.ts"],
+  notes: "Contract shape is locked, but renderer behavior and visual review are pending.",
+}
+
 const siabOwnedProvenance = (upstreamBlockName: string): BlockVariantProvenance => ({
   sourceName: "SIAB",
   url: "https://github.com/optidigi/siteinabox",
@@ -192,6 +330,7 @@ const siabOwnedProvenance = (upstreamBlockName: string): BlockVariantProvenance 
   verifiedAt: "2026-06-26",
   visualExactnessStatus: "reviewed-exact-source",
   visualSourceNotes: "SIAB-owned canonical renderer style; no external visual source comparison required.",
+  runtime: siabOwnedRuntime,
   notes: "Generic canonical renderer style, not copied from an external block.",
 })
 
@@ -216,6 +355,7 @@ const legacyTenantProvenance = (
   visualExactnessStatus: "needs-browser-comparison",
   visualSourceNotes:
     "Phase 2 records the local parity source and required data shape. Phase 3/6 must perform browser comparison after shared renderer implementation.",
+  runtime: legacyTenantRuntime,
   notes,
 })
 
@@ -223,6 +363,8 @@ const tailwindPlusFreeProvenance = (
   upstreamBlockName: string,
   upstreamId: string,
   url: string,
+  localSourcePath: string,
+  runtime: BlockSourceRuntimeRequirement = tailwindPlusStaticRuntime(false),
 ): BlockVariantProvenance => ({
   sourceName: "Tailwind Plus",
   url,
@@ -235,13 +377,16 @@ const tailwindPlusFreeProvenance = (
   sourceAccessType: "public-page-payload",
   sourceAccess: "Public Tailwind Plus page data exposes downloadable component preview/source payload.",
   implementation: "adapted-exact-style",
+  localSourcePath,
   retrieval:
     "Fetch the Tailwind Plus category page, inspect the public data-page component by upstreamId, and use only downloadable/free snippet data. See docs/architecture/block-source-catalog.md.",
   verifiedAt: "2026-06-26",
   visualExactnessStatus: "reviewed-adapted-exact-style",
   visualSourceNotes:
     "Reviewed against public Tailwind Plus preview/source payload at desktop and mobile widths; SIAB keeps contract data while matching the source spacing, typography, layout, and action treatment.",
-  notes: "Renderer keeps SIAB structured-data props and adapts the public block's spacing, layout, and visual treatment.",
+  runtime,
+  notes:
+    "Renderer keeps SIAB structured-data props and maps the public block's spacing, layout, and visual treatment through renderer-owned Tailwind utility classes.",
 })
 
 const tailblocksProvenance = (upstreamBlockName: string, sourcePath: string): BlockVariantProvenance => ({
@@ -253,6 +398,7 @@ const tailblocksProvenance = (upstreamBlockName: string, sourcePath: string): Bl
   sourceAvailability: "free-public",
   upstreamBlockName,
   sourcePath,
+  localSourcePath: `packages/contracts/block-sources/tailblocks/repo-snapshot/${sourcePath}`,
   sourceAccessType: "public-github-source",
   sourceAccess: "Public GitHub source file.",
   implementation: "adapted-exact-style",
@@ -261,10 +407,15 @@ const tailblocksProvenance = (upstreamBlockName: string, sourcePath: string): Bl
   visualExactnessStatus: "reviewed-adapted-exact-style",
   visualSourceNotes:
     "Compared raw source layout to renderer CSS at desktop and mobile widths; SIAB maps rich text/CTA contract fields onto the upstream centered container, spacing, typography, and action treatment.",
-  notes: "Renderer keeps SIAB structured-data props and adapts the upstream Tailwind layout/style.",
+  runtime: copyPasteTailwindRuntime("Tailblocks", [
+    "https://tailblocks.cc",
+    "https://github.com/mertJF/tailblocks",
+  ]),
+  notes:
+    "Renderer keeps SIAB structured-data props and maps the upstream Tailwind layout/style through renderer-owned utility classes.",
 })
 
-const mambaUiProvenance = (upstreamBlockName: string, sourcePath: string): BlockVariantProvenance => ({
+const mambaUiProvenance = (upstreamBlockName: string, sourcePath: string, localSourcePath: string): BlockVariantProvenance => ({
   sourceName: "Mamba UI",
   url: `https://github.com/Microwawe/mamba-ui/blob/master/${sourcePath}`,
   licenseStatus: "MIT licensed public repository.",
@@ -273,6 +424,7 @@ const mambaUiProvenance = (upstreamBlockName: string, sourcePath: string): Block
   sourceAvailability: "free-public",
   upstreamBlockName,
   sourcePath,
+  localSourcePath,
   sourceAccessType: "public-github-source",
   sourceAccess: "Public GitHub source file.",
   implementation: "adapted-exact-style",
@@ -280,8 +432,10 @@ const mambaUiProvenance = (upstreamBlockName: string, sourcePath: string): Block
   verifiedAt: "2026-06-26",
   visualExactnessStatus: "reviewed-adapted-exact-style",
   visualSourceNotes:
-    "Compared raw Angular template structure to renderer CSS at desktop and mobile widths; SIAB maps contract FAQ/testimonial data onto the upstream centered heading, divided FAQ, two-column testimonial, quote, and accent-rule treatments.",
-  notes: "Renderer keeps SIAB structured-data props and adapts the upstream Tailwind layout/style.",
+    "Compared raw Mamba UI source structure to renderer CSS at desktop and mobile widths; SIAB maps contract data onto the upstream spacing, typography, centered containers, and accent treatments.",
+  runtime: copyPasteTailwindRuntime("Mamba UI", ["https://mambaui.com/"]),
+  notes:
+    "Renderer keeps SIAB structured-data props and maps the upstream Tailwind layout/style through renderer-owned utility classes.",
 })
 
 const hyperUiProvenance = (
@@ -289,6 +443,7 @@ const hyperUiProvenance = (
   upstreamId: string,
   url: string,
   sourcePath: string,
+  localSourcePath: string,
 ): BlockVariantProvenance => ({
   sourceName: "HyperUI",
   url,
@@ -299,6 +454,7 @@ const hyperUiProvenance = (
   upstreamBlockName,
   upstreamId,
   sourcePath,
+  localSourcePath,
   sourceAccessType: "public-page-copy",
   sourceAccess: "Public HyperUI component page exposes Copy and preview HTML for this component.",
   implementation: "adapted-exact-style",
@@ -307,7 +463,46 @@ const hyperUiProvenance = (
   visualExactnessStatus: "reviewed-adapted-exact-style",
   visualSourceNotes:
     "Compared public component page/source pattern to renderer CSS at desktop and mobile widths; SIAB maps contact-section data onto the centered newsletter heading, single input, full-width mobile action, and compact desktop row.",
-  notes: "Renderer keeps SIAB contact form data and adapts the upstream spacing, colors, centered form layout, and button treatment.",
+  runtime: copyPasteTailwindRuntime("HyperUI", [
+    "https://hyperui.dev/",
+    "https://github.com/markmead/hyperui",
+  ]),
+  notes:
+    "Renderer keeps SIAB contact form data and maps the upstream spacing, colors, centered form layout, and button treatment through renderer-owned utility classes.",
+})
+
+const hyperUiChromeProvenance = (
+  upstreamBlockName: string,
+  upstreamId: string,
+  url: string,
+  sourcePath: string,
+  localSourcePath: string,
+  area: SiteChromeCatalogArea,
+): BlockVariantProvenance => ({
+  sourceName: "HyperUI",
+  url,
+  licenseStatus: "MIT licensed public project with copy-paste component pages.",
+  licenseCompatibility: "compatible",
+  approvalStatus: "approved",
+  sourceAvailability: "free-public",
+  upstreamBlockName,
+  upstreamId,
+  sourcePath,
+  localSourcePath,
+  sourceAccessType: "public-page-copy",
+  sourceAccess: "Public HyperUI component page exposes Copy and preview HTML for this chrome component.",
+  implementation: "adapted-exact-style",
+  retrieval: `Open ${url} and inspect ${sourcePath} / component ${upstreamId}.`,
+  verifiedAt: "2026-06-27",
+  visualExactnessStatus: "reviewed-adapted-exact-style",
+  visualSourceNotes:
+    "Compared public HyperUI chrome source pattern to renderer package CSS at desktop and mobile widths; SIAB maps nav, brand, footer composition, and announcement data onto the upstream spacing and action treatment.",
+  runtime: copyPasteTailwindRuntime("HyperUI", [
+    "https://hyperui.dev/",
+    "https://github.com/markmead/hyperui",
+  ]),
+  notes:
+    `Renderer keeps ${area} as structured SiteSettings chrome data and maps the upstream layout through renderer-owned utility classes.`,
 })
 
 const prelineFreeProvenance = (
@@ -315,6 +510,7 @@ const prelineFreeProvenance = (
   upstreamId: string,
   url: string,
   sourcePath: string,
+  localSourcePath: string,
 ): BlockVariantProvenance => ({
   sourceName: "Preline UI",
   url,
@@ -326,6 +522,7 @@ const prelineFreeProvenance = (
   upstreamBlockName,
   upstreamId,
   sourcePath,
+  localSourcePath,
   sourceAccessType: "public-page-copy",
   sourceAccess: "Public Preline block page exposes a Free badge and embedded textarea source markup for this block.",
   implementation: "adapted-exact-style",
@@ -334,7 +531,55 @@ const prelineFreeProvenance = (
   visualExactnessStatus: "reviewed-adapted-exact-style",
   visualSourceNotes:
     "Compared public Free block markup/page preview to renderer CSS at desktop and mobile widths; SIAB maps contact-section data onto the upstream centered title, description, rounded input, and responsive button row.",
-  notes: "Renderer keeps SIAB contact form data and adapts the upstream max-width, centered title, form spacing, rounded input, and themed primary action.",
+  runtime: prelineRuntime(false),
+  notes:
+    "Renderer keeps SIAB contact form data and maps the upstream max-width, centered title, form spacing, rounded input, and themed primary action through renderer-owned Preline/Tailwind utility classes.",
+})
+
+const deferredCatalogProvenance = ({
+  sourceName,
+  url,
+  licenseStatus,
+  upstreamBlockName,
+  upstreamId,
+  sourceAccessType = "deferred",
+  sourceAccess,
+  sourcePath,
+  localSourcePath,
+  notes,
+}: {
+  sourceName: string
+  url: string
+  licenseStatus: string
+  upstreamBlockName: string
+  upstreamId?: string
+  sourceAccessType?: BlockSourceAccessType
+  sourceAccess: string
+  sourcePath?: string
+  localSourcePath?: string
+  notes: string
+}): BlockVariantProvenance => ({
+  sourceName,
+  url,
+  licenseStatus,
+  licenseCompatibility: "operator-review-required",
+  approvalStatus: "deferred",
+  sourceAvailability: localSourcePath ? "free-public" : "unavailable",
+  upstreamBlockName,
+  upstreamId,
+  sourceAccessType,
+  sourceAccess,
+  sourcePath,
+  localSourcePath,
+  implementation: "deferred",
+  retrieval: localSourcePath
+    ? `Inspect archived provider source at ${localSourcePath}; Phase 2 must review visual parity before approval.`
+    : "No approved local source archive has been selected for this variant.",
+  verifiedAt: "2026-06-27",
+  visualExactnessStatus: "needs-browser-comparison",
+  visualSourceNotes: "Structured contract exists; renderer implementation and browser visual comparison remain pending.",
+  runtime: deferredRuntime,
+  notes,
 })
 
 export const REQUIRED_V1_MARKETING_BLOCKS = [
@@ -359,15 +604,10 @@ export const REQUIRED_V1_MARKETING_BLOCKS = [
 export type RequiredV1MarketingBlock = (typeof REQUIRED_V1_MARKETING_BLOCKS)[number]
 
 export const DEFERRED_V1_MARKETING_BLOCKS = [
-  "pricing",
-  "stats",
-  "logoCloud",
-  "gallery",
-  "team",
-  "blogCards",
-  "processSteps",
-  "comparison",
-] as const satisfies readonly Exclude<RequiredV1MarketingBlock, SiteBlockSlug>[]
+] as const satisfies readonly Exclude<RequiredV1MarketingBlock, SiteGenerationBlockSlug>[]
+
+export const DEFERRED_V1_MARKETING_RENDERER_BLOCKS = [
+] as const satisfies readonly SiteGenerationBlockSlug[]
 
 export const APPROVED_V1_MARKETING_CAPABILITY_COVERAGE = [
   {
@@ -423,6 +663,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "minimal",
         label: "Minimal",
         intent: "Text-first hero without image.",
+        scope: globalVariantScope,
         dataSignal: "field-presence",
         rendererSupportStatus: "supported",
         provenance: siabOwnedProvenance("SIAB minimal hero"),
@@ -432,6 +673,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "tailwindPlusSimpleCentered",
         label: "Tailwind Plus simple centered",
         intent: "Centered marketing hero adapted from the public free Tailwind Plus Simple centered block.",
+        scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "tailwind-plus-simple-centered",
@@ -440,6 +682,23 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
           "Simple centered",
           "b9bcab4538776a17fff93d18f82a8272",
           "https://tailwindcss.com/plus/ui-blocks/marketing/sections/heroes#component-b9bcab4538776a17fff93d18f82a8272",
+          "packages/contracts/block-sources/tailwind-plus/marketing/heroes/b9bcab4538776a17fff93d18f82a8272/snippet.html",
+        ),
+      },
+      {
+        id: "hero:amicareZenHero",
+        variant: "amicareZenHero",
+        label: "Amicare zen hero",
+        intent: "Amicare-only warm editorial hero with image card, pills, pull quote, and location badge.",
+        scope: tenantExclusiveVariantScope("amicare", "amicare-renderer"),
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        sectionVariant: "amicare-zen-hero",
+        rendererClassName: "cms-block--source-amicare-zen-hero",
+        provenance: legacyTenantProvenance(
+          "Amicare Hero",
+          "sites/ami-care/src/components/cms/Hero.tsx",
+          "Maps the Amicare Preact hero visual treatment to structured hero fields without reusable generated source.",
         ),
       },
     ],
@@ -483,6 +742,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "amblastShapedHero",
         label: "Amblast shaped overlay",
         intent: "Image-backed hero with overlay and top/bottom shape divider ids.",
+        scope: tenantExclusiveVariantScope("amblast", "amblast-renderer"),
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "amblast-shaped-overlay",
@@ -530,6 +790,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "services",
         label: "Services",
         intent: "Service or value proposition grid.",
+        scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         provenance: siabOwnedProvenance("SIAB services grid"),
@@ -539,6 +800,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "tailwindPlusCentered2x2",
         label: "Tailwind Plus centered 2x2",
         intent: "Centered feature grid adapted from the public free Tailwind Plus Centered 2x2 grid block.",
+        scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "tailwind-plus-centered-2x2",
@@ -547,6 +809,23 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
           "Centered 2x2 grid",
           "64ac58e032276db96bf343a8d4f332a8",
           "https://tailwindcss.com/plus/ui-blocks/marketing/sections/feature-sections#component-64ac58e032276db96bf343a8d4f332a8",
+          "packages/contracts/block-sources/tailwind-plus/marketing/feature-sections/64ac58e032276db96bf343a8d4f332a8/snippet.html",
+        ),
+      },
+      {
+        id: "featureList:amicareCareCards",
+        variant: "amicareCareCards",
+        label: "Amicare care cards",
+        intent: "Amicare-only centered feature cards with script kicker, accent icon panels, and warm card styling.",
+        scope: tenantExclusiveVariantScope("amicare", "amicare-renderer"),
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        sectionVariant: "amicare-care-cards",
+        rendererClassName: "cms-block--source-amicare-care-cards",
+        provenance: legacyTenantProvenance(
+          "Amicare FeatureList",
+          "sites/ami-care/src/components/cms/FeatureList.tsx",
+          "Maps the Amicare feature-card grid to structured featureList data and tenant-exclusive renderer CSS.",
         ),
       },
     ],
@@ -598,6 +877,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "amblastImageBoxes",
         label: "Amblast image boxes",
         intent: "Icon/text boxes for hours, phone/email, location, and contact facts.",
+        scope: tenantExclusiveVariantScope("amblast", "amblast-renderer"),
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "amblast-image-boxes",
@@ -655,6 +935,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "amblastSwiperServices",
         label: "Amblast Swiper services",
         intent: "Service-card carousel with icon media, paragraphs, CTA, autoplay, and pagination settings.",
+        scope: tenantExclusiveVariantScope("amblast", "amblast-renderer"),
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "amblast-swiper-services",
@@ -704,6 +985,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "amblastPortfolio",
         label: "Amblast portfolio comparisons",
         intent: "Portfolio image comparisons with labels, 50 percent initial ratio, and horizontal handle.",
+        scope: tenantExclusiveVariantScope("amblast", "amblast-renderer"),
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "amblast-portfolio-comparisons",
@@ -763,6 +1045,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "amblastContactCards",
         label: "Amblast contact cards",
         intent: "Contact cards and legal details alongside form sections.",
+        scope: tenantExclusiveVariantScope("amblast", "amblast-renderer"),
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "amblast-contact-cards",
@@ -796,6 +1079,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "prose",
         label: "Prose",
         intent: "General editorial content and imported legacy copy.",
+        scope: globalVariantScope,
         dataSignal: "field-presence",
         rendererSupportStatus: "supported",
         provenance: siabOwnedProvenance("SIAB prose"),
@@ -805,11 +1089,28 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "tailblocksContentA",
         label: "Tailblocks content A",
         intent: "Centered content section adapted from Tailblocks Content A.",
+        scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "tailblocks-content-a",
         rendererClassName: "cms-block--source-tailblocks-content-a",
         provenance: tailblocksProvenance("LightContentA", "src/blocks/content/light/a.js"),
+      },
+      {
+        id: "richText:amicareEditorial",
+        variant: "amicareEditorial",
+        label: "Amicare editorial prose",
+        intent: "Amicare-only centered prose section with themed script eyebrow, serif headings, and warm rich-text spacing.",
+        scope: tenantExclusiveVariantScope("amicare", "amicare-renderer"),
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        sectionVariant: "amicare-editorial",
+        rendererClassName: "cms-block--source-amicare-editorial",
+        provenance: legacyTenantProvenance(
+          "Amicare RichText",
+          "sites/ami-care/src/components/cms/RichText.tsx",
+          "Maps Amicare rich text and themed eyebrow behavior into structured RtRoot data and package CSS.",
+        ),
       },
     ],
     referenceSources: [blockReferenceSources.tailwindPlusMarketing, blockReferenceSources.mambaUi],
@@ -841,6 +1142,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "quote",
         label: "Quote request",
         intent: "Primary conversion action to an internal page or form anchor.",
+        scope: globalVariantScope,
         dataSignal: "renderer-inferred",
         rendererSupportStatus: "supported",
         provenance: siabOwnedProvenance("SIAB quote CTA"),
@@ -850,11 +1152,28 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "tailblocksCtaA",
         label: "Tailblocks CTA A",
         intent: "Inline heading and action adapted from Tailblocks CTA A.",
+        scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "tailblocks-cta-a",
         rendererClassName: "cms-block--source-tailblocks-cta-a",
         provenance: tailblocksProvenance("LightCTAA", "src/blocks/cta/light/a.js"),
+      },
+      {
+        id: "cta:amicareQuoteContact",
+        variant: "amicareQuoteContact",
+        label: "Amicare quote/contact CTA",
+        intent: "Amicare-only quote and contact CTA treatment with script kicker, warm backdrop, and large serif link mode.",
+        scope: tenantExclusiveVariantScope("amicare", "amicare-renderer"),
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        sectionVariant: "amicare-quote-contact",
+        rendererClassName: "cms-block--source-amicare-quote-contact",
+        provenance: legacyTenantProvenance(
+          "Amicare CTA",
+          "sites/ami-care/src/components/cms/CTA.tsx",
+          "Maps Amicare quote/contact CTA presentation to structured CTA fields and tenant-exclusive renderer CSS.",
+        ),
       },
     ],
     referenceSources: [blockReferenceSources.tailwindPlusMarketing, blockReferenceSources.hyperUi, blockReferenceSources.preline],
@@ -911,6 +1230,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "form",
         label: "Form",
         intent: "Lead-capture form with text, email, phone, and textarea fields.",
+        scope: globalVariantScope,
         dataSignal: "field-presence",
         rendererSupportStatus: "supported",
         provenance: siabOwnedProvenance("SIAB contact form"),
@@ -920,6 +1240,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "tailwindPlusNewsletterDetails",
         label: "Tailwind Plus newsletter details",
         intent: "Dark side-by-side newsletter/contact capture section adapted from public free Tailwind Plus.",
+        scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "tailwind-plus-newsletter-details",
@@ -928,6 +1249,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
           "Side-by-side with details",
           "82fc139db99143307df48bb9fe6152c5",
           "https://tailwindcss.com/plus/ui-blocks/marketing/sections/newsletter-sections#component-82fc139db99143307df48bb9fe6152c5",
+          "packages/contracts/block-sources/tailwind-plus/marketing/newsletter-sections/82fc139db99143307df48bb9fe6152c5/snippet.html",
         ),
       },
       {
@@ -935,6 +1257,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "hyperUiNewsletterCentered",
         label: "HyperUI newsletter centered",
         intent: "Centered newsletter signup adapted from HyperUI's public marketing CTA component.",
+        scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "hyperui-newsletter-centered",
@@ -944,6 +1267,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
           "component-2",
           "https://hyperui.dev/components/marketing/ctas/#component-2",
           "/examples/marketing/ctas/2.html",
+          "packages/contracts/block-sources/hyperui/marketing/ctas/ctas-2/example.html",
         ),
       },
       {
@@ -951,6 +1275,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "prelineCenteredNewsletter",
         label: "Preline centered newsletter",
         intent: "Centered newsletter signup adapted from Preline's Free centered newsletter block.",
+        scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "preline-centered-newsletter",
@@ -960,6 +1285,23 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
           "centered-newsletter-signup",
           "https://preline.co/blocks/forms/newsletter-signup-forms/#centered-newsletter-signup",
           "textarea#centered-newsletter-signup-tab-html-markup",
+          "packages/contracts/block-sources/preline/forms/newsletter-signup-forms/centered-newsletter-signup/iframe.html",
+        ),
+      },
+      {
+        id: "contactSection:amicareContactForm",
+        variant: "amicareContactForm",
+        label: "Amicare contact form",
+        intent: "Amicare-only narrow warm contact form with serif heading and quiet card fields.",
+        scope: tenantExclusiveVariantScope("amicare", "amicare-renderer"),
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        sectionVariant: "amicare-contact-form",
+        rendererClassName: "cms-block--source-amicare-contact-form",
+        provenance: legacyTenantProvenance(
+          "Amicare ContactSection",
+          "sites/ami-care/src/components/cms/ContactSection.tsx",
+          "Maps the Amicare contact form styling to structured fields and SIAB form provider data.",
         ),
       },
     ],
@@ -997,6 +1339,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "accordion",
         label: "Accordion",
         intent: "Expandable question-and-answer list.",
+        scope: globalVariantScope,
         dataSignal: "field-presence",
         rendererSupportStatus: "supported",
         provenance: siabOwnedProvenance("SIAB FAQ accordion"),
@@ -1006,11 +1349,32 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "mambaFaq1",
         label: "Mamba FAQ 1",
         intent: "Centered FAQ section adapted from Mamba UI FAQ 1.",
+        scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "mamba-faq-1",
         rendererClassName: "cms-block--source-mamba-faq-1",
-        provenance: mambaUiProvenance("FAQ 1", "src/app/components/faq/faq1/faq1.component.html"),
+        provenance: mambaUiProvenance(
+          "FAQ 1",
+          "src/app/components/faq/faq1/faq1.component.html",
+          "packages/contracts/block-sources/mambaui/components/faq/page.html",
+        ),
+      },
+      {
+        id: "faq:amicareWarmAccordion",
+        variant: "amicareWarmAccordion",
+        label: "Amicare warm accordion",
+        intent: "Amicare-only FAQ accordion with warm cards, centered serif heading, and compact disclosure rows.",
+        scope: tenantExclusiveVariantScope("amicare", "amicare-renderer"),
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        sectionVariant: "amicare-warm-accordion",
+        rendererClassName: "cms-block--source-amicare-warm-accordion",
+        provenance: legacyTenantProvenance(
+          "Amicare FAQ",
+          "sites/ami-care/src/components/cms/FAQ.tsx",
+          "Maps Amicare FAQ details styling to structured FAQ items and tenant-exclusive renderer CSS.",
+        ),
       },
     ],
     referenceSources: [blockReferenceSources.tailwindPlusMarketing, blockReferenceSources.hyperUi, blockReferenceSources.preline],
@@ -1049,6 +1413,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "cards",
         label: "Cards",
         intent: "Grid of customer quotes or social proof.",
+        scope: globalVariantScope,
         dataSignal: "field-presence",
         rendererSupportStatus: "supported",
         provenance: siabOwnedProvenance("SIAB testimonial cards"),
@@ -1058,16 +1423,678 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         variant: "mambaTestimonial1",
         label: "Mamba testimonial 1",
         intent: "Two-column testimonial quote layout adapted from Mamba UI Testimonial 1.",
+        scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
         sectionVariant: "mamba-testimonial-1",
         rendererClassName: "cms-block--source-mamba-testimonial-1",
-        provenance: mambaUiProvenance("Testimonial 1", "src/app/components/testimonial/testimonial1/testimonial1.component.html"),
+        provenance: mambaUiProvenance(
+          "Testimonial 1",
+          "src/app/components/testimonial/testimonial1/testimonial1.component.html",
+          "packages/contracts/block-sources/mambaui/components/testimonial/page.html",
+        ),
+      },
+      {
+        id: "testimonials:amicareStoryCards",
+        variant: "amicareStoryCards",
+        label: "Amicare story cards",
+        intent: "Amicare-only testimonial cards with warm secondary band and italic serif quotes.",
+        scope: tenantExclusiveVariantScope("amicare", "amicare-renderer"),
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        sectionVariant: "amicare-story-cards",
+        rendererClassName: "cms-block--source-amicare-story-cards",
+        provenance: legacyTenantProvenance(
+          "Amicare Testimonials",
+          "sites/ami-care/src/components/cms/Testimonials.tsx",
+          "Maps Amicare testimonial cards to structured quote, author, role, and optional avatar fields.",
+        ),
       },
     ],
     referenceSources: [blockReferenceSources.tailwindPlusMarketing, blockReferenceSources.tailblocks, blockReferenceSources.mambaUi],
   },
+  {
+    slug: "pricing",
+    label: "Pricing",
+    status: "approved",
+    contractType: "PricingBlock",
+    runtimeValidationTarget: "SITE_BLOCK_SLUGS + validateSiteGenerationSpecForCms + PricingBlockSchema + GeneratedBlockSpecSchema.",
+    cmsEditableFields: [
+      richtext("title", "Title", "inline", "heading"),
+      richtext("intro", "Intro", "block", "text"),
+      {
+        name: "plans",
+        label: "Plans",
+        kind: "array",
+        itemLabel: "Plan",
+        itemFields: [
+          richtext("title", "Title", "inline", "heading"),
+          richtext("description", "Description", "block", "text"),
+          text("price", "Price"),
+          text("period", "Period"),
+          cta("cta", "Action"),
+          text("badge", "Badge"),
+          { name: "highlighted", label: "Highlighted", kind: "checkbox" },
+        ],
+      },
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "PricingBlockRenderer",
+      output: "Shared renderer for structured pricing plans with feature lists and CTA links.",
+    },
+    themeBehavior: ["font-heading", "font-text", "accent", "card", "rule", "radius-lg"],
+    fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts"],
+    variants: [
+      {
+        id: "pricing:tailwindPlusSimpleTiers",
+        variant: "tailwindPlusSimpleTiers",
+        label: "Tailwind Plus simple tiers",
+        intent: "Pricing cards adapted from an archived Tailwind Plus free/downloadable pricing source.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        sectionVariant: "tailwind-plus-simple-pricing",
+        rendererClassName: "cms-block--source-tailwind-plus-simple-pricing",
+        provenance: tailwindPlusFreeProvenance(
+          "Simple pricing tiers",
+          "4a9182e85945751476472f12356adb68",
+          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/pricing#component-4a9182e85945751476472f12356adb68",
+          "packages/contracts/block-sources/tailwind-plus/marketing/pricing/4a9182e85945751476472f12356adb68/snippet.html",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.tailwindPlusMarketing, blockReferenceSources.hyperUi, blockReferenceSources.mambaUi],
+  },
+  {
+    slug: "stats",
+    label: "Stats",
+    status: "approved",
+    contractType: "StatsBlock",
+    runtimeValidationTarget: "SITE_BLOCK_SLUGS + validateSiteGenerationSpecForCms + StatsBlockSchema + GeneratedBlockSpecSchema.",
+    cmsEditableFields: [
+      richtext("title", "Title", "inline", "heading"),
+      richtext("intro", "Intro", "block", "text"),
+      {
+        name: "items",
+        label: "Stats",
+        kind: "array",
+        itemLabel: "Stat",
+        itemFields: [text("value", "Value"), text("label", "Label"), richtext("description", "Description", "block", "text")],
+      },
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "StatsBlockRenderer",
+      output: "Shared renderer for structured metric/value sections.",
+    },
+    themeBehavior: ["font-heading", "font-text", "accent", "ink", "muted", "rule"],
+    fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts"],
+    variants: [
+      {
+        id: "stats:tailwindPlusSimple",
+        variant: "tailwindPlusSimple",
+        label: "Tailwind Plus stats",
+        intent: "Metric row adapted from an archived Tailwind Plus stats source.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        sectionVariant: "tailwind-plus-stats-simple",
+        rendererClassName: "cms-block--source-tailwind-plus-stats-simple",
+        provenance: tailwindPlusFreeProvenance(
+          "Stats section",
+          "b5eb58f5c8fd565cc54bf488d647f02b",
+          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/stats-sections#component-b5eb58f5c8fd565cc54bf488d647f02b",
+          "packages/contracts/block-sources/tailwind-plus/marketing/stats-sections/b5eb58f5c8fd565cc54bf488d647f02b/snippet.html",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.tailwindPlusMarketing, blockReferenceSources.mambaUi],
+  },
+  {
+    slug: "logoCloud",
+    label: "Logo cloud",
+    status: "approved",
+    contractType: "LogoCloudBlock",
+    runtimeValidationTarget: "SITE_BLOCK_SLUGS + validateSiteGenerationSpecForCms + LogoCloudBlockSchema + GeneratedBlockSpecSchema.",
+    cmsEditableFields: [
+      richtext("title", "Title", "inline", "heading"),
+      richtext("intro", "Intro", "block", "text"),
+      {
+        name: "logos",
+        label: "Logos",
+        kind: "array",
+        itemLabel: "Logo",
+        itemFields: [text("name", "Name"), image("image", "Logo image"), text("href", "Href")],
+      },
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "LogoCloudBlockRenderer",
+      output: "Shared renderer for linked or unlinked organization logos.",
+    },
+    themeBehavior: ["font-heading", "font-text", "muted", "rule", "logo-treatment"],
+    fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts"],
+    variants: [
+      {
+        id: "logoCloud:tailwindPlusSimple",
+        variant: "tailwindPlusSimple",
+        label: "Tailwind Plus logo cloud",
+        intent: "Logo row adapted from an archived Tailwind Plus logo cloud source.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        sectionVariant: "tailwind-plus-logo-cloud-simple",
+        rendererClassName: "cms-block--source-tailwind-plus-logo-cloud-simple",
+        provenance: tailwindPlusFreeProvenance(
+          "Logo cloud",
+          "6b864c393af88d7b8a2ac53eaebf6403",
+          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/logo-clouds#component-6b864c393af88d7b8a2ac53eaebf6403",
+          "packages/contracts/block-sources/tailwind-plus/marketing/logo-clouds/6b864c393af88d7b8a2ac53eaebf6403/snippet.html",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.tailwindPlusMarketing, blockReferenceSources.hyperUi],
+  },
+  {
+    slug: "gallery",
+    label: "Gallery",
+    status: "approved",
+    contractType: "GalleryBlock",
+    runtimeValidationTarget: "SITE_BLOCK_SLUGS + validateSiteGenerationSpecForCms + GalleryBlockSchema + GeneratedBlockSpecSchema.",
+    cmsEditableFields: [
+      richtext("title", "Title", "inline", "heading"),
+      richtext("intro", "Intro", "block", "text"),
+      {
+        name: "images",
+        label: "Images",
+        kind: "array",
+        itemLabel: "Image",
+        itemFields: [image("image", "Image"), richtext("caption", "Caption", "block", "text"), cta("link", "Link")],
+      },
+      cta("cta", "Action"),
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "GalleryBlockRenderer",
+      output: "Shared renderer for structured image galleries.",
+    },
+    themeBehavior: ["font-heading", "font-text", "accent", "radius-md", "media-grid"],
+    fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts"],
+    variants: [
+      {
+        id: "gallery:prelineSquareGrid",
+        variant: "prelineSquareGrid",
+        label: "Preline square grid",
+        intent: "Image grid adapted from an archived free Preline gallery source.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        sectionVariant: "preline-gallery-square-grid",
+        rendererClassName: "cms-block--source-preline-gallery-square-grid",
+        provenance: prelineFreeProvenance(
+          "Square Image Grid with Four Columns",
+          "square-image-grid-with-four-columns",
+          "https://preline.co/blocks/marketing/gallery-grids/#square-image-grid-with-four-columns",
+          "textarea#square-image-grid-with-four-columns-tab-html-markup",
+          "packages/contracts/block-sources/preline/marketing/gallery-grids/square-image-grid-with-four-columns/iframe.html",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.preline, blockReferenceSources.mambaUi],
+  },
+  {
+    slug: "team",
+    label: "Team",
+    status: "approved",
+    contractType: "TeamBlock",
+    runtimeValidationTarget: "SITE_BLOCK_SLUGS + validateSiteGenerationSpecForCms + TeamBlockSchema + GeneratedBlockSpecSchema.",
+    cmsEditableFields: [
+      richtext("title", "Title", "inline", "heading"),
+      richtext("intro", "Intro", "block", "text"),
+      {
+        name: "members",
+        label: "Members",
+        kind: "array",
+        itemLabel: "Member",
+        itemFields: [
+          text("name", "Name"),
+          text("role", "Role"),
+          richtext("bio", "Bio", "block", "text"),
+          image("image", "Image"),
+          cta("links", "Links"),
+        ],
+      },
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "TeamBlockRenderer",
+      output: "Shared renderer for team member cards.",
+    },
+    themeBehavior: ["font-heading", "font-text", "muted", "radius-lg", "media-treatment"],
+    fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts"],
+    variants: [
+      {
+        id: "team:tailwindPlusGrid",
+        variant: "tailwindPlusGrid",
+        label: "Tailwind Plus team grid",
+        intent: "Team grid adapted from an archived Tailwind Plus team section source.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        sectionVariant: "tailwind-plus-team-grid",
+        rendererClassName: "cms-block--source-tailwind-plus-team-grid",
+        provenance: tailwindPlusFreeProvenance(
+          "Team grid",
+          "1ea7e52a3e89a3cf7b4a0a4fd2dcdf84",
+          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/team-sections#component-1ea7e52a3e89a3cf7b4a0a4fd2dcdf84",
+          "packages/contracts/block-sources/tailwind-plus/marketing/team-sections/1ea7e52a3e89a3cf7b4a0a4fd2dcdf84/snippet.html",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.tailwindPlusMarketing, blockReferenceSources.hyperUi, blockReferenceSources.mambaUi],
+  },
+  {
+    slug: "blogCards",
+    label: "Blog cards",
+    status: "approved",
+    contractType: "BlogCardsBlock",
+    runtimeValidationTarget: "SITE_BLOCK_SLUGS + validateSiteGenerationSpecForCms + BlogCardsBlockSchema + GeneratedBlockSpecSchema.",
+    cmsEditableFields: [
+      richtext("title", "Title", "inline", "heading"),
+      richtext("intro", "Intro", "block", "text"),
+      {
+        name: "posts",
+        label: "Posts",
+        kind: "array",
+        itemLabel: "Post",
+        itemFields: [
+          richtext("title", "Title", "inline", "heading"),
+          richtext("excerpt", "Excerpt", "block", "text"),
+          image("image", "Image"),
+          text("href", "Href"),
+          text("date", "Date"),
+          text("author", "Author"),
+          cta("cta", "Action"),
+        ],
+      },
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "BlogCardsBlockRenderer",
+      output: "Shared renderer for article or news card lists.",
+    },
+    themeBehavior: ["font-heading", "font-text", "accent", "card", "radius-lg"],
+    fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts"],
+    variants: [
+      {
+        id: "blogCards:tailwindPlusThreeColumn",
+        variant: "tailwindPlusThreeColumn",
+        label: "Tailwind Plus three column",
+        intent: "Article cards adapted from an archived Tailwind Plus blog section source.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        sectionVariant: "tailwind-plus-blog-three-column",
+        rendererClassName: "cms-block--source-tailwind-plus-blog-three-column",
+        provenance: tailwindPlusFreeProvenance(
+          "Three-column blog section",
+          "b8172652fa29dc3eac306c2a8a922323",
+          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/blog-sections#component-b8172652fa29dc3eac306c2a8a922323",
+          "packages/contracts/block-sources/tailwind-plus/marketing/blog-sections/b8172652fa29dc3eac306c2a8a922323/snippet.html",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.tailwindPlusMarketing, blockReferenceSources.hyperUi, blockReferenceSources.mambaUi],
+  },
+  {
+    slug: "processSteps",
+    label: "Process steps",
+    status: "approved",
+    contractType: "ProcessStepsBlock",
+    runtimeValidationTarget: "SITE_BLOCK_SLUGS + validateSiteGenerationSpecForCms + ProcessStepsBlockSchema + GeneratedBlockSpecSchema.",
+    cmsEditableFields: [
+      richtext("title", "Title", "inline", "heading"),
+      richtext("intro", "Intro", "block", "text"),
+      {
+        name: "steps",
+        label: "Steps",
+        kind: "array",
+        itemLabel: "Step",
+        itemFields: [
+          richtext("title", "Title", "inline", "heading"),
+          richtext("description", "Description", "block", "text"),
+          { name: "icon", label: "Icon", kind: "icon" },
+          image("image", "Image"),
+          cta("cta", "Action"),
+        ],
+      },
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "ProcessStepsBlockRenderer",
+      output: "Shared renderer for ordered process, steps, or timeline sections.",
+    },
+    themeBehavior: ["font-heading", "font-text", "accent", "rule", "step-marker"],
+    fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts"],
+    variants: [
+      {
+        id: "processSteps:mambaSteps",
+        variant: "mambaSteps",
+        label: "Mamba steps",
+        intent: "Process steps adapted from archived Mamba UI steps source.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        sectionVariant: "mamba-process-steps",
+        rendererClassName: "cms-block--source-mamba-process-steps",
+        provenance: mambaUiProvenance(
+          "Steps",
+          "src/app/components/steps",
+          "packages/contracts/block-sources/mambaui/components/steps/page.html",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.mambaUi],
+  },
+  {
+    slug: "comparison",
+    label: "Comparison",
+    status: "approved",
+    contractType: "ComparisonBlock",
+    runtimeValidationTarget: "SITE_BLOCK_SLUGS + validateSiteGenerationSpecForCms + ComparisonBlockSchema + GeneratedBlockSpecSchema.",
+    cmsEditableFields: [
+      richtext("title", "Title", "inline", "heading"),
+      richtext("intro", "Intro", "block", "text"),
+      {
+        name: "columns",
+        label: "Columns",
+        kind: "array",
+        itemLabel: "Column",
+        itemFields: [richtext("title", "Title", "inline", "heading"), richtext("description", "Description", "block", "text"), cta("cta", "Action")],
+      },
+      {
+        name: "rows",
+        label: "Rows",
+        kind: "array",
+        itemLabel: "Row",
+        itemFields: [text("label", "Label")],
+      },
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "ComparisonBlockRenderer",
+      output: "Shared renderer for structured comparison tables or feature matrices.",
+    },
+    themeBehavior: ["font-heading", "font-text", "accent", "card", "rule", "table"],
+    fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts"],
+    variants: [
+      {
+        id: "comparison:matrix",
+        variant: "matrix",
+        label: "Comparison matrix",
+        intent: "Generic structured comparison matrix without external source provenance.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        provenance: siabOwnedProvenance("SIAB comparison matrix"),
+      },
+    ],
+    referenceSources: [blockReferenceSources.tailwindPlusMarketing, blockReferenceSources.hyperUi, blockReferenceSources.preline],
+  },
 ] as const satisfies readonly SiteBlockCatalogEntry[]
+
+export const SITE_CHROME_CATALOG = [
+  {
+    id: "header:default",
+    area: "header",
+    variant: "default",
+    label: "Default header",
+    intent: "SIAB-owned responsive brand, nav, and CTA header.",
+    scope: globalVariantScope,
+    dataSignal: "settings.chrome.variant",
+    rendererSupportStatus: "supported",
+    provenance: siabOwnedProvenance("SIAB default header"),
+    editableFields: [
+      image("chrome.header.logo", "Logo"),
+      cta("chrome.header.cta", "Header action"),
+      {
+        name: "chrome.header.behavior",
+        label: "Header behavior",
+        kind: "select",
+        options: [
+          { label: "Static", value: "static" },
+          { label: "Sticky", value: "sticky" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "header:hyperUiSimple",
+    area: "header",
+    variant: "hyperUiSimple",
+    label: "HyperUI simple header",
+    intent: "Source-backed responsive header with brand, primary navigation, CTA, and compact mobile menu.",
+    scope: globalVariantScope,
+    dataSignal: "settings.chrome.variant",
+    rendererSupportStatus: "supported",
+    rendererClassName: "site-header--source-hyperui-simple",
+    provenance: hyperUiChromeProvenance(
+      "headers-1",
+      "headers-1",
+      "https://hyperui.dev/components/marketing/headers",
+      "packages/contracts/block-sources/hyperui/marketing/headers/headers-1/example.html",
+      "packages/contracts/block-sources/hyperui/marketing/headers/headers-1/example.html",
+      "header",
+    ),
+    editableFields: [
+      image("chrome.header.logo", "Logo"),
+      cta("chrome.header.cta", "Header action"),
+      {
+        name: "navHeader",
+        label: "Header navigation",
+        kind: "array",
+        itemLabel: "Navigation link",
+        itemFields: [text("label", "Label"), text("href", "Href")],
+      },
+    ],
+  },
+  {
+    id: "header:amicareZen",
+    area: "header",
+    variant: "amicareZen",
+    label: "Amicare zen header",
+    intent: "Amicare-only sticky translucent anchor navigation with compact uppercase brand lockup.",
+    scope: tenantExclusiveVariantScope("amicare", "amicare-renderer"),
+    dataSignal: "settings.chrome.variant",
+    rendererSupportStatus: "supported",
+    rendererClassName: "site-header--source-amicare-zen",
+    provenance: legacyTenantProvenance(
+      "Amicare Nav",
+      "sites/ami-care/src/components/Nav.tsx",
+      "Maps Amicare sticky anchor navigation to structured SiteSettings navHeader/chrome data.",
+    ),
+    editableFields: [
+      image("chrome.header.logo", "Logo"),
+      cta("chrome.header.cta", "Header action"),
+      {
+        name: "navHeader",
+        label: "Header navigation",
+        kind: "array",
+        itemLabel: "Navigation link",
+        itemFields: [text("label", "Label"), text("href", "Href")],
+      },
+    ],
+  },
+  {
+    id: "header:amblastIndustrial",
+    area: "header",
+    variant: "amblastIndustrial",
+    label: "Amblast industrial header",
+    intent: "Amblast-only legacy parity header with logo block, path navigation, and compact contact action.",
+    scope: tenantExclusiveVariantScope("amblast", "amblast-renderer"),
+    dataSignal: "settings.chrome.variant",
+    rendererSupportStatus: "supported",
+    rendererClassName: "site-header--source-amblast-industrial",
+    provenance: legacyTenantProvenance(
+      "Amblast Header",
+      "sites/amblast/src/components/layout/Header.astro",
+      "Maps Amblast legacy header chrome to structured SiteSettings logo, navHeader, path active state, and contact CTA data.",
+    ),
+    editableFields: [
+      image("chrome.header.logo", "Logo"),
+      cta("chrome.header.cta", "Header action"),
+      {
+        name: "navHeader",
+        label: "Header navigation",
+        kind: "array",
+        itemLabel: "Navigation link",
+        itemFields: [text("label", "Label"), text("href", "Href")],
+      },
+    ],
+  },
+  {
+    id: "footer:default",
+    area: "footer",
+    variant: "default",
+    label: "Default footer",
+    intent: "SIAB-owned responsive footer with brand, columns, navigation, and legal links.",
+    scope: globalVariantScope,
+    dataSignal: "settings.chrome.variant",
+    rendererSupportStatus: "supported",
+    provenance: siabOwnedProvenance("SIAB default footer"),
+    editableFields: [
+      image("chrome.footer.logo", "Logo"),
+      text("chrome.footer.tagline", "Tagline"),
+      text("chrome.footer.copyright", "Copyright"),
+    ],
+  },
+  {
+    id: "footer:hyperUiSimple",
+    area: "footer",
+    variant: "hyperUiSimple",
+    label: "HyperUI simple footer",
+    intent: "Source-backed footer with brand lockup, composition columns, navigation, and legal row.",
+    scope: globalVariantScope,
+    dataSignal: "settings.chrome.variant",
+    rendererSupportStatus: "supported",
+    rendererClassName: "site-footer--source-hyperui-simple",
+    provenance: hyperUiChromeProvenance(
+      "footers-1",
+      "footers-1",
+      "https://hyperui.dev/components/marketing/footers",
+      "packages/contracts/block-sources/hyperui/marketing/footers/footers-1/example.html",
+      "packages/contracts/block-sources/hyperui/marketing/footers/footers-1/example.html",
+      "footer",
+    ),
+    editableFields: [
+      image("chrome.footer.logo", "Logo"),
+      text("chrome.footer.tagline", "Tagline"),
+      {
+        name: "chrome.footer.columns",
+        label: "Footer columns",
+        kind: "array",
+        itemLabel: "Column",
+      },
+    ],
+  },
+  {
+    id: "footer:amicareZen",
+    area: "footer",
+    variant: "amicareZen",
+    label: "Amicare zen footer",
+    intent: "Amicare-only warm gradient footer with brand, business details, contact, navigation, and legal row.",
+    scope: tenantExclusiveVariantScope("amicare", "amicare-renderer"),
+    dataSignal: "settings.chrome.variant",
+    rendererSupportStatus: "supported",
+    rendererClassName: "site-footer--source-amicare-zen",
+    provenance: legacyTenantProvenance(
+      "Amicare Footer",
+      "sites/ami-care/src/components/Footer.astro",
+      "Maps Amicare footer composition to structured SiteSettings footer columns, navFooter, and NAP data.",
+    ),
+    editableFields: [
+      image("chrome.footer.logo", "Logo"),
+      text("chrome.footer.tagline", "Tagline"),
+      text("chrome.footer.copyright", "Copyright"),
+      {
+        name: "chrome.footer.columns",
+        label: "Footer columns",
+        kind: "array",
+        itemLabel: "Column",
+      },
+    ],
+  },
+  {
+    id: "footer:amblastIndustrial",
+    area: "footer",
+    variant: "amblastIndustrial",
+    label: "Amblast industrial footer",
+    intent: "Amblast-only legacy parity footer with logo, menu, contact, company info, and legal row.",
+    scope: tenantExclusiveVariantScope("amblast", "amblast-renderer"),
+    dataSignal: "settings.chrome.variant",
+    rendererSupportStatus: "supported",
+    rendererClassName: "site-footer--source-amblast-industrial",
+    provenance: legacyTenantProvenance(
+      "Amblast Footer",
+      "sites/amblast/src/components/layout/Footer.astro",
+      "Maps Amblast footer composition to structured SiteSettings footer columns, navFooter, legal links, and NAP data.",
+    ),
+    editableFields: [
+      image("chrome.footer.logo", "Logo"),
+      text("chrome.footer.tagline", "Tagline"),
+      text("chrome.footer.copyright", "Copyright"),
+      {
+        name: "chrome.footer.columns",
+        label: "Footer columns",
+        kind: "array",
+        itemLabel: "Column",
+      },
+    ],
+  },
+  {
+    id: "banner:default",
+    area: "banner",
+    variant: "default",
+    label: "Default announcement banner",
+    intent: "SIAB-owned global announcement bar for site-wide messages.",
+    scope: globalVariantScope,
+    dataSignal: "settings.chrome.variant",
+    rendererSupportStatus: "supported",
+    provenance: siabOwnedProvenance("SIAB default announcement banner"),
+    editableFields: [
+      text("chrome.banner.title", "Title"),
+      text("chrome.banner.message", "Message"),
+      cta("chrome.banner.link", "Banner link"),
+      { name: "chrome.banner.dismissible", label: "Dismissible", kind: "checkbox" },
+    ],
+  },
+  {
+    id: "banner:hyperUiSimple",
+    area: "banner",
+    variant: "hyperUiSimple",
+    label: "HyperUI simple announcement",
+    intent: "Source-backed announcement bar with centered message and inline link.",
+    scope: globalVariantScope,
+    dataSignal: "settings.chrome.variant",
+    rendererSupportStatus: "supported",
+    rendererClassName: "site-banner--source-hyperui-simple",
+    provenance: hyperUiChromeProvenance(
+      "announcements-1",
+      "announcements-1",
+      "https://hyperui.dev/components/marketing/announcements",
+      "packages/contracts/block-sources/hyperui/marketing/announcements/announcements-1/example.html",
+      "packages/contracts/block-sources/hyperui/marketing/announcements/announcements-1/example.html",
+      "banner",
+    ),
+    editableFields: [
+      text("chrome.banner.title", "Title"),
+      text("chrome.banner.message", "Message"),
+      cta("chrome.banner.link", "Banner link"),
+      { name: "chrome.banner.dismissible", label: "Dismissible", kind: "checkbox" },
+    ],
+  },
+] as const satisfies readonly SiteChromeCatalogVariant[]
 
 export const SITE_GENERATION_BLOCK_CATALOG = SITE_GENERATION_BLOCK_CATALOG_ENTRIES
 
@@ -1097,20 +2124,31 @@ const sourceBackedAccessTypes: readonly BlockSourceAccessType[] = [
   "public-page-copy",
   "public-github-source",
 ]
+const sourceBackedRuntimeKinds: readonly BlockSourceIntegrationKind[] = [
+  "copy-paste-tailwind",
+  "provider-derived-package-css",
+  "preline-ui",
+  "tailwind-plus-elements",
+]
 
-export function isApprovedSourceBackedVariant(variant: SiteBlockCatalogVariant) {
+export function isApprovedSourceBackedVariant(variant: SiteBlockCatalogVariant | SiteChromeCatalogVariant) {
   return (
     sourceBackedImplementations.includes(variant.provenance.implementation) &&
     variant.provenance.approvalStatus === "approved" &&
     variant.provenance.sourceAvailability === "free-public" &&
     variant.provenance.licenseCompatibility === "compatible" &&
     sourceBackedAccessTypes.includes(variant.provenance.sourceAccessType) &&
+    sourceBackedRuntimeKinds.includes(variant.provenance.runtime.kind) &&
     ["reviewed-adapted-exact-style", "reviewed-exact-source"].includes(variant.provenance.visualExactnessStatus) &&
     variant.rendererSupportStatus === "supported" &&
     Boolean(variant.variant) &&
     Boolean(variant.rendererClassName) &&
+    Boolean(variant.provenance.localSourcePath) &&
     Boolean(variant.provenance.retrieval) &&
-    Boolean(variant.provenance.visualSourceNotes)
+    Boolean(variant.provenance.visualSourceNotes) &&
+    Boolean(variant.provenance.runtime.supportedAstroPath) &&
+    Boolean(variant.provenance.runtime.docs.length) &&
+    Boolean(variant.provenance.runtime.notes)
   )
 }
 
@@ -1130,6 +2168,20 @@ export const SITE_SOURCE_BACKED_BLOCK_VARIANTS = SITE_BLOCK_CATALOG.flatMap((ent
       }
     }),
 )
+
+export const SITE_SOURCE_BACKED_CHROME_VARIANTS = SITE_CHROME_CATALOG
+  .filter(isApprovedSourceBackedVariant)
+  .map((variant) => {
+    const catalogVariant = variant as SiteChromeCatalogVariant
+    return {
+      area: catalogVariant.area,
+      variantId: catalogVariant.id,
+      variant: catalogVariant.variant,
+      label: catalogVariant.label,
+      rendererClassName: catalogVariant.rendererClassName,
+      provenance: catalogVariant.provenance,
+    }
+  })
 
 export const DEFERRED_SOURCE_BLOCK_CANDIDATES = [
   // Keep this list for future reviewed candidates that fail source or license gates.
