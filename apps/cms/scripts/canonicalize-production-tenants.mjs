@@ -251,6 +251,32 @@ export function buildRenameSourceTenantForUniqueKeysQuery(mapping) {
   }
 }
 
+export function buildUpdatePublishedSnapshotTenantJsonQuery(mapping) {
+  return {
+    text: `UPDATE published_site_snapshots
+          SET snapshot = jsonb_set(
+            jsonb_set(snapshot, '{tenantId}', to_jsonb($2::text), true),
+            '{manifest,tenantId}', to_jsonb($2::text), true
+          )
+        WHERE snapshot IS NOT NULL
+          AND (
+            snapshot #>> '{tenantId}' = $1::text
+            OR snapshot #>> '{manifest,tenantId}' = $1::text
+          )`,
+    values: [mapping.sourceId, mapping.targetId],
+  }
+}
+
+export function buildUpdateGenerationRunApplyResultTenantJsonQuery(mapping) {
+  return {
+    text: `UPDATE site_generation_runs
+          SET apply_result = jsonb_set(apply_result, '{tenantId}', to_jsonb($2::int), true)
+        WHERE apply_result IS NOT NULL
+          AND apply_result #>> '{tenantId}' = $1::text`,
+    values: [mapping.sourceId, mapping.targetId],
+  }
+}
+
 async function renameSourceTenantForUniqueKeys(client, mapping) {
   const query = buildRenameSourceTenantForUniqueKeysQuery(mapping)
   await client.query(query.text, query.values)
@@ -305,29 +331,13 @@ async function remapTenantReferences(client, columns, mapping) {
 
 async function updateEmbeddedJson(client, columns, mapping) {
   if (hasColumn(columns, "published_site_snapshots", "snapshot")) {
-    await client.query(
-      `UPDATE published_site_snapshots
-          SET snapshot = jsonb_set(
-            jsonb_set(snapshot, '{tenantId}', to_jsonb($2::int), true),
-            '{manifest,tenantId}', to_jsonb($2::int), true
-          )
-        WHERE snapshot IS NOT NULL
-          AND (
-            snapshot #>> '{tenantId}' = $1::text
-            OR snapshot #>> '{manifest,tenantId}' = $1::text
-          )`,
-      [mapping.sourceId, mapping.targetId]
-    )
+    const query = buildUpdatePublishedSnapshotTenantJsonQuery(mapping)
+    await client.query(query.text, query.values)
   }
 
   if (hasColumn(columns, "site_generation_runs", "apply_result")) {
-    await client.query(
-      `UPDATE site_generation_runs
-          SET apply_result = jsonb_set(apply_result, '{tenantId}', to_jsonb($2::int), true)
-        WHERE apply_result IS NOT NULL
-          AND apply_result #>> '{tenantId}' = $1::text`,
-      [mapping.sourceId, mapping.targetId]
-    )
+    const query = buildUpdateGenerationRunApplyResultTenantJsonQuery(mapping)
+    await client.query(query.text, query.values)
   }
 }
 

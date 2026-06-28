@@ -3,6 +3,8 @@ import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import {
+  buildUpdateGenerationRunApplyResultTenantJsonQuery,
+  buildUpdatePublishedSnapshotTenantJsonQuery,
   buildRenameSourceTenantForUniqueKeysQuery,
   buildStaticPlan,
   canonicalTenantMappings,
@@ -59,6 +61,22 @@ describe("canonicalize-production-tenants ops script", () => {
       "ami-care",
       "ami-care.nl",
     ])
+  })
+
+  it("retargets published snapshot tenant ids as JSON strings", () => {
+    const query = buildUpdatePublishedSnapshotTenantJsonQuery(canonicalTenantMappings[0])
+
+    expect(query.text).toContain("jsonb_set(snapshot, '{tenantId}', to_jsonb($2::text), true)")
+    expect(query.text).toContain("'{manifest,tenantId}', to_jsonb($2::text), true")
+    expect(query.text).not.toContain("to_jsonb($2::int)")
+    expect(query.values).toEqual([7, 1])
+  })
+
+  it("retargets generation run apply results with the existing numeric id shape", () => {
+    const query = buildUpdateGenerationRunApplyResultTenantJsonQuery(canonicalTenantMappings[1])
+
+    expect(query.text).toContain("jsonb_set(apply_result, '{tenantId}', to_jsonb($2::int), true)")
+    expect(query.values).toEqual([10, 2])
   })
 
   it("does not embed production host mutation commands", () => {
