@@ -55,6 +55,11 @@ const DEFAULT_ESTABLISHMENT_NUMBER = "000065004922"
 const PULL_QUOTE = "Écht verschil maken voor jongeren en gezinnen."
 
 function media(value: MediaRef | undefined, mediaResolver?: MediaResolver): ResolvedMedia | null {
+  if (!value) return null
+  if (!mediaResolver && typeof value === "object" && !Array.isArray(value)) {
+    if (value.filename) return { src: `/media/${value.filename}`, alt: value.alt ?? undefined }
+    if (value.url) return { src: value.url, alt: value.alt ?? undefined }
+  }
   return resolveMedia(value ?? null, mediaResolver)
 }
 

@@ -1,4 +1,7 @@
 @import "./legacy-tenants/amblast/amb-base.scoped.css";
+@import "@fontsource-variable/fraunces/index.css";
+@import "@fontsource-variable/inter/index.css";
+@import "@fontsource-variable/caveat/index.css";
 
 :root {
   color-scheme: light;
@@ -71,10 +74,14 @@ svg {
   --color-card: #ffffff;
   --color-secondary: #efe9dd;
   --color-rule: rgba(31, 26, 20, 0.12);
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces Variable", Georgia, serif;
+  --font-script: "Caveat Variable", cursive;
   --font-title: var(--font-serif);
   --font-heading: var(--font-serif);
   --font-text: var(--font-sans);
-  --font-script: "Comic Sans MS", "Segoe Print", cursive;
+  --max-width-prose: 58ch;
+  --max-width-page: 1080px;
   --radius-md: 0.5rem;
   --radius-sm: calc(var(--radius-md) - 0.25rem);
   --radius-lg: calc(var(--radius-md) + 0.5rem);
@@ -89,6 +96,16 @@ svg {
 
 .site-renderer[data-legacy-tenant="amicare"] ::selection {
   background: rgba(160, 78, 50, 0.18);
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .site-frame-root {
+  font-size: 17px;
+}
+
+@container site-frame (width >= 48rem) {
+  .site-renderer[data-legacy-tenant="amicare"] .site-frame-root {
+    font-size: 18px;
+  }
 }
 
 @keyframes amicare-fade-up {
@@ -280,6 +297,24 @@ svg {
   padding-left: max(16px, calc((100% - 1120px) / 2));
   background: var(--color-ink);
   color: var(--color-bg);
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block {
+  width: auto;
+  margin: 0;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block + .cms-block {
+  border-top: 0;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--hero {
+  gap: normal;
+  align-content: normal;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--cta {
+  width: auto;
 }
 
 .cms-block__eyebrow,

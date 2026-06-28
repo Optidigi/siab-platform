@@ -36,6 +36,12 @@ function assertIncludes(value: string, expected: string, label: string) {
   }
 }
 
+function assertExcludes(value: string, unexpected: string, label: string) {
+  if (value.includes(unexpected)) {
+    throw new Error(`${label}: expected output not to include ${unexpected}`)
+  }
+}
+
 const inlineText = (text: string) => ({
   t: "root" as const,
   variant: "inline" as const,
@@ -509,7 +515,16 @@ function runLegacyRendererDispatchTests() {
   assertIncludes(amicareMarkup, "data-amicare-nav", "Amicare exact nav marker")
   assertIncludes(amicareMarkup, "cms-block--cta-quote", "Amicare exact quote CTA class")
   assertIncludes(amicareMarkup, "cookie-consent-banner", "Amicare cookie consent markup")
+  assertIncludes(amicareMarkup, "Voor jongeren en gezinnen", "Amicare exact hero eyebrow")
+  assertIncludes(amicareMarkup, "Wat voor mij", "Amicare exact feature heading")
+  assertIncludes(amicareMarkup, "Aandacht", "Amicare exact first feature")
+  assertIncludes(amicareMarkup, "Betrokkenheid", "Amicare exact second feature")
+  assertIncludes(amicareMarkup, "Continuïteit", "Amicare exact third feature")
+  assertIncludes(amicareMarkup, "Vertrouwen ontstaat in de tijd", "Amicare exact quote CTA")
   assertIncludes(amicareMarkup, "info@ami-care.nl", "Amicare exact contact email")
+  assertExcludes(amicareMarkup, "Ervaringen", "Amicare excludes generated testimonials section")
+  assertExcludes(amicareMarkup, "Veelgestelde vragen", "Amicare excludes generated FAQ section")
+  assertExcludes(amicareMarkup, "<form", "Amicare excludes generated contact form")
   assertEqual(
     amicareMarkup.includes("site-header--source-amicare-zen"),
     false,

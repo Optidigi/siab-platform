@@ -10,7 +10,16 @@ import * as amicareLegacy from "../lib/legacy-tenants/amicare/legacy-response"
 const pathname = `/${Astro.params.path ?? ""}`
 const host = normalizeRequestHost(Astro.request.headers.get("x-forwarded-host") ?? Astro.request.headers.get("host"))
 const liveSnapshotHosts = new Set(["ami-care.nl", "amblast.nl"])
-const amicareLiveAssetPrefixes = ["/media/", "/api/tenant-media/7/", "/favicon", "/apple-touch-icon.png", "/manifest.json"]
+const amicareLiveAssetPrefixes = [
+  "/media/",
+  "/api/tenant-media/7/",
+  "/favicon",
+  "/apple-touch-icon.png",
+  "/manifest.json",
+  "/og-default.png",
+  "/robots.txt",
+  "/sitemap-index.xml",
+]
 const amblastLiveAssetPrefixes = ["/uploads/", "/wp-content/", "/favicon", "/robots.txt"]
 
 const liveLegacyAssetResponse = async () => {

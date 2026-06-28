@@ -55,13 +55,21 @@ const amicareEditorialBody = (): RtBlockRoot => ({
   variant: "block",
   children: [
     { t: "themed", id: "eyebrow", props: { text: "Over mij" } },
-    { t: "heading", level: 2, children: [{ t: "text", v: "Het vak waar mijn hart ligt." }] },
+    {
+      t: "heading",
+      level: 2,
+      children: [
+        { t: "text", v: "Het vak waar mijn " },
+        { t: "text", v: "hart ligt", marks: ["italic"] },
+        { t: "text", v: "." },
+      ],
+    },
     {
       t: "paragraph",
       children: [
         {
           t: "text",
-          v: "Amicare-Zorg biedt begeleiding vanuit betrokkenheid, duidelijkheid en respect voor de persoonlijke situatie van ieder kind en gezin.",
+          v: "Tegelijk blijf ik mijzelf graag ontwikkelen, en sta ik open voor nieuwe uitdagingen en opdrachten binnen het werkveld.",
         },
       ],
     },
@@ -70,16 +78,7 @@ const amicareEditorialBody = (): RtBlockRoot => ({
       children: [
         {
           t: "text",
-          v: "Ik geloof in rust, vertrouwen en kleine stappen die jongeren helpen om weer grip te krijgen op hun dag.",
-        },
-      ],
-    },
-    {
-      t: "blockquote",
-      children: [
-        {
-          t: "paragraph",
-          children: [{ t: "text", v: "Jeugdzorg werkt wanneer een jongere zich gezien voelt." }],
+          v: "Naast mijn werk ben ik moeder, en geniet ik van het drukke, gezellige gezinsleven. De combinatie van werk en gezin maakt mijn dagen dynamisch — en waardevol.",
         },
       ],
     },
@@ -306,15 +305,14 @@ const amicarePages: GeneratedPageSpec[] = [
         variant: "amicareZenHero",
         anchor: "top",
         analytics: { sectionVariant: "amicare-zen-hero" },
-        eyebrow: inlineText("Amicare-Zorg"),
+        eyebrow: inlineText("Voor jongeren en gezinnen"),
         headline: inlineParts([
           { text: "Jeugdzorg met " },
           { text: "hart", marks: ["italic"] },
-          { text: " en toewijding" },
+          { text: " en toewijding." },
         ]),
-        subheadline: blockText("Persoonlijke begeleiding, rust en structuur voor jongeren en gezinnen die tijdelijk extra steun nodig hebben."),
-        pills: [{ label: "Jeugdzorg" }, { label: "Begeleiding" }, { label: "Vertrouwen" }],
-        cta: { label: "Neem contact op", href: "#contact" },
+        subheadline: blockText("Al jarenlang werk ik met toewijding in de jeugdzorg. Dit is het vak dat ik ken — waar mijn hart ligt, en waar ik mij dagelijks voor inzet."),
+        cta: { label: "Contact", href: "#contact" },
         image: { id: "amicare-bedroom", url: "/media/bedroom.jpg", filename: "bedroom.jpg", alt: "Rustige kinderkamer" },
       },
       {
@@ -322,12 +320,12 @@ const amicarePages: GeneratedPageSpec[] = [
         variant: "amicareCareCards",
         anchor: "werkwijze",
         analytics: { sectionVariant: "amicare-care-cards" },
-        title: inlineParts([{ text: "Werken vanuit " }, { text: "rust", marks: ["italic"] }]),
-        intro: blockText("Mijn werkwijze"),
+        title: inlineParts([{ text: "Wat voor mij " }, { text: "centraal staat", marks: ["italic"] }, { text: "." }]),
+        intro: blockText("Drie dingen"),
         features: [
-          { title: inlineText("Veiligheid"), description: blockText("Een rustige basis met voorspelbare begeleiding."), icon: "heart" },
-          { title: inlineText("Samenwerking"), description: blockText("Afstemming met gezin, verwijzers en betrokken professionals."), icon: "users" },
-          { title: inlineText("Ontwikkeling"), description: blockText("Praktische stappen richting zelfstandigheid en vertrouwen."), icon: "sparkles" },
+          { title: inlineText("Aandacht"), description: blockText("Echt luisteren naar wat een jongere of een gezin op dat moment nodig heeft. Zonder aannames vooraf."), icon: "ear" },
+          { title: inlineText("Betrokkenheid"), description: blockText("Naast mensen staan, niet erboven. Werken vanuit gelijkwaardigheid en vertrouwen."), icon: "heart-handshake" },
+          { title: inlineText("Continuïteit"), description: blockText("Aanwezig blijven, ook als trajecten lang of ingewikkeld worden. De relatie als basis."), icon: "clock" },
         ],
       },
       {
@@ -342,64 +340,16 @@ const amicarePages: GeneratedPageSpec[] = [
         variant: "amicareQuoteContact",
         anchor: "wat-telt",
         analytics: { sectionVariant: "amicare-quote-contact" },
-        eyebrow: inlineText("Wat telt"),
-        headline: inlineText("Echt verschil maken voor jongeren en gezinnen."),
-        description: blockText("Neem contact op om rustig te bekijken welke ondersteuning passend is."),
-        primary: { label: "Neem contact op", href: "#contact" },
-        secondary: { label: "Mail Amicare", href: "mailto:info@ami-care.nl" },
-        backgroundImage: { id: "amicare-toys", url: "/media/toys.jpg", filename: "toys.jpg", alt: "Speelgoed" },
+        headline: inlineText("Vertrouwen ontstaat in de tijd, niet in één gesprek."),
+        description: blockText("Daarom werk ik graag in trajecten waar continuïteit en kleine stappen het echte werk doen — voor jongeren, voor gezinnen, en voor de mensen om hen heen."),
       },
       {
-        blockType: "testimonials",
-        variant: "amicareStoryCards",
-        anchor: "ervaringen",
-        analytics: { sectionVariant: "amicare-story-cards" },
-        title: "Ervaringen",
-        items: [
-          {
-            quote: "Er was meteen rust en duidelijkheid. Dat maakte het voor ons gezin veel makkelijker om stappen te zetten.",
-            author: "Ouder",
-            role: "Begeleidingstraject",
-          },
-          {
-            quote: "De afspraken waren helder en de begeleiding sloot aan bij wat de jongere op dat moment aankon.",
-            author: "Verwijzer",
-            role: "Samenwerking",
-          },
-        ],
-      },
-      {
-        blockType: "faq",
-        variant: "amicareWarmAccordion",
-        anchor: "vragen",
-        analytics: { sectionVariant: "amicare-warm-accordion" },
-        title: inlineText("Veelgestelde vragen"),
-        items: [
-          {
-            question: inlineText("Voor wie is Amicare-Zorg bedoeld?"),
-            answer: blockText("Voor jongeren en gezinnen die tijdelijk extra begeleiding, structuur of afstemming nodig hebben."),
-          },
-          {
-            question: inlineText("Hoe start een kennismaking?"),
-            answer: blockText("We beginnen met rustig contact en bespreken samen welke ondersteuning passend is."),
-          },
-        ],
-      },
-      {
-        blockType: "contactSection",
-        variant: "amicareContactForm",
+        blockType: "cta",
+        variant: "amicareQuoteContact",
         anchor: "contact",
-        analytics: { sectionVariant: "amicare-contact-form" },
-        title: inlineText("Neem contact op"),
-        description: blockText("Stuur een bericht om rustig te bespreken welke ondersteuning passend is."),
-        formName: "amicare-contact",
-        submitLabel: "Verzenden",
-        fields: [
-          { name: "name", label: "Naam", type: "text", required: true },
-          { name: "email", label: "E-mail", type: "email", required: true },
-          { name: "phone", label: "Telefoon", type: "tel", required: false },
-          { name: "message", label: "Bericht", type: "textarea", required: true },
-        ],
+        analytics: { sectionVariant: "amicare-quote-contact" },
+        headline: inlineText("Wilt u meer informatie of in contact komen?"),
+        primary: { label: "info@ami-care.nl", href: "mailto:info@ami-care.nl" },
       },
     ],
   },
