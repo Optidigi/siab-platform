@@ -37,7 +37,14 @@ export type AmicarePageRendererProps = {
   canvasClassName?: string
   nonce?: string
   includeThemeStyle?: boolean
+  renderBlock?: AmicareRenderBlock
 }
+
+export type AmicareRenderBlock = (args: {
+  block: Block
+  index: number
+  defaultRender: React.ReactNode
+}) => React.ReactNode
 
 const DEFAULT_NAV_LINKS = [
   { label: "Werkwijze", href: "#werkwijze" },
@@ -888,6 +895,7 @@ export function AmicarePageRenderer({
   canvasClassName,
   nonce,
   includeThemeStyle = true,
+  renderBlock,
 }: AmicarePageRendererProps) {
   return (
     <div
@@ -905,15 +913,22 @@ export function AmicarePageRenderer({
           <AmicareNav settings={settings} mediaResolver={mediaResolver} />
           <AmicareMaintenanceBanner settings={settings} />
           <main>
-            {page.blocks.map((block, index) => (
-              <AmicareBlock
-                key={`${block.blockType}-${index}`}
-                block={block}
-                index={index}
-                mediaResolver={mediaResolver}
-                formAction={formAction}
-              />
-            ))}
+            {page.blocks.map((block, index) => {
+              const defaultRender = (
+                <AmicareBlock
+                  block={block}
+                  index={index}
+                  mediaResolver={mediaResolver}
+                  formAction={formAction}
+                />
+              )
+
+              return (
+                <React.Fragment key={`${block.blockType}-${index}`}>
+                  {renderBlock ? renderBlock({ block, index, defaultRender }) : defaultRender}
+                </React.Fragment>
+              )
+            })}
           </main>
           <AmicareFooter settings={settings} mediaResolver={mediaResolver} />
         </div>

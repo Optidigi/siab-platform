@@ -9,14 +9,17 @@ import { useCanvasSelection } from "../CanvasSelectionContext"
 import { isReadOnlyView } from "../canvasView"
 import { cn, isCoarsePointer } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
+import { MapPin } from "lucide-react"
 
 /**
  * Canvas-mode renderer for the Hero block.
  *
  * Mirrors siab-site-template's Hero.tsx pixel-for-pixel: same classes,
  * same animations (animate-fade-up / animate-fade / animate-float), same
- * decorative floating cards (pull-quote + MapPin) when an image is present.
+ * decorative floating cards (pull-quote + MapPin) for Amicare's legacy hero variant.
  */
+
+const AMICARE_PULL_QUOTE = "Écht verschil maken voor jongeren en gezinnen."
 
 export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate }) => {
   const t = useTranslations("editor")
@@ -24,6 +27,7 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
   const idx = block.__index as number
   const { view, select } = useCanvasSelection()
   const tapToSelect = isReadOnlyView(view)
+  const showAmicareBadges = block.variant === "amicareZenHero" || block.analytics?.sectionVariant === "amicare-zen-hero"
   const [autoOpenPillIndex, setAutoOpenPillIndex] = React.useState<number | null>(null)
   // Only one pill editor is ever open at a time, so a single ref suffices.
   // Reset to false at the top of the editor factory (which re-runs each open).
@@ -32,7 +36,7 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
   return (
     <section
       id={block.anchor || "top"}
-      className="cms-block cms-block--hero relative flex min-h-[90vh] flex-col items-center overflow-hidden px-6 py-12 @min-[816px]/site-frame:flex-row @min-[816px]/site-frame:px-12 @min-[1088px]/site-frame:px-24"
+      className="cms-block cms-block--hero relative flex min-h-[90vh] flex-col items-center overflow-hidden px-6 py-12 @min-[48rem]/site-frame:flex-row @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24"
       data-block-index={block.__index ?? undefined}
       data-active={isActive || undefined}
       onClick={onActivate}
@@ -40,7 +44,7 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
       <div aria-hidden="true" className="pointer-events-none absolute -left-[10%] -top-[10%] -z-10 h-[500px] w-[500px] rounded-full bg-accent/15 blur-3xl" />
       <div aria-hidden="true" className="pointer-events-none absolute -bottom-[10%] -right-[5%] -z-10 h-[400px] w-[400px] rounded-full bg-accent/10 blur-3xl" />
 
-      <div className="relative z-10 w-full space-y-7 @min-[816px]/site-frame:w-1/2">
+      <div className="relative z-10 w-full space-y-7 @min-[48rem]/site-frame:w-1/2">
         <RtSlot
           as="span"
           variant="inline"
@@ -58,7 +62,7 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
           manifest={manifest}
           value={block.headline}
           onChange={set("headline")}
-          className="max-w-[14ch] font-serif text-[44px] font-normal leading-[1.05] tracking-[-0.01em] @min-[816px]/site-frame:text-[60px] @min-[1088px]/site-frame:text-[76px] animate-fade-up [animation-delay:50ms] [overflow-wrap:anywhere] [&_em]:relative [&_em]:not-italic [&_em]:inline-block [&_em]:whitespace-nowrap [&_em]:italic [&_em]:text-accent [font-family:var(--font-title)]"
+          className="max-w-[14ch] font-serif text-[44px] font-normal leading-[1.05] tracking-[-0.01em] @min-[48rem]/site-frame:text-[60px] @min-[64rem]/site-frame:text-[76px] animate-fade-up [animation-delay:50ms] [overflow-wrap:anywhere] [&_em]:relative [&_em]:not-italic [&_em]:inline-block [&_em]:whitespace-nowrap [&_em]:italic [&_em]:text-accent [font-family:var(--font-title)]"
           placeholder={t("headlinePlaceholder")}
           elementPath={{ blockIndex: idx, field: "headline" }}
         />
@@ -69,7 +73,7 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
           manifest={manifest}
           value={block.subheadline}
           onChange={set("subheadline")}
-          className="max-w-md text-[17px] leading-[1.6] text-ink-muted @min-[816px]/site-frame:text-[18px] animate-fade-up [animation-delay:150ms] [font-family:var(--font-text)]"
+          className="max-w-md text-[17px] leading-[1.6] text-ink-muted @min-[48rem]/site-frame:text-[18px] animate-fade-up [animation-delay:150ms] [font-family:var(--font-text)]"
           placeholder={t("subheadlinePlaceholder")}
           elementPath={{ blockIndex: idx, field: "subheadline" }}
         />
@@ -183,7 +187,7 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
                     const next = (block.pills ?? []).filter((_: any, j: number) => j !== i)
                     set("pills")(next)
                   }}
-                  className="ml-0.5 hidden size-3.5 items-center justify-center rounded-full text-ink-muted opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 @min-[816px]/site-frame:inline-flex"
+                  className="ml-0.5 hidden size-3.5 items-center justify-center rounded-full text-ink-muted opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 @min-[48rem]/site-frame:inline-flex"
                 >
                   ×
                 </button>
@@ -200,7 +204,7 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
               set("pills")(next)
               setAutoOpenPillIndex(next.length - 1)
             }}
-            className="min-h-11 rounded-full border border-dashed border-rule px-3 py-1.5 text-[12px] font-medium text-ink-muted opacity-60 transition-opacity hover:opacity-100 rounded-[var(--radius-sm)] @min-[816px]/site-frame:min-h-0 [font-family:var(--font-text)]"
+            className="min-h-11 rounded-full border border-dashed border-rule px-3 py-1.5 text-[12px] font-medium text-ink-muted opacity-60 transition-opacity hover:opacity-100 rounded-[var(--radius-sm)] @min-[48rem]/site-frame:min-h-0 [font-family:var(--font-text)]"
           >
             + {t("addPill")}
           </button>
@@ -215,15 +219,32 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
         />
       </div>
 
-      <div className="relative mt-14 w-full @min-[816px]/site-frame:mt-0 @min-[816px]/site-frame:w-1/2">
+      <div className="relative mt-14 w-full @min-[48rem]/site-frame:mt-0 @min-[48rem]/site-frame:w-1/2">
         <div className="relative z-10 animate-fade [animation-delay:100ms]">
           <InlineImage
             value={block.image}
             onChange={set("image")}
             alt={block.imageAlt ?? null}
-            className="aspect-[4/5] w-full rotate-0 transform object-cover shadow-2xl @min-[816px]/site-frame:aspect-[4/3] @min-[816px]/site-frame:rotate-3 rounded-[var(--radius-lg)]"
+            className="aspect-[4/5] w-full rotate-0 transform rounded-[var(--radius-lg)] object-cover shadow-2xl @min-[48rem]/site-frame:aspect-[4/3] @min-[48rem]/site-frame:rotate-3"
             elementPath={{ blockIndex: idx, field: "image" }}
           />
+          {showAmicareBadges && (
+            <>
+              <figure className="absolute -bottom-8 -left-2 max-w-[230px] animate-float rounded-lg border border-rule bg-card p-4 shadow-lg [animation-delay:0ms] @min-[48rem]/site-frame:-bottom-10 @min-[48rem]/site-frame:-left-8 @min-[48rem]/site-frame:p-5">
+                <span aria-hidden="true" className="mr-1 align-top text-3xl italic leading-none text-accent [font-family:var(--font-serif)]">&ldquo;</span>
+                <blockquote className="inline font-serif text-[17px] italic leading-[1.35] text-ink @min-[48rem]/site-frame:text-[19px]">{AMICARE_PULL_QUOTE}</blockquote>
+              </figure>
+              <div className="absolute -top-6 -right-2 flex max-w-[200px] animate-float items-center gap-3 rounded-lg border border-rule bg-card p-3 shadow-lg [animation-delay:500ms] @min-[48rem]/site-frame:-top-8 @min-[48rem]/site-frame:-right-8 @min-[48rem]/site-frame:p-4">
+                <span className="rounded-full bg-accent/10 p-2 text-accent">
+                  <MapPin size={18} aria-hidden />
+                </span>
+                <div className="text-[12px] leading-tight">
+                  <p className="font-serif text-[14px] italic text-ink">Roermond e.o.</p>
+                  <p className="text-ink-muted">Limburg-Noord</p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </section>

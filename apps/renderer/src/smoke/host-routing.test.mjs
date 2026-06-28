@@ -1,5 +1,8 @@
 import { spawn } from "node:child_process"
 import { once } from "node:events"
+import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import test from "node:test"
 
 import {
@@ -25,6 +28,9 @@ async function stopChild(child) {
 test("routes production hosts through CMS snapshots, dispatches legacy renderers, and keeps 404s analytics-free", async (t) => {
   const cms = await startStubCms()
   await assertStubCmsSnapshots(cms)
+  const dataDir = await mkdtemp(join(tmpdir(), "siab-renderer-media-"))
+  await mkdir(join(dataDir, "tenants", "tenant-ami-care", "media"), { recursive: true })
+  await writeFile(join(dataDir, "tenants", "tenant-ami-care", "media", "bedroom.jpg"), "stub media")
   const port = await getOpenPort()
   const baseUrl = `http://127.0.0.1:${port}`
   const child = spawn("pnpm", ["exec", "astro", "dev", "--host", "127.0.0.1", "--port", String(port)], {
@@ -35,6 +41,7 @@ test("routes production hosts through CMS snapshots, dispatches legacy renderers
       SIAB_CMS_URL: cms.url,
       SIAB_RENDERER_FIXTURE_MODE: "",
       SITE_URL: baseUrl,
+      DATA_DIR: dataDir,
     },
     stdio: ["ignore", "pipe", "pipe"],
   })
@@ -48,6 +55,7 @@ test("routes production hosts through CMS snapshots, dispatches legacy renderers
   t.after(async () => {
     await stopChild(child)
     await closeServer(cms.server)
+    await rm(dataDir, { recursive: true, force: true })
   })
 
   await waitForRenderer(baseUrl, () => {

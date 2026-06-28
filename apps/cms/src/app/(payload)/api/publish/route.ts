@@ -2,8 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { getPayload } from "payload"
 import config from "@/payload.config"
 import { activatePublishedSnapshot, publishSiteSnapshot } from "@/lib/publish/siteSnapshots"
-import { isOfficialTenant } from "@/lib/officialTenants"
-import { relationshipId, relationshipIdSet, type RelationshipIdRef } from "@/lib/relationshipId"
+import { publishCurrentTenantState } from "@/lib/publish/currentState"
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value)
@@ -11,36 +10,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const asId = (value: unknown): string | number | null =>
   typeof value === "string" || typeof value === "number" ? value : null
 
-const userTenantIds = (user: any): Set<string> => {
-  return relationshipIdSet(
-    (user?.tenants ?? []).map((membership: { tenant?: RelationshipIdRef }) =>
-      membership.tenant,
-    ),
-  )
-}
-
-const canPublishForTenant = async (
-  payload: Awaited<ReturnType<typeof getPayload>>,
-  user: any,
-  tenantId: string | number | null,
-  body: Record<string, unknown>,
-) => {
-  if (user?.role === "super-admin") return true
-  if (tenantId == null) return false
-  if (body.action === "rollback") return false
-  if (body.includeAllPublishedPages !== true || body.activate !== true) return false
-  if (asId(body.generationRunId) != null) return false
-  if (user?.role !== "owner" && user?.role !== "editor") return false
-  const targetTenantId = relationshipId(tenantId)
-  if (targetTenantId == null || !userTenantIds(user).has(targetTenantId)) return false
-  const tenant = await payload.findByID({
-    collection: "tenants",
-    id: tenantId,
-    depth: 0,
-    overrideAccess: true,
-  })
-  return isOfficialTenant(tenant)
-}
+const isCurrentStatePublish = (body: Record<string, unknown>): boolean =>
+  body.action !== "rollback" &&
+  body.includeAllPublishedPages === true &&
+  body.activate === true &&
+  asId(body.generationRunId) == null
 
 export async function POST(req: NextRequest) {
   const payload = await getPayload({ config })
@@ -62,12 +36,15 @@ export async function POST(req: NextRequest) {
   }
   const tenantId = asId(body.tenantId)
   const user = auth?.user
-  if (!user || !(await canPublishForTenant(payload, user, tenantId, body))) {
+  if (!user) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 })
   }
 
   try {
     if (body.action === "rollback") {
+      if (user.role !== "super-admin") {
+        return NextResponse.json({ message: "Forbidden" }, { status: 403 })
+      }
       const snapshotId = asId(body.snapshotId)
       if (snapshotId == null) return NextResponse.json({ message: "snapshotId is required" }, { status: 400 })
       const snapshot = await activatePublishedSnapshot(payload, {
@@ -81,6 +58,26 @@ export async function POST(req: NextRequest) {
     }
 
     if (tenantId == null) return NextResponse.json({ message: "tenantId is required" }, { status: 400 })
+
+    if (isCurrentStatePublish(body)) {
+      const result = await publishCurrentTenantState(payload, {
+        tenantId,
+        user,
+        reason: typeof body.reason === "string" ? body.reason : null,
+      })
+      return NextResponse.json({
+        ok: true,
+        activated: result.activated,
+        snapshotId: result.snapshot.id,
+        status: result.snapshot.status,
+        version: result.snapshot.version,
+        domain: result.snapshot.domain,
+      })
+    }
+
+    if (user.role !== "super-admin") {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 })
+    }
 
     const result = await publishSiteSnapshot(payload, {
       tenantId,
@@ -102,6 +99,9 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Publish failed"
+    if (/^Forbidden\b/i.test(message)) {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 })
+    }
     return NextResponse.json({ ok: false, message }, { status: 422 })
   }
 }

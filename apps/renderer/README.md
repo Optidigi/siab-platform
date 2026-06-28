@@ -36,6 +36,9 @@ Required production environment:
   checked by the CMS snapshot endpoint. Use the same value in both apps. In
   production this is required: if the CMS has no token configured, the endpoint
   rejects renderer requests instead of serving snapshots anonymously.
+- `DATA_DIR` - shared tenant data root mounted read-only in the renderer. Public
+  snapshot media is served from `DATA_DIR/tenants/<tenantId>/media` through the
+  renderer-owned `/siab-media/<tenantId>/<filename>` route.
 - `SITE_URL` - canonical renderer origin used by Astro metadata/build config.
 - `SIAB_RENDERER_FIXTURE_MODE=` - keep empty in production. Fixture mode is
   ignored when `NODE_ENV=production`.
@@ -65,6 +68,12 @@ host to the CMS as `?host=<host>`; the CMS endpoint can also fall back to
 `X-Forwarded-Host` or `Host` when called directly. The CMS resolves that host to
 an active tenant, then returns only the tenant's active published snapshot.
 Draft CMS state is not read by this app.
+
+Published snapshot media refs such as `/api/tenant-media/<tenantId>/<filename>`
+and media objects with only a `filename` are rewritten at render time to
+`/siab-media/<snapshotTenantId>/<filename>`. The media endpoint checks the
+request host's active published snapshot before reading from disk, so one
+tenant cannot request another tenant's media through the public renderer.
 
 Traefik preserves the original `Host` by default. The current compose template
 does not add an explicit `X-Forwarded-Host` middleware; production smoke must

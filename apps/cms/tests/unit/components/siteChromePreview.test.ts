@@ -156,9 +156,11 @@ describe("SiteChromePreview chrome actions", () => {
   it("renders manifest-driven footer composition when columns are present", () => {
     const file = source()
 
-    expect(file).toContain("const footerColumns = normalizeFooterColumns(footer?.columns)")
     expect(file).toContain("<FooterColumns")
-    expect(file).toContain("column.items.slice(0, 1).map")
+    expect(file).toContain("const footerColumns = normalizeFooterPreviewColumns(footer?.columns)")
+    expect(file).toContain("column.items.map")
+    expect(file).not.toContain("column.items.slice(0, 1).map")
+    expect(file).toContain("onUpdateFooterTextItem && itemIndex === 0 && item.type === \"text\"")
     expect(file).not.toContain("outline-2 outline-offset-2 outline-accent")
     expect(file).not.toContain("hover:ring-1 hover:ring-accent/60")
     expect(file).not.toContain("hover:outline-accent/60")

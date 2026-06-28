@@ -74,6 +74,7 @@ import { EditorErrorBoundary } from "@/components/editor/EditorErrorBoundary"
 import { setUserEditorMode } from "@/lib/actions/setUserEditorMode"
 import { ThemeBar } from "@/components/editor/theme/theme-bar"
 import { togglePageInNav } from "@/lib/actions/togglePageInNav"
+import { publishCurrentTenantStateAction } from "@/lib/actions/publishCurrentTenantState"
 import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
 import { countLeafDirty } from "@/lib/countLeafDirty"
 import { countLeafErrors } from "@/lib/countLeafErrors"
@@ -1317,21 +1318,10 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
     try {
       await Promise.all([themePromise, saveNavMembership(), saveChrome()])
       if (autoPublishLive) {
-        const publishRes = await fetch("/api/publish", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            tenantId,
-            includeAllPublishedPages: true,
-            activate: true,
-            manualActivation: true,
-            reason: `auto-publish current CMS state after page ${initial?.id ?? createdPageId ?? "new"} save`,
-          }),
-        })
-        if (!publishRes.ok) {
-          const detail = await parsePayloadError(publishRes)
-          throw new Error(detail.message)
-        }
+        await publishCurrentTenantStateAction(
+          tenantId,
+          `auto-publish current CMS state after page ${initial?.id ?? createdPageId ?? "new"} save`,
+        )
       }
     } catch (err) {
       setPending(false)

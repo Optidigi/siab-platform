@@ -23,6 +23,7 @@ import {
 } from "@siteinabox/contracts/generation"
 import { SiteBanner, SiteFooter, SiteHeader } from "../chrome"
 import { v1FixturePage, v1FixtureSettings } from "../fixtures/v1"
+import type { AmicareRenderBlock } from "../legacy-tenants/amicare/AmicarePage"
 import { resolveLegacyTenant } from "../legacy-tenants/resolve"
 import { SitePageRenderer } from "../SitePageRenderer"
 import { PUBLIC_RENDERER_THEME_SCOPE, themeToCssVars } from "../theme"
@@ -768,6 +769,50 @@ async function runLegacyRendererDispatchTests() {
     false,
     "Amicare legacy renderer bypasses generic chrome approximation",
   )
+
+  const amicareDefaultExtensionMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: amicarePage,
+      settings: amicarePublishedSiteSnapshot.settings,
+      theme: amicarePublishedSiteSnapshot.theme,
+      tenantSlug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+      renderBlock: ({ defaultRender }) => defaultRender,
+    }),
+  )
+  assertIncludes(amicareDefaultExtensionMarkup, "cms-block--hero", "Amicare renderBlock defaultRender keeps hero class")
+  assertIncludes(amicareDefaultExtensionMarkup, "cms-block--featurelist", "Amicare renderBlock defaultRender keeps feature list class")
+  assertIncludes(amicareDefaultExtensionMarkup, "cms-block--cta-quote", "Amicare renderBlock defaultRender keeps quote CTA class")
+  assertIncludes(amicareDefaultExtensionMarkup, "cms-block--cta-contact", "Amicare renderBlock defaultRender keeps contact CTA class")
+
+  const interceptedBlocks: Array<{ blockType: string; index: number }> = []
+  const interceptAmicareBlock: AmicareRenderBlock = ({ block, index }) => {
+    interceptedBlocks.push({ blockType: block.blockType, index })
+    return React.createElement(
+      "section",
+      {
+        "data-amicare-editor-block": block.blockType,
+        "data-block-index": index,
+      },
+      `custom ${block.blockType} ${index}`,
+    )
+  }
+  const interceptedAmicareMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: amicarePage,
+      settings: amicarePublishedSiteSnapshot.settings,
+      theme: amicarePublishedSiteSnapshot.theme,
+      tenantSlug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+      renderBlock: interceptAmicareBlock,
+    }),
+  )
+  assertEqual(interceptedBlocks.length, amicarePage.blocks.length, "Amicare renderBlock is called for every block")
+  assertEqual(interceptedBlocks[0]?.blockType, amicarePage.blocks[0]?.blockType, "Amicare renderBlock receives first block")
+  assertEqual(interceptedBlocks[0]?.index, 0, "Amicare renderBlock receives first index")
+  assertIncludes(interceptedAmicareMarkup, 'data-amicare-editor-block="hero"', "Amicare renderBlock custom output is used")
+  assertIncludes(interceptedAmicareMarkup, "custom hero 0", "Amicare renderBlock custom content is rendered")
+  assertExcludes(interceptedAmicareMarkup, "cms-block--hero", "Amicare renderBlock can replace default block output")
 
   const darkAmicareMarkup = renderToStaticMarkup(
     React.createElement(SitePageRenderer, {

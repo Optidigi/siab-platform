@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { ChevronRight, GripVertical, Menu, MoreVertical, Navigation, PanelBottom, PanelTop } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { normalizeFooterColumns, type FooterCompositionColumn, type FooterCompositionItem } from "@/lib/footerComposition"
+import { FOOTER_ITEM_TYPES, type FooterCompositionColumn, type FooterCompositionItem } from "@/lib/footerComposition"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { CanvasChromeGutterOverlay } from "@/components/editor/canvas/CanvasChromeGutterOverlay"
@@ -64,6 +64,7 @@ const trimOr = (value: unknown, fallback: string) => {
 const chromeLabel = (zone: SiteChromeZone) => zone === "header" ? "Header" : "Footer"
 
 const itemLabel = (item: FooterCompositionItem, fallback: string) => trimString(item.label) ?? fallback
+const footerItemTypes = new Set<string>(FOOTER_ITEM_TYPES)
 
 const inlineRootFromText = (value: string): RtRoot => ({
   t: "root",
@@ -111,19 +112,44 @@ const rtToPlainText = (value: RtRoot): string => {
 const footerGridClass = (count: number) => {
   switch (count) {
     case 1:
-      return "@min-[816px]/site-frame:grid-cols-1"
+      return "@min-[48rem]/site-frame:grid-cols-1"
     case 2:
-      return "@min-[816px]/site-frame:grid-cols-2"
+      return "@min-[48rem]/site-frame:grid-cols-2"
     case 4:
-      return "@min-[816px]/site-frame:grid-cols-4"
+      return "@min-[48rem]/site-frame:grid-cols-4"
     case 5:
-      return "@min-[816px]/site-frame:grid-cols-5"
+      return "@min-[48rem]/site-frame:grid-cols-5"
     case 6:
-      return "@min-[816px]/site-frame:grid-cols-6"
+      return "@min-[48rem]/site-frame:grid-cols-6"
     case 3:
     default:
-      return "@min-[816px]/site-frame:grid-cols-3"
+      return "@min-[48rem]/site-frame:grid-cols-3"
   }
+}
+
+const normalizeFooterPreviewColumns = (value: unknown): FooterCompositionColumn[] => {
+  if (!Array.isArray(value)) return []
+  return value.map((column: any) => ({
+    id: trimString(column?.id),
+    items: Array.isArray(column?.items)
+      ? column.items
+          .filter((item: any) => item && typeof item === "object" && footerItemTypes.has(item.type))
+          .map((item: any) => ({
+            id: trimString(item.id),
+            type: item.type as FooterCompositionItem["type"],
+            label: trimString(item.label) ?? (item.type === "text" ? "Info" : null),
+            text: trimString(item.text) ?? (item.type === "text" ? "Text" : null),
+            links: Array.isArray(item.links)
+              ? item.links
+                  .map((link: any) => ({
+                    label: trimString(link?.label) ?? "",
+                    href: trimString(link?.href) ?? "",
+                  }))
+                  .filter((link: { label: string; href: string }) => link.label || link.href)
+              : [],
+          }))
+      : [],
+  })).filter((column) => column.items.length > 0)
 }
 
 export function SiteChromePreview({
@@ -149,7 +175,7 @@ export function SiteChromePreview({
   const headerLogo = mediaUrl(settings?.chrome?.header?.logo) ?? brandLogo
   const footerLogo = mediaUrl(settings?.chrome?.footer?.logo) ?? brandLogo
   const footer = settings?.chrome?.footer
-  const footerColumns = normalizeFooterColumns(footer?.columns)
+  const footerColumns = normalizeFooterPreviewColumns(footer?.columns)
   const navItems: Array<{ label: string; href: string }> = ((zone === "header" ? settings?.navHeader : settings?.navFooter) ?? [])
     .map(navLink)
     .filter(isNavLink)
@@ -184,7 +210,7 @@ export function SiteChromePreview({
           <>
             <nav
               aria-label="Hoofdnavigatie"
-              className="sticky top-0 z-50 flex w-full items-center justify-between border-b border-rule bg-bg/80 px-6 py-5 backdrop-blur-lg @min-[816px]/site-frame:px-12 @min-[1088px]/site-frame:px-20"
+              className="sticky top-0 z-50 flex w-full items-center justify-between border-b border-rule bg-bg/80 px-6 py-5 backdrop-blur-lg @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-20"
               data-site-chrome={zone}
             >
               <a href="#top" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
@@ -203,7 +229,7 @@ export function SiteChromePreview({
                 )}
               </a>
 
-              <div className="hidden items-center gap-8 text-[13px] tracking-[0.04em] @min-[816px]/site-frame:flex">
+              <div className="hidden items-center gap-8 text-[13px] tracking-[0.04em] @min-[48rem]/site-frame:flex">
                 {resolvedLinks.map((item) => (
                   <a key={`${item.href}:${item.label}`} href={item.href} className="relative text-ink-muted transition-colors hover:text-ink">
                     {item.label}
@@ -215,20 +241,20 @@ export function SiteChromePreview({
                 type="button"
                 aria-label="Menu openen"
                 aria-expanded="false"
-                className="rounded-full bg-accent/10 p-3 text-ink transition-colors hover:bg-accent/20 @min-[816px]/site-frame:hidden"
+                className="rounded-full bg-accent/10 p-3 text-ink transition-colors hover:bg-accent/20 @min-[48rem]/site-frame:hidden"
               >
                 <Menu size={20} />
               </button>
             </nav>
             {showMaintenance && (
-              <aside className="border-b border-rule bg-accent/10 px-6 py-3 text-center text-[13px] font-medium tracking-[0.02em] text-ink @min-[816px]/site-frame:px-12 @min-[1088px]/site-frame:px-20">
+              <aside className="border-b border-rule bg-accent/10 px-6 py-3 text-center text-[13px] font-medium tracking-[0.02em] text-ink @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-20">
                 {maintenanceMessage}
               </aside>
             )}
           </>
         ) : (
           <footer
-            className="relative border-t border-rule bg-gradient-to-br from-secondary/20 via-bg to-accent/5 px-6 py-16 @min-[816px]/site-frame:px-12 @min-[1088px]/site-frame:px-24"
+            className="relative border-t border-rule bg-gradient-to-br from-secondary/20 via-bg to-accent/5 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24"
             data-site-chrome={zone}
           >
             {footerColumns.length ? (
@@ -246,7 +272,7 @@ export function SiteChromePreview({
                 navItems={resolvedLinks}
               />
             ) : (
-              <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 @min-[816px]/site-frame:grid-cols-3 @min-[816px]/site-frame:gap-8 @min-[1088px]/site-frame:gap-12">
+              <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 @min-[48rem]/site-frame:grid-cols-3 @min-[48rem]/site-frame:gap-8 @min-[64rem]/site-frame:gap-12">
                 <FooterBrandItem footerLogo={footerLogo} footerBrand={footerBrand} footerText={footerText} />
                 {hasBusinessDetails && (
                   <FooterBusinessItem tradeName={tradeName} kvkNumber={kvkNumber} establishmentNumber={establishmentNumber} />
@@ -255,7 +281,7 @@ export function SiteChromePreview({
               </div>
             )}
             <div className="mx-auto my-8 max-w-7xl border-t border-rule" />
-            <p className="mx-auto max-w-7xl text-center text-[12px] tracking-[0.04em] text-ink-muted/70 @min-[816px]/site-frame:text-left">
+            <p className="mx-auto max-w-7xl text-center text-[12px] tracking-[0.04em] text-ink-muted/70 @min-[48rem]/site-frame:text-left">
               {copyright}
             </p>
           </footer>
@@ -291,13 +317,13 @@ function FooterColumns({
   navItems: Array<{ label: string; href: string }>
 }) {
   return (
-    <div className={`mx-auto grid max-w-7xl grid-cols-1 gap-12 ${footerGridClass(columns.length)} @min-[816px]/site-frame:gap-8 @min-[1088px]/site-frame:gap-12`}>
+    <div className={`mx-auto grid max-w-7xl grid-cols-1 gap-12 ${footerGridClass(columns.length)} @min-[48rem]/site-frame:gap-8 @min-[64rem]/site-frame:gap-12`}>
       {columns.map((column, columnIndex) => (
         <div
           key={column.id ?? columnIndex}
           className="-m-2 space-y-6 p-2"
         >
-          {column.items.slice(0, 1).map((item, itemIndex) => (
+          {column.items.map((item, itemIndex) => (
             <div
               key={item.id ?? `${item.type}-${itemIndex}`}
               className="-m-1 p-1"
@@ -313,7 +339,7 @@ function FooterColumns({
                 email={email}
                 navItems={navItems}
                 manifest={manifest}
-                onUpdateTextItem={onUpdateFooterTextItem ? (patch) => onUpdateFooterTextItem(columnIndex, patch) : undefined}
+                onUpdateTextItem={onUpdateFooterTextItem && itemIndex === 0 && item.type === "text" ? (patch) => onUpdateFooterTextItem(columnIndex, patch) : undefined}
               />
             </div>
           ))}

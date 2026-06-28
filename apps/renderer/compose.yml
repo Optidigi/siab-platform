@@ -16,6 +16,9 @@ services:
       SIAB_RENDERER_API_TOKEN: ${SIAB_RENDERER_API_TOKEN}
       SITE_URL: ${SITE_URL}
       SIAB_RENDERER_FIXTURE_MODE: ${SIAB_RENDERER_FIXTURE_MODE:-}
+      DATA_DIR: /data-out
+    volumes:
+      - ${DATA_HOST_PATH:-/srv/data/saas/siab-payload}:/data-out:ro
     networks: [proxy]
     labels:
       - traefik.enable=true

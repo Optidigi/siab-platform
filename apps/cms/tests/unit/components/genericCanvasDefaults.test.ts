@@ -8,15 +8,17 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8")
 
 describe("generic CMS canvas defaults", () => {
   it("does not ship tenant-specific hero defaults in shared CMS blocks", () => {
-    const files = [
-      "src/blocks/Hero.ts",
-      "src/components/editor/canvas/blocks/Hero.tsx",
-    ]
+    expect(read("src/blocks/Hero.ts")).not.toMatch(/Roermond|Limburg-Noord|Persoonlijke|Écht verschil/)
+  })
 
-    for (const file of files) {
-      const source = read(file)
-      expect(source).not.toMatch(/Roermond|Limburg-Noord|Persoonlijke|Écht verschil/)
-    }
+  it("gates the Amicare live hero badges to the Amicare hero variant", () => {
+    const source = read("src/components/editor/canvas/blocks/Hero.tsx")
+
+    expect(source).toContain('block.variant === "amicareZenHero"')
+    expect(source).toContain('block.analytics?.sectionVariant === "amicare-zen-hero"')
+    expect(source).toContain("Écht verschil maken voor jongeren en gezinnen.")
+    expect(source).toContain("Roermond e.o.")
+    expect(source).toContain("Limburg-Noord")
   })
 
   it("uses generic canvas anchor fallbacks for shared block renderers", () => {

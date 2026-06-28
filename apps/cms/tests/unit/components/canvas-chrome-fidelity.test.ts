@@ -85,4 +85,20 @@ describe("canvas chrome fidelity", () => {
     expect(inlineImage).toContain("onMouseEnter={() => canvasChrome.setVisible(true)}")
     expect(inlineImage).toContain("onMouseLeave={() => canvasChrome.setVisible(false)}")
   })
+
+  it("keeps Amicare canvas block breakpoints aligned to the live site renderer", () => {
+    const hero = read("src/components/editor/canvas/blocks/Hero.tsx")
+    const richText = read("src/components/editor/canvas/blocks/RichText.tsx")
+
+    expect(hero).toContain("@min-[48rem]/site-frame:flex-row")
+    expect(hero).toContain("@min-[64rem]/site-frame:px-24")
+    expect(hero).toContain("@min-[48rem]/site-frame:rotate-3")
+    expect(hero).not.toContain("@min-[816px]/site-frame")
+    expect(hero).not.toContain("@min-[1088px]/site-frame")
+
+    expect(richText).toContain("@min-[48rem]/site-frame:py-24")
+    expect(richText).toContain("@min-[64rem]/site-frame:px-24")
+    expect(richText).not.toContain("@min-[816px]/site-frame")
+    expect(richText).not.toContain("@min-[1088px]/site-frame")
+  })
 })

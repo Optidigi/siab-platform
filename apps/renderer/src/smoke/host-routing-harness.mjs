@@ -185,9 +185,21 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   assert.match(amicareHtml, /--site-style-preset:warm-care/)
   assert.match(amicareHtml, /id="siab-analytics-config"/)
   assert.match(amicareHtml, /<link rel="icon" href="\/favicon\.svg"\/?>/)
+  assert.match(amicareHtml, /\/siab-media\/tenant-ami-care\/bedroom\.jpg/)
   assert.match(amicareHtml, /Jeugdzorg/)
   assert.match(amicareHtml, /Begeleiding/)
   assert.match(amicareHtml, /Vertrouwen/)
+
+  const amicareMedia = await fetchWithHost(baseUrl, "ami-care.nl", "/siab-media/tenant-ami-care/bedroom.jpg")
+  assert.equal(amicareMedia.status, 200)
+  assert.equal(amicareMedia.headers.get("content-type"), "image/jpeg")
+  assert.equal(await amicareMedia.text(), "stub media")
+
+  const crossTenantMedia = await fetchWithHost(baseUrl, "ami-care.nl", "/siab-media/tenant-amblast/bedroom.jpg")
+  assert.equal(crossTenantMedia.status, 404)
+
+  const traversalMedia = await fetchWithHost(baseUrl, "ami-care.nl", "/siab-media/tenant-ami-care/%2E%2E/bedroom.jpg")
+  assert.equal(traversalMedia.status, 404)
 
   const amblastHome = await fetchWithHost(baseUrl, "amblast.nl", "/")
   const amblastHtml = await amblastHome.text()

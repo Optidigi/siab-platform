@@ -4,7 +4,7 @@ import type { ThemeTokenSpec } from "@siteinabox/contracts/generation"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { BlockRenderer, type BlockRegistry } from "./blocks"
 import { SiteBanner, SiteFooter, SiteHeader } from "./chrome"
-import { AmicarePageRenderer } from "./legacy-tenants/amicare/AmicarePage"
+import { AmicarePageRenderer, type AmicareRenderBlock } from "./legacy-tenants/amicare/AmicarePage"
 import { AmblastPageRenderer } from "./legacy-tenants/amblast/AmblastPage"
 import { resolveLegacyTenant } from "./legacy-tenants/resolve"
 import type { MediaResolver } from "./media"
@@ -25,6 +25,7 @@ export type SitePageRendererProps = {
   includeThemeStyle?: boolean
   header?: React.ReactNode
   footer?: React.ReactNode
+  renderBlock?: AmicareRenderBlock
 }
 
 export function SitePageRenderer({
@@ -42,6 +43,7 @@ export function SitePageRenderer({
   includeThemeStyle = true,
   header,
   footer,
+  renderBlock,
 }: SitePageRendererProps) {
   const legacyTenant = resolveLegacyTenant({ tenantSlug, domain, settings })
 
@@ -58,6 +60,7 @@ export function SitePageRenderer({
         canvasClassName={canvasClassName}
         nonce={nonce}
         includeThemeStyle={includeThemeStyle}
+        renderBlock={renderBlock}
       />
     )
   }
