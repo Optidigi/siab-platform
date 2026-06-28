@@ -18,7 +18,13 @@ import {
   SITE_SOURCE_BACKED_BLOCK_VARIANTS,
   SITE_SOURCE_BACKED_CHROME_VARIANTS,
 } from "@siteinabox/contracts/block-catalog"
-import { BlockSchema, GeneratedBlockSpecSchema, GeneratedSiteSettingsSchema } from "@siteinabox/contracts/generation"
+import {
+  BlockSchema,
+  GeneratedBlockSpecSchema,
+  GeneratedSiteSettingsSchema,
+  OfficialTenantBlockSchema,
+  OfficialTenantGeneratedBlockSpecSchema,
+} from "@siteinabox/contracts/generation"
 import type { GeneratedBlockSpec } from "@siteinabox/contracts/generation"
 import { tenantSiteGenerationSpecs } from "@siteinabox/contracts/fixtures/tenants"
 import { SITE_BLOCK_SLUGS, SITE_GENERATION_BLOCK_SLUGS, SITE_PARITY_BLOCK_SLUGS } from "@siteinabox/contracts/site"
@@ -110,7 +116,7 @@ describe("renderer block catalog", () => {
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => parityVariantIds.has(variant.variantId))).toBe(false)
   })
 
-  it("accepts structured parity blocks as generated snapshot and shared renderer page data", () => {
+  it("keeps structured parity blocks on the official tenant schema path", () => {
     const parityBlock: GeneratedBlockSpec = {
       blockType: "beforeAfterGallery",
       variant: "amblastPortfolio",
@@ -133,8 +139,10 @@ describe("renderer block catalog", () => {
       ],
     }
 
-    expect(GeneratedBlockSpecSchema.safeParse(parityBlock).success).toBe(true)
-    expect(BlockSchema.safeParse(parityBlock).success).toBe(true)
+    expect(GeneratedBlockSpecSchema.safeParse(parityBlock).success).toBe(false)
+    expect(BlockSchema.safeParse(parityBlock).success).toBe(false)
+    expect(OfficialTenantGeneratedBlockSpecSchema.safeParse(parityBlock).success).toBe(true)
+    expect(OfficialTenantBlockSchema.safeParse(parityBlock).success).toBe(true)
     expect(
       GeneratedBlockSpecSchema.safeParse({
         ...parityBlock,
@@ -149,6 +157,13 @@ describe("renderer block catalog", () => {
     ).toBe(false)
     expect(
       GeneratedBlockSpecSchema.safeParse({
+        ...parityBlock,
+        variant: undefined,
+        analytics: { sectionVariant: "amblast-portfolio-comparisons" },
+      }).success,
+    ).toBe(false)
+    expect(
+      OfficialTenantGeneratedBlockSpecSchema.safeParse({
         ...parityBlock,
         variant: undefined,
         analytics: { sectionVariant: "amblast-portfolio-comparisons" },

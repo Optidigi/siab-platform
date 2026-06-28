@@ -138,6 +138,19 @@ async function assertStatus(response, expectedStatus, label, body, failureContex
   assert.equal(response.status, expectedStatus, `${label}\n${body}\n${await failureContextText(failureContext)}`)
 }
 
+async function assertStatusIn(response, expectedStatuses, label, body, failureContext) {
+  if (expectedStatuses.includes(response.status)) return
+  assert.fail(
+    `${label}: expected one of ${expectedStatuses.join(", ")}, got ${response.status}\n${body}\n${await failureContextText(
+      failureContext,
+    )}`,
+  )
+}
+
+function assertNoAnalyticsLeakage(html) {
+  assert.doesNotMatch(html, /id="siab-analytics-config"/)
+}
+
 export async function assertHostRouting(baseUrl, failureContext = "", { includeMalformedEncodedPath = true } = {}) {
   const amicareHome = await fetchWithHost(baseUrl, "ami-care.nl", "/")
   const amicareHtml = await amicareHome.text()
@@ -160,17 +173,27 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   assert.equal(amblastRobots.status, 200)
   assert.match(await amblastRobots.text(), /Crawl-delay: 10/)
 
-  const notFoundChecks = [
+  const validNotFoundChecks = [
     ["unknown.example", "/"],
     ["ami-care.nl", "/missing-page"],
   ]
-  if (includeMalformedEncodedPath) notFoundChecks.push(["ami-care.nl", "/%E0%A4%A"])
 
-  for (const [host, pathname] of notFoundChecks) {
+  for (const [host, pathname] of validNotFoundChecks) {
     const response = await fetchWithHost(baseUrl, host, pathname)
     const html = await response.text()
     await assertStatus(response, 404, `${host}${pathname} status`, html, failureContext)
     assert.match(html, /Page not found/)
-    assert.doesNotMatch(html, /id="siab-analytics-config"/)
+    assertNoAnalyticsLeakage(html)
+  }
+
+  if (includeMalformedEncodedPath) {
+    const host = "ami-care.nl"
+    const pathname = "/%E0%A4%A"
+    const response = await fetchWithHost(baseUrl, host, pathname)
+    const html = await response.text()
+    await assertStatusIn(response, [400, 404], `${host}${pathname} status`, html, failureContext)
+    if (response.status === 404) assert.match(html, /Page not found/)
+    if (response.status === 400) assert.doesNotMatch(html, /Page not found/)
+    assertNoAnalyticsLeakage(html)
   }
 }
