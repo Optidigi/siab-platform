@@ -1,4 +1,4 @@
-/* Generated from sites/amblast/src/styles/amb-base.css. Scope every selector to the Amblast legacy renderer root. */
+/* Renderer-owned legacy Amblast CSS snapshot. The original sites/amblast source app is archived outside this repo; every selector is scoped to the Amblast legacy renderer root. */
 @font-face{font-family:"Font Awesome 5 Free";font-style:normal;font-weight:400;font-display:block;src:url("./webfonts/fa-regular-400.woff2") format("woff2")}
 @font-face{font-family:"Font Awesome 5 Free";font-style:normal;font-weight:900;font-display:block;src:url("./webfonts/fa-solid-900.woff2") format("woff2")}
 .site-renderer[data-legacy-tenant="amblast"]{background:#fff;color:#6b6b6b;font-family:Barlow,Arial,sans-serif;overflow-x:hidden}

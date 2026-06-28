@@ -53,15 +53,32 @@ describe("settingsToJson", () => {
         primaryColor: "#2563eb",
       },
       chrome: {
-        header: { logo: { url: "/uploads/header-logo.png", filename: "header-logo.png" } },
+        header: {
+          variant: "hyperUiSimple",
+          logo: { url: "/uploads/header-logo.png", filename: "header-logo.png" },
+          behavior: "sticky",
+          activeMode: "path",
+          mobileMenu: "drawer",
+          cta: { label: "Start", href: "/intake" },
+        },
         footer: {
+          variant: "hyperUiSimple",
           logo: { url: "/uploads/footer-logo.png", filename: "footer-logo.png" },
           tagline: "Local support",
           copyright: "© Client A",
+          legalLinks: [{ label: "Privacy", href: "/privacy" }],
           columns: [
             { id: "col-1", items: [{ id: "brand", type: "brand", text: "Local support" }] },
             { id: "col-2", items: [{ id: "links", type: "links", label: "Links", links: [{ label: "Privacy", href: "/privacy" }] }] },
           ],
+        },
+        banner: {
+          variant: "hyperUiSimple",
+          visible: true,
+          title: "Update",
+          message: "Now booking",
+          link: { label: "Contact", href: "/#contact" },
+          dismissible: true,
         },
       },
       maintenance: { enabled: true, message: "Short maintenance window." },
@@ -85,15 +102,32 @@ describe("settingsToJson", () => {
       contactEmail: "hi@clienta.nl",
       branding: { primaryColor: "#2563eb" },
       chrome: {
-        header: { logo: { url: "/uploads/header-logo.png", filename: "header-logo.png" } },
+        header: {
+          variant: "hyperUiSimple",
+          logo: { url: "/uploads/header-logo.png", filename: "header-logo.png" },
+          behavior: "sticky",
+          activeMode: "path",
+          mobileMenu: "drawer",
+          cta: { label: "Start", href: "/intake" },
+        },
         footer: {
+          variant: "hyperUiSimple",
           logo: { url: "/uploads/footer-logo.png", filename: "footer-logo.png" },
           tagline: "Local support",
           copyright: "© Client A",
+          legalLinks: [{ label: "Privacy", href: "/privacy" }],
           columns: [
             { id: "col-1", items: [{ id: "brand", type: "brand", label: null, text: "Local support", links: [] }] },
             { id: "col-2", items: [{ id: "links", type: "links", label: "Links", text: null, links: [{ label: "Privacy", href: "/privacy" }] }] },
           ],
+        },
+        banner: {
+          variant: "hyperUiSimple",
+          visible: true,
+          title: "Update",
+          message: "Now booking",
+          link: { label: "Contact", href: "/#contact" },
+          dismissible: true,
         },
       },
       maintenance: { enabled: true, message: "Short maintenance window." },
@@ -199,5 +233,70 @@ describe("settingsToJson", () => {
     for (const row of json.aliases) expect(row).not.toHaveProperty("id")
     for (const row of json.hours) expect(row).not.toHaveProperty("id")
     for (const row of json.serviceArea) expect(row).not.toHaveProperty("id")
+  })
+
+  it("omits hidden or empty announcement banner shells from published settings", () => {
+    const base = {
+      siteName: "Banner Site",
+      siteUrl: "https://banner.test",
+      chrome: {
+        header: { variant: "default" },
+        footer: { variant: "default" },
+      },
+    }
+
+    expect(settingsToJson({
+      ...base,
+      chrome: {
+        ...base.chrome,
+        banner: { variant: "default", visible: false, title: "Draft", message: "Not live" },
+      },
+    }).chrome?.banner).toBeUndefined()
+
+    expect(settingsToJson({
+      ...base,
+      chrome: {
+        ...base.chrome,
+        banner: { variant: "default", visible: true, title: "", message: "", link: { label: "Bad", href: "javascript:alert(1)" } },
+      },
+    }).chrome?.banner).toBeUndefined()
+
+    expect(settingsToJson({
+      ...base,
+      chrome: {
+        ...base.chrome,
+        banner: { variant: "default", visible: true, message: "Published notice" },
+      },
+    }).chrome?.banner).toMatchObject({ variant: "default", visible: true, message: "Published notice" })
+  })
+
+  it("projects public renderer analytics metadata from publish context", () => {
+    const json = settingsToJson(
+      { siteName: "Analytics Site", siteUrl: "https://analytics.test" },
+      [],
+      {
+        tenantId: 42,
+        tenantSlug: "analytics-site",
+        siteDomain: "analytics.test",
+        themeId: "theme-1",
+        siteBuildId: "build-1",
+        manifestVersion: 7,
+        analytics: { enabled: true, dashboardVisible: true, conversionGoals: { contactClicks: ["phone", "email"] } },
+      },
+    )
+
+    expect(json.analytics).toMatchObject({
+      provider: "posthog",
+      consentMode: "required",
+      conversionGoals: { acceptedForms: true, contactClicks: ["phone", "email"] },
+      schemaVersion: 1,
+      tenantId: "42",
+      tenantSlug: "analytics-site",
+      siteId: "42",
+      siteDomain: "analytics.test",
+      themeId: "theme-1",
+      siteBuildId: "build-1",
+      manifestVersion: 7,
+    })
   })
 })

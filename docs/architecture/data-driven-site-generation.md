@@ -54,9 +54,7 @@ draft tenant/site/page/theme/SEO records and later published as a snapshot.
 
 ## Legacy Snapshots
 
-`sites/ami-care` and `sites/amblast` are existing tenant snapshots. Their image
-workflows and deployment contracts remain stable until the operator approves a
-migration or archival plan.
+The old Amicare and Amblast tenant app sources have been removed. Renderer/CMS snapshot data is canonical; do not restore tenant-specific source folders, workflows, or images.
 
 Do not use those snapshots as a pattern for new generated sites.
 

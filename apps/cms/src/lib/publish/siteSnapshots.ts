@@ -9,7 +9,7 @@ import type {
 } from "@siteinabox/contracts/generation"
 import {
   formatContractValidationIssues,
-  PublishedSiteSnapshotSchema,
+  schemaForPublishedSiteSnapshot,
 } from "@siteinabox/contracts/generation"
 import type { Page, SiteGenerationRun, Tenant } from "@/payload-types"
 import { pageToJson } from "@/lib/projection/pageToJson"
@@ -243,7 +243,7 @@ export async function buildPublishedSiteSnapshot(
     blocks: Array.isArray((tenant.siteManifest as any)?.blocks) ? (tenant.siteManifest as any).blocks : undefined,
     publishedAt: now,
   }
-  const parsed = PublishedSiteSnapshotSchema.safeParse(snapshot)
+  const parsed = schemaForPublishedSiteSnapshot(snapshot).safeParse(snapshot)
   if (!parsed.success) {
     throw new Error(`Published site snapshot failed contract validation: ${formatContractValidationIssues(parsed.error)}`)
   }
@@ -331,7 +331,7 @@ export async function publishSiteSnapshot(
   options: PublishSiteOptions,
 ) {
   const run = await getGenerationRun(payload, options.generationRunId) ?? await latestApprovedRunForTenant(payload, options.tenantId)
-  const snapshot = PublishedSiteSnapshotSchema.parse(await buildPublishedSiteSnapshot(payload, options.tenantId, run))
+  const snapshot = await buildPublishedSiteSnapshot(payload, options.tenantId, run)
   const hash = snapshotHash(snapshot)
   const snapshotDoc = await payload.create({
     collection: "published-site-snapshots" as any,
@@ -430,7 +430,7 @@ export async function resolvePublishedSnapshotByHost(
   const activeSnapshot = await activeSnapshotForTenant(payload, tenant)
   if (!activeSnapshot || activeSnapshot.status !== "active") return null
 
-  const parsedSnapshot = PublishedSiteSnapshotSchema.safeParse(activeSnapshot.snapshot)
+  const parsedSnapshot = schemaForPublishedSiteSnapshot(activeSnapshot.snapshot as PublishedSiteSnapshot).safeParse(activeSnapshot.snapshot)
   if (!parsedSnapshot.success) {
     throw new Error(`Stored published site snapshot failed contract validation: ${formatContractValidationIssues(parsedSnapshot.error)}`)
   }

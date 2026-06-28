@@ -149,6 +149,56 @@ describe("processIntakeSubmission", () => {
     expect(store["site-generation-runs"][0]?.validation?.issues.map((entry: any) => entry.code)).toContain("unsupported_block_type")
   })
 
+  it("fails safely before CMS writes when a future generated tenant uses legacy variants or code payloads", async () => {
+    const { payload, store } = createPayloadStub()
+    const provider: SiteGenerationProvider = {
+      name: "mock",
+      model: "fixture:legacy-and-code",
+      promptVersion: "site-generation-v1",
+      async generate(request) {
+        const spec = loadMockSiteGenerationSpec(request.normalized)
+        spec.settings = {
+          ...spec.settings,
+          chrome: {
+            header: { variant: "amicareZen" },
+            footer: { variant: "amblastIndustrial" },
+            banner: { variant: "default", visible: false, message: "Preview ready" },
+          },
+        } as any
+        spec.pages[0]!.blocks[0] = {
+          ...spec.pages[0]!.blocks[0]!,
+          variant: "amicareZenHero",
+          analytics: { sectionVariant: "amicare-zen-hero" },
+          rawHtml: "<section>Generated HTML is not allowed</section>",
+        } as any
+        return {
+          provider: "mock",
+          model: "fixture:legacy-and-code",
+          promptVersion: "site-generation-v1",
+          input: request.input,
+          inputHash: request.inputHash,
+          outputHash: "legacy-and-code-output",
+          rawOutput: JSON.stringify(spec),
+          parsedOutput: spec,
+          spec,
+        }
+      },
+    }
+
+    const result = await processIntakeSubmission(payload, rawIntake(), { provider })
+
+    expect(result.ok).toBe(false)
+    expect(result.status).toBe("failed")
+    expect(store.tenants).toHaveLength(0)
+    expect(store.pages).toHaveLength(0)
+    expect(store["site-settings"]).toHaveLength(0)
+    expect(store["site-generation-runs"][0]?.validation?.issues.map((entry: any) => entry.code)).toEqual(expect.arrayContaining([
+      "invalid_contract_shape",
+      "tenant_exclusive_block_variant",
+      "tenant_exclusive_chrome_variant",
+    ]))
+  })
+
   it("fails safely when a provider returns malformed contract output", async () => {
     const { payload, store } = createPayloadStub()
     const malformedOutput = { schemaVersion: 1, pages: [] }

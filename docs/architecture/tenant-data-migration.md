@@ -45,7 +45,7 @@ until the generic renderer has approved equivalent blocks or integrations.
 
 ## Cutover Notes
 
-The legacy `sites/ami-care` and `sites/amblast` builds remain the rollback path.
+The legacy tenant app builds have been removed; renderer snapshots and CMS data are now the rollback path.
 Renderer activation should be host-based: Traefik can keep routing the current
 tenant domains to the legacy containers until an active published snapshot is
 reviewed, then switch a domain or alias to the generic renderer. No tenant

@@ -7,39 +7,69 @@ import {
 import { normalizeUploadId } from "@/lib/uploadValues"
 
 export type SiteChromeDraft = {
-  header: { logo: unknown }
+  header: {
+    variant?: unknown
+    logo: unknown
+    behavior?: unknown
+    activeMode?: unknown
+    mobileMenu?: unknown
+    cta?: unknown
+  }
   footer: {
+    variant?: unknown
     logo: unknown
     tagline: string | null
     copyright: string | null
+    legalLinks?: unknown
     columns: FooterCompositionColumn[]
   }
+  banner?: unknown
 }
 
 export const chromeDraftFromSettings = (
   settings: any,
   footerContract: FooterCompositionContract | null,
 ): SiteChromeDraft => ({
-  header: { logo: settings?.chrome?.header?.logo ?? null },
+  header: {
+    variant: settings?.chrome?.header?.variant ?? null,
+    logo: settings?.chrome?.header?.logo ?? null,
+    behavior: settings?.chrome?.header?.behavior ?? null,
+    activeMode: settings?.chrome?.header?.activeMode ?? null,
+    mobileMenu: settings?.chrome?.header?.mobileMenu ?? null,
+    cta: settings?.chrome?.header?.cta ?? undefined,
+  },
   footer: {
+    variant: settings?.chrome?.footer?.variant ?? null,
     logo: settings?.chrome?.footer?.logo ?? null,
     tagline: settings?.chrome?.footer?.tagline ?? null,
     copyright: settings?.chrome?.footer?.copyright ?? null,
+    legalLinks: settings?.chrome?.footer?.legalLinks ?? undefined,
     columns: defaultFooterColumns(settings, footerContract),
   },
+  banner: settings?.chrome?.banner ?? undefined,
 })
 
 export const chromeComparable = (
   draft: SiteChromeDraft,
   footerContract: FooterCompositionContract | null,
 ) => ({
-  header: { logo: normalizeUploadId(draft.header.logo) ?? null },
+  header: {
+    variant: draft.header.variant ?? null,
+    logo: normalizeUploadId(draft.header.logo) ?? null,
+    behavior: draft.header.behavior ?? null,
+    activeMode: draft.header.activeMode ?? null,
+    mobileMenu: draft.header.mobileMenu ?? null,
+    cta: draft.header.cta ?? null,
+  },
   footer: {
+    variant: draft.footer.variant ?? null,
     logo: normalizeUploadId(draft.footer.logo) ?? null,
     tagline: draft.footer.tagline ?? null,
     copyright: draft.footer.copyright ?? null,
+    legalLinks: draft.footer.legalLinks ?? [],
     columns: comparableFooterColumns(draft.footer.columns, footerContract),
   },
+  banner: draft.banner ?? null,
 })
 
 export const chromePatchFromDraft = (
@@ -47,14 +77,22 @@ export const chromePatchFromDraft = (
   footerContract: FooterCompositionContract | null,
 ) => ({
   header: {
+    variant: draft.header.variant ?? null,
     logo: normalizeUploadId(draft.header.logo),
+    behavior: draft.header.behavior ?? null,
+    activeMode: draft.header.activeMode ?? null,
+    mobileMenu: draft.header.mobileMenu ?? null,
+    cta: draft.header.cta ?? undefined,
   },
   footer: {
+    variant: draft.footer.variant ?? null,
     logo: normalizeUploadId(draft.footer.logo),
     tagline: draft.footer.tagline ?? null,
     copyright: draft.footer.copyright ?? null,
+    legalLinks: draft.footer.legalLinks ?? undefined,
     columns: normalizeFooterColumns(draft.footer.columns, footerContract),
   },
+  banner: draft.banner ?? undefined,
 })
 
 export const mergeChromeSettings = (settings: any, draft: SiteChromeDraft) => ({
@@ -63,14 +101,22 @@ export const mergeChromeSettings = (settings: any, draft: SiteChromeDraft) => ({
     ...(settings?.chrome ?? {}),
     header: {
       ...(settings?.chrome?.header ?? {}),
+      variant: draft.header.variant,
       logo: draft.header.logo,
+      behavior: draft.header.behavior,
+      activeMode: draft.header.activeMode,
+      mobileMenu: draft.header.mobileMenu,
+      cta: draft.header.cta,
     },
     footer: {
       ...(settings?.chrome?.footer ?? {}),
+      variant: draft.footer.variant,
       logo: draft.footer.logo,
       tagline: draft.footer.tagline,
       copyright: draft.footer.copyright,
+      legalLinks: draft.footer.legalLinks,
       columns: draft.footer.columns,
     },
+    banner: draft.banner,
   },
 })

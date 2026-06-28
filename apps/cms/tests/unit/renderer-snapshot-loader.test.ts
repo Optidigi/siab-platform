@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { amicarePublishedSiteSnapshot } from "@siteinabox/contracts/fixtures/tenants"
 import { fixturePublishedSiteSnapshot } from "../../../renderer/src/fixtures/published-site"
 
 const ORIGINAL_ENV = { ...process.env }
@@ -35,7 +36,7 @@ describe("renderer snapshot loader environment gates", () => {
     }
     const { loadPublishedSnapshot } = await importSnapshotLib()
 
-    await expect(loadPublishedSnapshot("renderer.example.test")).resolves.toMatchObject({
+    await expect(loadPublishedSnapshot("localhost")).resolves.toMatchObject({
       tenantSlug: "fixture-studio",
     })
   })
@@ -96,6 +97,28 @@ describe("renderer snapshot loader environment gates", () => {
     await expect(listPublishedPaths("renderer.example.test")).resolves.toEqual(["/", "/services", "/about"])
   })
 
+  it("accepts official tenant snapshots from CMS responses", async () => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      NODE_ENV: "production",
+      SIAB_CMS_URL: "https://admin.snapshot.test",
+    }
+    const fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        snapshot: amicarePublishedSiteSnapshot,
+      }),
+    }))
+    vi.stubGlobal("fetch", fetch)
+    const { loadPublishedSnapshot } = await importSnapshotLib()
+
+    await expect(loadPublishedSnapshot("ami-care.nl")).resolves.toMatchObject({
+      tenantSlug: "amicare",
+      domain: "ami-care.nl",
+    })
+  })
+
   it("excludes draft-like pages from renderer page lookup defensively", async () => {
     const { findPublishedPage, listPublishedPaths } = await importSnapshotLib()
     const snapshotWithDraft = {
@@ -120,6 +143,6 @@ describe("renderer snapshot loader environment gates", () => {
       SIAB_RENDERER_FIXTURE_MODE: "1",
       SIAB_CMS_URL: "",
     }
-    await expect(listPublishedPaths("renderer.example.test")).resolves.toEqual(["/", "/services", "/about"])
+    await expect(listPublishedPaths("localhost")).resolves.toEqual(["/", "/services", "/about"])
   })
 })

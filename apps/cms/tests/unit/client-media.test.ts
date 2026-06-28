@@ -31,9 +31,9 @@ describe("client media helpers", () => {
       .mockResolvedValueOnce(jsonResponse({ docs: [{ id: "site-123" }] })) as unknown as typeof fetch
 
     await expect(
-      resolveMediaTenantId({ fetcher, pathname: "/sites/ami-care/pages/9" }),
+      resolveMediaTenantId({ fetcher, pathname: "/sites/demo-site/pages/9" }),
     ).resolves.toBe("site-123")
-    expect(fetcher).toHaveBeenLastCalledWith("/api/tenants?where[slug][equals]=ami-care&limit=1")
+    expect(fetcher).toHaveBeenLastCalledWith("/api/tenants?where[slug][equals]=demo-site&limit=1")
   })
 
   it("does not guess a super-admin tenant outside a selected-site route", async () => {

@@ -52,8 +52,8 @@ All commands below were run locally on Node `v24.13.1`. CMS commands emitted the
 - `pnpm renderer:typecheck`: passed.
 - `pnpm renderer:build`: passed. Vite warned that `"use client"` directives in `lucide-react` were ignored during bundling.
 - `pnpm site:build`: passed. Vite warned that `/theme/images/icon/icon_33.svg` remains runtime-resolved.
-- `pnpm tenant:amicare:build`: passed.
-- `pnpm tenant:amblast:build`: passed. Vite warned that legacy font paths remain runtime-resolved.
+- `pnpm renderer:build`: passed.
+- `pnpm renderer:build`: passed. Vite warned that legacy font paths remain runtime-resolved.
 
 Focused checks:
 

@@ -302,7 +302,7 @@ breaking their current live snapshot paths.
 
 ### Research
 
-- Inventory current `sites/ami-care`, `sites/amblast`,
+- Inventory current `removed legacy Amicare app source`, `removed legacy Amblast app source`,
   `packages/site-template`, tenant fixtures, published snapshot fixtures, and
   renderer output.
 - Compare current legacy pages, navigation, SEO, media, forms, theme, and
@@ -404,8 +404,7 @@ Goal: prove the full production-intended flow under staging-like conditions.
 - Run the full workspace matrix:
   `pnpm packages:typecheck`, `pnpm cms:typecheck`, `pnpm cms:test`,
   `pnpm renderer:typecheck`, `pnpm renderer:build`, landing build/test,
-  intake build/test, `pnpm tenant:amicare:build`, and
-  `pnpm tenant:amblast:build`.
+  intake build/test.
 - Run CMS UI gates and E2E tests.
 - Produce a final route matrix, operation matrix, env-var inventory, migration
   inventory, and staging/prod readiness verdict.

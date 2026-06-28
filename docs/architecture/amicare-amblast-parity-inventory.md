@@ -17,12 +17,12 @@ Current implementation target:
 
 - Renderer directory: `packages/site-renderer/src/legacy-tenants/amicare`
 - Dispatch root: `data-legacy-tenant="amicare"`
-- Source CSS contract: `sites/ami-care/src/styles/global.css` and
-  `sites/ami-care/src/styles/rich-text.css`
+- Source CSS contract: `removed legacy Amicare app source/src/styles/global.css` and
+  `removed legacy Amicare app source/src/styles/rich-text.css`
 - Source behavior contract:
-  `sites/ami-care/src/components/Nav.tsx`,
-  `sites/ami-care/src/components/CookieConsent.astro`, and
-  `sites/ami-care/src/lib/analytics/runtime.ts`
+  `removed legacy Amicare app source/src/components/Nav.tsx`,
+  `removed legacy Amicare app source/src/components/CookieConsent.astro`, and
+  `removed legacy Amicare app source/src/lib/analytics/runtime.ts`
 
 | Area | Source file | Renderer mapping | CSS dependency | JS behavior | Editable fields | Fixed structural fields | Media |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -40,7 +40,7 @@ Current implementation target:
 
 Open Amicare parity checks:
 
-- Browser screenshot diff against `sites/ami-care` desktop and mobile.
+- Browser screenshot diff against `removed legacy Amicare app source` desktop and mobile.
 - Mobile menu visual behavior against Framer Motion source behavior.
 - Analytics runtime parity beyond consent/config bootstrap. The current port
   emits config and consent methods, but does not yet port the full PostHog,
@@ -59,11 +59,11 @@ Current implementation target:
 
 - Renderer directory: `packages/site-renderer/src/legacy-tenants/amblast`
 - Dispatch root: `data-legacy-tenant="amblast"`
-- Static fragment source: `sites/amblast/dist` generated after
-  `pnpm tenant:amblast:build`
-- Source CSS contract: `sites/amblast/src/styles/global.css` and
-  `sites/amblast/src/styles/amb-base.css`
-- Source behavior contract: `sites/amblast/src/scripts/site.client.ts`
+- Static fragment source: `removed legacy Amblast app source/dist` generated after
+  `pnpm renderer:build`
+- Source CSS contract: `removed legacy Amblast app source/src/styles/global.css` and
+  `removed legacy Amblast app source/src/styles/amb-base.css`
+- Source behavior contract: `removed legacy Amblast app source/src/scripts/site.client.ts`
 - Current renderer approach: exact compiled page fragments are embedded in
   `legacy-html.ts`, scoped `amb-base.css` is imported under the Amblast root,
   and `AmblastPageRenderer` selects the fragment by page slug.
@@ -95,7 +95,7 @@ Open Amblast parity checks:
 
 - Browser screenshot diff for `/`, `/over-ons`, `/diensten`, `/portfolio`,
   and `/contact` at desktop and mobile.
-- Static DOM parity against `sites/amblast/dist` for all five pages.
+- Static DOM parity against `removed legacy Amblast app source/dist` for all five pages.
 - Contact form decision: exact built fallback versus Web3Forms-enabled snapshot
   form markup.
 - Head parity for favicons, manifest, theme color, canonical, OG/Twitter,

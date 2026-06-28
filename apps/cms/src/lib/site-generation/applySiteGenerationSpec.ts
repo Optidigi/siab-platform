@@ -15,6 +15,9 @@ import {
   contractValidationReport,
   isSupportedBlockVariant,
   isSupportedBlockSectionVariant,
+  isSupportedOfficialTenantBlockVariant,
+  isSupportedOfficialTenantBlockSectionVariant,
+  OfficialTenantSiteGenerationSpecSchema,
   SiteGenerationSpecSchema,
 } from "@siteinabox/contracts/generation"
 import { SITE_CHROME_CATALOG, SITE_GENERATION_BLOCK_CATALOG_BY_SLUG } from "@siteinabox/contracts/block-catalog"
@@ -138,6 +141,12 @@ export const validateSiteGenerationSpecForCms = (
 ): ValidationReport => {
   const issues: ValidationIssue[] = []
   const validationScope = options.variantScope ?? "tenant-aware"
+  const supportsBlockVariant = validationScope === "tenant-aware"
+    ? isSupportedOfficialTenantBlockVariant
+    : isSupportedBlockVariant
+  const supportsBlockSectionVariant = validationScope === "tenant-aware"
+    ? isSupportedOfficialTenantBlockSectionVariant
+    : isSupportedBlockSectionVariant
   const candidate = spec as unknown
 
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
@@ -148,7 +157,10 @@ export const validateSiteGenerationSpecForCms = (
   }
 
   const value = candidate as Partial<SiteGenerationSpec> & Record<string, unknown>
-  const parsedContract = SiteGenerationSpecSchema.safeParse(value)
+  const contractSchema = validationScope === "tenant-aware"
+    ? OfficialTenantSiteGenerationSpecSchema
+    : SiteGenerationSpecSchema
+  const parsedContract = contractSchema.safeParse(value)
   if (!parsedContract.success) {
     issues.push(...contractValidationReport(parsedContract.error).issues)
   }
@@ -238,7 +250,7 @@ export const validateSiteGenerationSpecForCms = (
       const sectionVariant = analytics && typeof analytics === "object" && !Array.isArray(analytics)
         ? (analytics as Record<string, unknown>).sectionVariant
         : undefined
-      if (typeof sectionVariant === "string" && sectionVariant && !isSupportedBlockSectionVariant(blockType, sectionVariant)) {
+      if (typeof sectionVariant === "string" && sectionVariant && !supportsBlockSectionVariant(blockType, sectionVariant)) {
         issues.push(issue(
           "unsupported_block_variant",
           `Generated block variant "${sectionVariant}" is not approved for block type "${blockType}".`,
@@ -256,7 +268,7 @@ export const validateSiteGenerationSpecForCms = (
         }
       }
       const variant = (block as Record<string, unknown>).variant
-      if (typeof variant === "string" && variant && !isSupportedBlockVariant(blockType, variant)) {
+      if (typeof variant === "string" && variant && !supportsBlockVariant(blockType, variant)) {
         issues.push(issue(
           "unsupported_block_variant",
           `Generated block variant "${variant}" is not approved for block type "${blockType}".`,
@@ -866,7 +878,7 @@ export async function applySiteGenerationSpec(
   if (!validation.valid) {
     return { ok: false, validation }
   }
-  const parsedSpec = SiteGenerationSpecSchema.parse(spec)
+  const parsedSpec = OfficialTenantSiteGenerationSpecSchema.parse(spec)
 
   const idempotencyKey = siteGenerationSpecHash(parsedSpec)
   const theme = themeToCmsTokens(parsedSpec.theme)

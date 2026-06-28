@@ -1,5 +1,5 @@
 import type { PublishedSiteSnapshot } from "@siteinabox/contracts/generation"
-import { PublishedSiteSnapshotSchema } from "@siteinabox/contracts/generation"
+import { schemaForPublishedSiteSnapshot } from "@siteinabox/contracts/generation"
 
 export type RetargetPublishedSnapshotOptions = {
   tenantId: string | number
@@ -93,5 +93,6 @@ export function retargetPublishedSiteSnapshot(
     ? rewriteRelativeMediaUrls(domainRetargetedSnapshot, options.mediaBaseUrl)
     : domainRetargetedSnapshot
 
-  return PublishedSiteSnapshotSchema.parse(retargetedSnapshot)
+  return schemaForPublishedSiteSnapshot(retargetedSnapshot as PublishedSiteSnapshot)
+    .parse(retargetedSnapshot)
 }

@@ -94,6 +94,17 @@ activation override. Domain verification is manual in v1 and recorded on the
 tenant; DNS automation is still outside the CMS workflow. Rollback is
 implemented by reactivating an older snapshot.
 
+Follow-up on 2026-06-28 added CMS-side guardrails for tenant-exclusive legacy
+chrome variants. Amicare/Amblast variants remain editable for their official
+legacy tenant slugs, but SiteSettings validation rejects those variants for
+future/generated tenants through server-side collection validation. The
+SiteSettings admin select fields also filter tenant-exclusive choices out for
+generic tenants while keeping them available to the official legacy slugs. The
+publish projection now preserves editable chrome variant, banner, CTA, and
+legal-link settings in immutable snapshots, and snapshot tests cover renderer
+analytics metadata in the published settings shape. A later hardening follow-up
+omits hidden or empty announcement banner shells from the published projection.
+
 ### Phase 3 — Mollie payment gate
 
 **Status:** Foundation added 2026-06-26.

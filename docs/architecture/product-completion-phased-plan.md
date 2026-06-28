@@ -499,8 +499,7 @@ conditions.
 
 - Run the full command matrix:
   `pnpm packages:typecheck`, `pnpm cms:typecheck`, `pnpm cms:test`,
-  `pnpm renderer:typecheck`, `pnpm renderer:build`, `pnpm site:build`,
-  `pnpm tenant:amicare:build`, and `pnpm tenant:amblast:build`.
+  `pnpm renderer:typecheck`, `pnpm renderer:build`, and `pnpm site:build`.
 - Run CMS UI gates and any new E2E tests.
 - Produce a final staging/prod readiness report with route and operation
   matrices.

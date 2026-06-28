@@ -16,10 +16,6 @@ packages/
   ui/               # shared UI primitives/components
   site-renderer/    # shared CMS/public rendering core
   site-template/    # renderer/reference for current tenant snapshots
-
-sites/
-  ami-care/         # legacy/current CMS-backed tenant snapshot
-  amblast/          # legacy/current tenant snapshot
 ```
 
 ## Architecture Direction
@@ -39,9 +35,8 @@ Current invariants:
 - `packages/contracts` owns shared data contracts.
 - `packages/site-renderer` is the shared rendering package used by CMS
   preview/customizer surfaces and by `apps/renderer`.
-- `sites/*` contains only legacy/current tenant snapshots. Existing
-  `sites/ami-care` and `sites/amblast` stay for maintenance and reference until
-  they are migrated or archived.
+- Tenant-specific app source folders under `sites/*` have been removed.
+  Renderer/CMS snapshot data is now canonical.
 
 New generated sites must create validated tenant, site, page, theme, SEO, and
 publishing data. They must not create per-client folders under `sites/*`,
@@ -59,10 +54,6 @@ The monorepo publishes new platform-owned images:
 - `apps/landing` publishes the compatibility image
   `ghcr.io/optidigi/siteinabox-site:latest`.
 - `apps/renderer` publishes `ghcr.io/optidigi/siteinabox-renderer:latest`.
-- Existing tenant snapshots under `sites/` still publish monorepo-owned legacy
-  images:
-  `ghcr.io/optidigi/siteinabox-site-ami-care:latest` and
-  `ghcr.io/optidigi/siteinabox-site-amblast:latest`.
 - Generated sites are served by the generic renderer from active published
   snapshots, not by per-tenant images.
 - VPS stack files live under `/srv/saas/infra/stacks/siteinabox/`, while
@@ -77,8 +68,8 @@ pnpm cms:test
 pnpm site:build
 pnpm landing:build
 pnpm intake:build
-pnpm tenant:amicare:build
-pnpm tenant:amblast:build
+pnpm renderer:deploy-contract
+pnpm renderer:build
 pnpm template:build
 ```
 

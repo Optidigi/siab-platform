@@ -1,7 +1,7 @@
 import type { CollectionConfig } from "payload"
 import {
   formatContractValidationIssues,
-  PublishedSiteSnapshotSchema,
+  schemaForPublishedSiteSnapshot,
 } from "@siteinabox/contracts/generation"
 import { relationshipId } from "@/lib/relationshipId"
 
@@ -65,7 +65,7 @@ export const PublishedSiteSnapshots: CollectionConfig = {
     beforeValidate: [
       ({ data }) => {
         if (!data?.snapshot) return data
-        const parsed = PublishedSiteSnapshotSchema.safeParse(data.snapshot)
+        const parsed = schemaForPublishedSiteSnapshot(data.snapshot).safeParse(data.snapshot)
         if (!parsed.success) {
           throw new Error(`Published site snapshot failed contract validation: ${formatContractValidationIssues(parsed.error)}`)
         }

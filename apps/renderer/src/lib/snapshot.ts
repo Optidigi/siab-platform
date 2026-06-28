@@ -1,10 +1,12 @@
 import type { Page } from "@siteinabox/contracts"
+import { isRendererProductionHost } from "@siteinabox/contracts/deploy-targets"
 import {
   formatContractValidationIssues,
-  PublishedSiteSnapshotSchema,
+  schemaForPublishedSiteSnapshot,
   type PublishedSiteSnapshot,
 } from "@siteinabox/contracts/generation"
 import { fixturePublishedSiteSnapshot } from "../fixtures/published-site"
+import { pathnameToSlug } from "./pathname.js"
 
 type SnapshotPage = PublishedSiteSnapshot["pages"][number]
 
@@ -39,13 +41,21 @@ function fixtureModeEnabled(): boolean {
   return process.env.SIAB_RENDERER_FIXTURE_MODE === "1" && process.env.NODE_ENV !== "production"
 }
 
+function fixtureHostAllowed(host: string): boolean {
+  return isRendererProductionHost(host) || host === "localhost" || host === "127.0.0.1" || host === ""
+}
+
 export async function loadPublishedSnapshot(host?: string | null): Promise<PublishedSiteSnapshot | null> {
   const normalizedHost = normalizeRequestHost(host)
   if (!normalizedHost) return null
 
   const endpoint = cmsSnapshotEndpoint(normalizedHost)
   if (!endpoint) {
-    if (fixtureModeEnabled()) return PublishedSiteSnapshotSchema.parse(fixturePublishedSiteSnapshot)
+    if (fixtureModeEnabled()) {
+      return fixtureHostAllowed(normalizedHost)
+        ? schemaForPublishedSiteSnapshot(fixturePublishedSiteSnapshot).parse(fixturePublishedSiteSnapshot)
+        : null
+    }
     throw new Error("SIAB_CMS_URL is required unless SIAB_RENDERER_FIXTURE_MODE=1 is set outside production.")
   }
 
@@ -61,17 +71,11 @@ export async function loadPublishedSnapshot(host?: string | null): Promise<Publi
 
   const data = (await response.json()) as SnapshotApiResponse
   if (!data.snapshot) return null
-  const parsed = PublishedSiteSnapshotSchema.safeParse(data.snapshot)
+  const parsed = schemaForPublishedSiteSnapshot(data.snapshot).safeParse(data.snapshot)
   if (!parsed.success) {
     throw new Error(`CMS snapshot response failed contract validation: ${formatContractValidationIssues(parsed.error)}`)
   }
   return parsed.data
-}
-
-export function pathnameToSlug(pathname: string): string {
-  const cleanPath = pathname.split(/[?#]/, 1)[0] ?? "/"
-  const withoutSlashes = cleanPath.replace(/^\/+|\/+$/g, "")
-  return withoutSlashes === "" ? "index" : decodeURIComponent(withoutSlashes)
 }
 
 export function pagePath(page: Page): string {
@@ -84,6 +88,7 @@ function isRenderablePublishedPage(page: SnapshotPage): page is SnapshotPage & P
 
 export function findPublishedPage(snapshot: PublishedSiteSnapshot, pathname: string): Page | null {
   const slug = pathnameToSlug(pathname)
+  if (!slug) return null
   for (const page of snapshot.pages) {
     if (isRenderablePublishedPage(page) && page.slug === slug) return page
   }

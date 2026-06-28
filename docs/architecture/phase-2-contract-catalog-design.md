@@ -41,11 +41,11 @@ primitives using the legacy tenant snapshots as visual/functionality references.
 `SITE_BLOCK_CATALOG` remains limited to the currently renderable/shared-renderer
 block set:
 
-- Amblast shaped heroes: `sites/amblast/src/pages/index.astro`.
-- Amblast image/info boxes: `sites/amblast/src/pages/index.astro`.
-- Amblast service carousel: `sites/amblast/src/pages/index.astro`.
-- Amblast portfolio comparisons: `sites/amblast/src/pages/portfolio.astro`.
-- Amblast contact/legal cards: `sites/amblast/src/pages/contact.astro`.
+- Amblast shaped heroes: `removed legacy Amblast app source/src/pages/index.astro`.
+- Amblast image/info boxes: `removed legacy Amblast app source/src/pages/index.astro`.
+- Amblast service carousel: `removed legacy Amblast app source/src/pages/index.astro`.
+- Amblast portfolio comparisons: `removed legacy Amblast app source/src/pages/portfolio.astro`.
+- Amblast contact/legal cards: `removed legacy Amblast app source/src/pages/contact.astro`.
 
 These variants are approved as contract/catalog shapes but marked with deferred
 renderer support and `needs-browser-comparison` visual exactness. They are not

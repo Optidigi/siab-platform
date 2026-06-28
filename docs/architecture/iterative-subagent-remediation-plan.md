@@ -31,8 +31,6 @@ pnpm cms:test
 pnpm renderer:typecheck
 pnpm renderer:build
 pnpm site:build
-pnpm tenant:amicare:build
-pnpm tenant:amblast:build
 ```
 
 CMS phases that touch TypeScript or JavaScript under `apps/cms` must also run:

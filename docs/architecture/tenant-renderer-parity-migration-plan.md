@@ -17,8 +17,8 @@ by this phase.
 - Reusable code may be moved only into shared packages such as
   `packages/site-renderer`, `packages/contracts`, or `packages/ui` after the
   required block/catalog contracts are approved.
-- Existing legacy sites under `sites/ami-care` and `sites/amblast` remain the
-  visual/functionality source of truth and rollback reference until cutover.
+- The removed Amicare and Amblast app sources remain historical provenance only;
+  renderer snapshots and CMS data are now the live source of truth.
 
 ## Phase Sequence
 
@@ -75,14 +75,14 @@ their phase scope.
 
 ## Amicare Inventory
 
-Source reference: `sites/ami-care`.
+Source reference: `removed legacy Amicare app source`.
 
 | Surface | Legacy baseline | Current renderer-compatible state | Delta |
 | --- | --- | --- | --- |
 | Pages | Home only, loaded from `CMS_DATA_DIR/pages/index.json`; 404, preview, health, media, robots helpers exist. | Fixture has one home page with hero, feature list, rich text, and CTA. | Need real published CMS snapshot baseline rather than placeholder fixture copy if current tenant data differs. |
 | Header | Sticky React nav with logo/brand, section anchors, active section indicator, mobile menu animation. | Generic `SitePageRenderer` accepts optional header/footer but `apps/renderer` does not pass tenant chrome. | Need shared renderer chrome or app-level generic chrome that consumes `SiteSettings.navHeader`, logo, and active anchor behavior. |
 | Footer | Data-driven columns, brand/logo, contact, business info, navigation, copyright. | `SiteSettings.chrome.footer` exists in contracts; generic renderer currently omits footer. | Need generic footer renderer using the existing contract shape. |
-| Blocks | Hero, FeatureList, RichText, CTA, FAQ, Testimonials, ContactSection components exist under `sites/ami-care/src/components/cms`. | Same canonical block types exist in `packages/site-renderer`. | Need browser parity check against legacy Amicare styles, especially image treatment, spacing, typography, and analytics attrs. |
+| Blocks | Hero, FeatureList, RichText, CTA, FAQ, Testimonials, ContactSection components exist under `removed legacy Amicare app source/src/components/cms`. | Same canonical block types exist in `packages/site-renderer`. | Need browser parity check against legacy Amicare styles, especially image treatment, spacing, typography, and analytics attrs. |
 | Assets | `src/assets/bedroom.jpg`, `src/assets/toys.jpg`, favicon, OG, manifest icons. | Fixture references bedroom and toys. | Need confirm final media filenames/paths in CMS published snapshot and include logo/favicon if present. |
 | Forms | ContactSection posts to `/api/forms`, tracks analytics attributes. | Generic block supports fields and `formAction` option. | Need approved production form action for renderer and smoke for validation/submission behavior. |
 | SEO/JSON-LD | SEO component, Organization JSON-LD, LocalBusiness JSON-LD, sitemap link, manifest. | Renderer emits title, description, canonical, OG/Twitter metadata only. | Need generic JSON-LD for organization/local business, favicon/manifest links, robots/sitemap behavior. |
@@ -91,7 +91,7 @@ Source reference: `sites/ami-care`.
 
 ## Amblast Inventory
 
-Source reference: `sites/amblast`.
+Source reference: `removed legacy Amblast app source`.
 
 | Surface | Legacy baseline | Current renderer-compatible state | Delta |
 | --- | --- | --- | --- |
@@ -114,27 +114,27 @@ These must be approved as structured contracts before renderer work starts.
 
 | Primitive | Tenants | Purpose | Data requirements | Reusable source/reference |
 | --- | --- | --- | --- | --- |
-| `siteChrome` or generic header/footer renderers | Amicare, Amblast | Render tenant header/footer from `SiteSettings` rather than page blocks. | Logo/favicons, nav links, active path/anchor mode, optional header CTA, footer columns/items, copyright, legal/privacy links. | `sites/ami-care/src/components/Nav.tsx`, `sites/ami-care/src/components/Footer.astro`, `sites/amblast/src/components/layout/Header.astro`, `sites/amblast/src/components/layout/Footer.astro`. |
-| `mediaHero` variant | Amblast | Shaped/overlay hero with background image, optional dividers, CTA, and page title modes. | Background media, overlay color/opacity, divider style ids, min height, content column alignment, CTA. | Amblast page hero markup and `sites/amblast/src/styles/amb-base.css`. |
+| `siteChrome` or generic header/footer renderers | Amicare, Amblast | Render tenant header/footer from `SiteSettings` rather than page blocks. | Logo/favicons, nav links, active path/anchor mode, optional header CTA, footer columns/items, copyright, legal/privacy links. | `removed legacy Amicare app source/src/components/Nav.tsx`, `removed legacy Amicare app source/src/components/Footer.astro`, `removed legacy Amblast app source/src/components/layout/Header.astro`, `removed legacy Amblast app source/src/components/layout/Footer.astro`. |
+| `mediaHero` variant | Amblast | Shaped/overlay hero with background image, optional dividers, CTA, and page title modes. | Background media, overlay color/opacity, divider style ids, min height, content column alignment, CTA. | Amblast page hero markup and `removed legacy Amblast app source/src/styles/amb-base.css`. |
 | `infoCardList` | Amblast | Icon/text boxes for hours, phone/email, location, service facts, and contact cards. | Items with image/icon media, title, rich text, link/action, alignment, animation style. | Amblast image-box/info-box markup and icon assets. |
-| `serviceCarousel` / service card variant | Amblast | Swiper-like service carousel on home and card/grid services on Diensten. | Items with image media, title, rich text bullet paragraphs, CTA, layout mode, autoplay/pagination settings. | Amblast carousel DOM and `sites/amblast/src/scripts/site.client.ts`. |
+| `serviceCarousel` / service card variant | Amblast | Swiper-like service carousel on home and card/grid services on Diensten. | Items with image media, title, rich text bullet paragraphs, CTA, layout mode, autoplay/pagination settings. | Amblast carousel DOM and `removed legacy Amblast app source/src/scripts/site.client.ts`. |
 | `beforeAfterGallery` | Amblast | Portfolio before/after comparisons with draggable handle and labels. | Pairs of before/after media refs, labels, initial ratio, orientation, optional captions. | Amblast portfolio markup and `initImageComparison`. |
 | `contactDetails` or contact-section layout variants | Amblast | Structured contact/legal data alongside forms. | Address, email, phone, KVK, BTW, IBAN, BIC, hours, display address source. | Amblast contact page and footer legal config. |
 | `formProvider` adapter fields | Amicare, Amblast | Preserve form submission behavior without tenant source. | Provider id, endpoint/action, hidden fields, honeypot, fallback mailto, field names, consent/analytics flags. | Amicare ContactSection, Amblast Web3Forms forms. |
-| `analyticsConsent` runtime | Amicare | Shared cookie consent and analytics capture when enabled by tenant data. | Provider config, consent storage key/version, event flags, section/action/form attributes. | `sites/ami-care/src/lib/analytics/runtime.ts` and `CookieConsent.astro`. |
+| `analyticsConsent` runtime | Amicare | Shared cookie consent and analytics capture when enabled by tenant data. | Provider config, consent storage key/version, event flags, section/action/form attributes. | `removed legacy Amicare app source/src/lib/analytics/runtime.ts` and `CookieConsent.astro`. |
 | `seoJsonLd` | Amicare, Amblast | Organization/LocalBusiness structured data. | NAP, hours, service area, social links, canonical URL, logo. | Tenant `JsonLdOrganization.astro` and `JsonLdLocalBusiness.astro` components. |
 
 ## Required Assets
 
 Amicare required assets:
 
-- `sites/ami-care/src/assets/bedroom.jpg`
-- `sites/ami-care/src/assets/toys.jpg`
-- `sites/ami-care/public/favicon.svg`
-- `sites/ami-care/public/favicon.ico`
-- `sites/ami-care/public/apple-touch-icon.png`
-- `sites/ami-care/public/manifest.json`
-- `sites/ami-care/public/og-default.png`
+- `removed legacy Amicare app source/src/assets/bedroom.jpg`
+- `removed legacy Amicare app source/src/assets/toys.jpg`
+- `removed legacy Amicare app source/public/favicon.svg`
+- `removed legacy Amicare app source/public/favicon.ico`
+- `removed legacy Amicare app source/public/apple-touch-icon.png`
+- `removed legacy Amicare app source/public/manifest.json`
+- `removed legacy Amicare app source/public/og-default.png`
 
 Amblast required assets:
 

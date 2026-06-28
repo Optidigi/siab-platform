@@ -9,8 +9,7 @@ App-local `AGENTS.md` files add rules only for work inside that app.
 ## What This Repo Is
 
 `siteinabox` is the SIAB monorepo shell. It keeps deployable apps isolated
-while collecting shared contracts, shared UI, and current tenant snapshots in
-one workspace.
+while collecting shared contracts and shared UI in one workspace.
 
 Current surfaces:
 
@@ -22,16 +21,15 @@ Current surfaces:
 - `packages/contracts` - shared data contracts.
 - `packages/site-renderer` - shared rendering core for CMS preview/canvas and
   the public renderer.
-- `packages/site-template` and `sites/*` - current tenant snapshot paths,
-  retained for existing tenant maintenance and reference.
+- `packages/site-template` - retained for existing template maintenance and
+  reference.
 
 ## Workflow Routing
 
 - For CMS app work, read `apps/cms/AGENTS.md` and follow its rules.
 - For public marketing site work, work in `apps/landing`.
 - For public intake product work, work in `apps/intake`.
-- For tenant snapshot/template maintenance on existing tenants only, work in
-  `packages/site-template`.
+- For template maintenance, work in `packages/site-template`.
 - For public generated-site runtime work, use `apps/renderer`.
 - For shared rendering logic, use `packages/site-renderer`.
 - Do not restore command-driven site generation workflows.
@@ -53,9 +51,8 @@ Current surfaces:
   arbitrary React components, source files, or executable code.
 - New generated sites must not create folders under `sites/*`, tenant-specific
   GitHub workflows, or tenant-specific Docker images.
-- `sites/*` contains legacy/current tenant snapshots only. Existing
-  `sites/ami-care` and `sites/amblast` may be maintained until migrated or
-  archived; do not use them as the model for new generated sites.
+- Do not create or restore source folders under `sites/*`. Tenant-specific app
+  source trees have been removed; renderer/CMS data is canonical.
 - Shared UI must come from `packages/ui`. Do not import app components from
   one app into another app.
 - Shared data shapes belong in `packages/contracts`.
@@ -128,10 +125,8 @@ Use `context7` for current library documentation when docs are needed. Use
   - `ghcr.io/optidigi/siteinabox-renderer`
 - Additional app images must be added only when those apps are implemented and
   their deploy contracts are approved.
-- Tenant snapshot images remain stable unless the operator explicitly
-  approves a deploy contract change:
-  - `ghcr.io/optidigi/siteinabox-site-ami-care`
-  - `ghcr.io/optidigi/siteinabox-site-amblast`
+- Tenant-specific app images must not be restored; generated sites are served
+  by `apps/renderer`.
 - VPS stack files are organized under
   `/srv/saas/infra/stacks/siteinabox/`.
 - Keep Payload tenant data paths stable:

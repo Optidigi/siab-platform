@@ -346,7 +346,10 @@ function AmicareHero({
             {eyebrowText}
           </span>
         )}
-        <h1 className="animate-fade-up max-w-[14ch] font-serif text-[44px] font-normal leading-[1.05] tracking-[0] [animation-delay:50ms] [font-family:var(--font-title)] [overflow-wrap:anywhere] @min-[48rem]/site-frame:text-[60px] @min-[64rem]/site-frame:text-[76px] [&_em]:relative [&_em]:inline-block [&_em]:whitespace-nowrap [&_em]:italic [&_em]:text-accent">
+        <h1
+          className="font-serif text-[44px] font-normal leading-[1.05] tracking-[-0.01em] @min-[48rem]/site-frame:text-[60px] @min-[64rem]/site-frame:text-[76px] animate-fade-up [animation-delay:50ms] [overflow-wrap:anywhere] [&_em]:relative [&_em]:not-italic [&_em]:inline-block [&_em]:whitespace-nowrap [&_em]:italic [&_em]:text-accent"
+          style={{ maxWidth: "14ch", fontFamily: "var(--font-title)" }}
+        >
           <RichTextRenderer value={block.headline} />
         </h1>
         {block.subheadline && (
@@ -422,7 +425,10 @@ function AmicareFeatureList({ block, dataBlockIndex }: { block: FeatureListBlock
               <span className="inline-block -rotate-2 text-[20px] text-accent [font-family:var(--font-script)]">{introText}</span>
             )}
             {block.title && (
-              <h2 className="font-serif text-[34px] leading-[1.1] tracking-[0] [font-family:var(--font-heading)] @min-[48rem]/site-frame:text-[44px] [&_em]:italic [&_em]:text-accent">
+              <h2
+                className="font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px] [&_em]:not-italic [&_em]:italic [&_em]:text-accent"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
                 <RichTextRenderer value={block.title} />
               </h2>
             )}
@@ -465,7 +471,10 @@ function AmicareRichText({ block, dataBlockIndex }: { block: RichTextBlock; data
       data-block-index={dataBlockIndex}
       {...sectionAnalyticsAttrs(block.analytics, "richText", dataBlockIndex)}
     >
-      <div className="prose mx-auto max-w-prose text-[17px] leading-[1.7] text-ink/90 [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[18px]">
+      <div
+        className="prose mx-auto max-w-prose text-[17px] leading-[1.7] text-ink/90 @min-[48rem]/site-frame:text-[18px] prose-headings:font-serif prose-headings:tracking-[-0.01em] prose-headings:text-ink prose-h2:text-[34px] prose-h2:leading-[1.1] @min-[48rem]/site-frame:prose-h2:text-[44px] prose-p:text-ink/90 prose-strong:text-ink prose-strong:font-semibold prose-em:text-accent prose-em:italic prose-a:text-accent prose-a:underline prose-a:decoration-1 prose-a:underline-offset-[6px] hover:prose-a:decoration-accent prose-blockquote:border-l-2 prose-blockquote:border-accent prose-blockquote:pl-6 prose-blockquote:italic prose-blockquote:font-serif prose-blockquote:text-[19px] @min-[48rem]/site-frame:prose-blockquote:text-[22px]"
+        style={{ fontFamily: "var(--font-text)" }}
+      >
         <RichTextRenderer value={block.body} />
       </div>
     </section>
@@ -513,11 +522,17 @@ function AmicareCTA({
       <div className={isContact ? "mx-auto max-w-3xl space-y-8 text-center" : "mx-auto max-w-3xl text-center"}>
         {eyebrowText && <span className="inline-block -rotate-2 text-[20px] text-accent [font-family:var(--font-script)]">{eyebrowText}</span>}
         {isContact ? (
-          <h2 className="mx-auto max-w-[24ch] font-serif text-[28px] leading-[1.25] tracking-[0] text-ink-muted [font-family:var(--font-heading)] @min-[48rem]/site-frame:text-[36px]">
+          <h2
+            className="mx-auto max-w-[24ch] font-serif text-[28px] leading-[1.25] tracking-[-0.005em] text-ink-muted @min-[48rem]/site-frame:text-[36px]"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >
             <RichTextRenderer value={block.headline} />
           </h2>
         ) : (
-          <h3 className="mt-5 font-serif text-[32px] italic leading-[1.2] tracking-[0] text-ink [font-family:var(--font-heading)] @min-[48rem]/site-frame:text-[48px]">
+          <h3
+            className="mt-5 font-serif text-[32px] italic leading-[1.2] tracking-[-0.005em] text-ink @min-[48rem]/site-frame:text-[48px]"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >
             &ldquo;<RichTextRenderer value={block.headline} />&rdquo;
           </h3>
         )}
@@ -656,7 +671,10 @@ function AmicareContactSection({
     >
       <div className="container mx-auto max-w-2xl">
         {block.title && (
-          <h2 className="font-serif text-[34px] leading-[1.1] tracking-[0] [font-family:var(--font-heading)] @min-[48rem]/site-frame:text-[44px]">
+          <h2
+            className="font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px]"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >
             <RichTextRenderer value={block.title} />
           </h2>
         )}

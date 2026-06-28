@@ -239,9 +239,12 @@ const legacyTenantRuntime: BlockSourceRuntimeRequirement = {
   supportedAstroPath:
     "Map legacy tenant Astro/React/CSS source into tenant-exclusive @siteinabox/site-renderer variants; do not create new tenant source branches.",
   interactive: true,
-  docs: ["sites/ami-care", "sites/amblast"],
+  docs: [
+    "packages/site-renderer/src/legacy-tenants",
+    "apps/renderer/src/lib/legacy-tenants/_assets",
+  ],
   notes:
-    "Used only for Amicare/Amblast parity blocks. These variants are not available to future generated sites.",
+    "Used only for Amicare/Amblast parity blocks. Renderer-owned legacy tenant sources and assets are canonical; deleted sites/* app sources must not be restored.",
 }
 
 const copyPasteTailwindRuntime = (sourceName: string, docs: string[]): BlockSourceRuntimeRequirement => ({
@@ -347,7 +350,7 @@ const legacyTenantProvenance = (
   sourceAvailability: "free-public",
   upstreamBlockName,
   sourceAccessType: "local-source",
-  sourceAccess: "Local repository legacy/current tenant snapshot.",
+  sourceAccess: "Local repository renderer-owned legacy tenant snapshot.",
   implementation: "adapted-exact-style",
   sourcePath,
   retrieval: `Inspect ${sourcePath} in this repository and map visible behavior to structured contract fields.`,
@@ -697,8 +700,8 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererClassName: "cms-block--source-amicare-zen-hero",
         provenance: legacyTenantProvenance(
           "Amicare Hero",
-          "sites/ami-care/src/components/cms/Hero.tsx",
-          "Maps the Amicare Preact hero visual treatment to structured hero fields without reusable generated source.",
+          "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+          "Maps the renderer-owned Amicare hero visual treatment to structured hero fields without restoring deleted tenant app source.",
         ),
       },
     ],
@@ -749,8 +752,8 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererClassName: "cms-block--source-amblast-shaped-overlay",
         provenance: legacyTenantProvenance(
           "Amblast shaped page hero",
-          "sites/amblast/src/pages/index.astro",
-          "Represents the Amblast hero sections without preserving Elementor markup or generated source.",
+          "packages/site-renderer/src/legacy-tenants/amblast/legacy-html.ts",
+          "Represents the renderer-owned Amblast hero sections without restoring deleted tenant app source.",
         ),
       },
     ],
@@ -824,8 +827,8 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererClassName: "cms-block--source-amicare-care-cards",
         provenance: legacyTenantProvenance(
           "Amicare FeatureList",
-          "sites/ami-care/src/components/cms/FeatureList.tsx",
-          "Maps the Amicare feature-card grid to structured featureList data and tenant-exclusive renderer CSS.",
+          "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+          "Maps the renderer-owned Amicare feature-card grid to structured featureList data and tenant-exclusive renderer CSS.",
         ),
       },
     ],
@@ -884,8 +887,8 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererClassName: "cms-block--source-amblast-image-boxes",
         provenance: legacyTenantProvenance(
           "Amblast Elementor image boxes",
-          "sites/amblast/src/pages/index.astro",
-          "Covers image-box and info-box patterns backed by uploaded icon media.",
+          "packages/site-renderer/src/legacy-tenants/amblast/legacy-html.ts",
+          "Covers renderer-owned image-box and info-box patterns backed by uploaded icon media in apps/renderer/src/lib/legacy-tenants/_assets/amblast.",
         ),
       },
     ],
@@ -942,8 +945,8 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererClassName: "cms-block--source-amblast-swiper-services",
         provenance: legacyTenantProvenance(
           "Amblast service carousel",
-          "sites/amblast/src/pages/index.astro",
-          "Maps the Swiper settings from data-slider-settings into typed carousel options.",
+          "packages/site-renderer/src/legacy-tenants/amblast/legacy-html.ts",
+          "Maps the legacy carousel settings into typed carousel options using renderer-owned Amblast parity data.",
         ),
       },
     ],
@@ -992,8 +995,8 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererClassName: "cms-block--source-amblast-portfolio-comparisons",
         provenance: legacyTenantProvenance(
           "Amblast image comparison",
-          "sites/amblast/src/pages/portfolio.astro",
-          "Represents before/after pairs structurally; Phase 3 must implement pointer and keyboard interaction generically.",
+          "packages/site-renderer/src/legacy-tenants/amblast/legacy-html.ts",
+          "Represents before/after pairs structurally from renderer-owned Amblast parity data; Phase 3 must implement pointer and keyboard interaction generically.",
         ),
       },
     ],
@@ -1052,8 +1055,8 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererClassName: "cms-block--source-amblast-contact-cards",
         provenance: legacyTenantProvenance(
           "Amblast contact and footer details",
-          "sites/amblast/src/pages/contact.astro",
-          "Keeps address, phone, email, hours, and legal identifiers structured so Phase 5 can resolve the address conflict explicitly.",
+          "packages/site-renderer/src/legacy-tenants/amblast/legacy-html.ts",
+          "Keeps address, phone, email, hours, and legal identifiers structured from renderer-owned Amblast parity data so Phase 5 can resolve the address conflict explicitly.",
         ),
       },
     ],
@@ -1108,8 +1111,8 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererClassName: "cms-block--source-amicare-editorial",
         provenance: legacyTenantProvenance(
           "Amicare RichText",
-          "sites/ami-care/src/components/cms/RichText.tsx",
-          "Maps Amicare rich text and themed eyebrow behavior into structured RtRoot data and package CSS.",
+          "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+          "Maps renderer-owned Amicare rich text and themed eyebrow behavior into structured RtRoot data and package CSS.",
         ),
       },
     ],
@@ -1171,8 +1174,8 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererClassName: "cms-block--source-amicare-quote-contact",
         provenance: legacyTenantProvenance(
           "Amicare CTA",
-          "sites/ami-care/src/components/cms/CTA.tsx",
-          "Maps Amicare quote/contact CTA presentation to structured CTA fields and tenant-exclusive renderer CSS.",
+          "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+          "Maps renderer-owned Amicare quote/contact CTA presentation to structured CTA fields and tenant-exclusive renderer CSS.",
         ),
       },
     ],
@@ -1300,8 +1303,8 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererClassName: "cms-block--source-amicare-contact-form",
         provenance: legacyTenantProvenance(
           "Amicare ContactSection",
-          "sites/ami-care/src/components/cms/ContactSection.tsx",
-          "Maps the Amicare contact form styling to structured fields and SIAB form provider data.",
+          "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+          "Maps renderer-owned Amicare contact form styling to structured fields and SIAB form provider data.",
         ),
       },
     ],
@@ -1372,8 +1375,8 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererClassName: "cms-block--source-amicare-warm-accordion",
         provenance: legacyTenantProvenance(
           "Amicare FAQ",
-          "sites/ami-care/src/components/cms/FAQ.tsx",
-          "Maps Amicare FAQ details styling to structured FAQ items and tenant-exclusive renderer CSS.",
+          "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+          "Maps renderer-owned Amicare FAQ details styling to structured FAQ items and tenant-exclusive renderer CSS.",
         ),
       },
     ],
@@ -1446,8 +1449,8 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererClassName: "cms-block--source-amicare-story-cards",
         provenance: legacyTenantProvenance(
           "Amicare Testimonials",
-          "sites/ami-care/src/components/cms/Testimonials.tsx",
-          "Maps Amicare testimonial cards to structured quote, author, role, and optional avatar fields.",
+          "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+          "Maps renderer-owned Amicare testimonial cards to structured quote, author, role, and optional avatar fields.",
         ),
       },
     ],
@@ -1911,8 +1914,8 @@ export const SITE_CHROME_CATALOG = [
     rendererClassName: "site-header--source-amicare-zen",
     provenance: legacyTenantProvenance(
       "Amicare Nav",
-      "sites/ami-care/src/components/Nav.tsx",
-      "Maps Amicare sticky anchor navigation to structured SiteSettings navHeader/chrome data.",
+      "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+      "Maps renderer-owned Amicare sticky anchor navigation to structured SiteSettings navHeader/chrome data.",
     ),
     editableFields: [
       image("chrome.header.logo", "Logo"),
@@ -1938,8 +1941,8 @@ export const SITE_CHROME_CATALOG = [
     rendererClassName: "site-header--source-amblast-industrial",
     provenance: legacyTenantProvenance(
       "Amblast Header",
-      "sites/amblast/src/components/layout/Header.astro",
-      "Maps Amblast legacy header chrome to structured SiteSettings logo, navHeader, path active state, and contact CTA data.",
+      "packages/site-renderer/src/legacy-tenants/amblast/AmblastPage.tsx",
+      "Maps renderer-owned Amblast legacy header chrome to structured SiteSettings logo, navHeader, path active state, and contact CTA data.",
     ),
     editableFields: [
       image("chrome.header.logo", "Logo"),
@@ -2010,8 +2013,8 @@ export const SITE_CHROME_CATALOG = [
     rendererClassName: "site-footer--source-amicare-zen",
     provenance: legacyTenantProvenance(
       "Amicare Footer",
-      "sites/ami-care/src/components/Footer.astro",
-      "Maps Amicare footer composition to structured SiteSettings footer columns, navFooter, and NAP data.",
+      "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+      "Maps renderer-owned Amicare footer composition to structured SiteSettings footer columns, navFooter, and NAP data.",
     ),
     editableFields: [
       image("chrome.footer.logo", "Logo"),
@@ -2037,8 +2040,8 @@ export const SITE_CHROME_CATALOG = [
     rendererClassName: "site-footer--source-amblast-industrial",
     provenance: legacyTenantProvenance(
       "Amblast Footer",
-      "sites/amblast/src/components/layout/Footer.astro",
-      "Maps Amblast footer composition to structured SiteSettings footer columns, navFooter, legal links, and NAP data.",
+      "packages/site-renderer/src/legacy-tenants/amblast/AmblastPage.tsx",
+      "Maps renderer-owned Amblast footer composition to structured SiteSettings footer columns, navFooter, legal links, and NAP data.",
     ),
     editableFields: [
       image("chrome.footer.logo", "Logo"),

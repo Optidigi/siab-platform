@@ -24,6 +24,8 @@ tenant site snapshots.
   site settings.
 - `generation`: intake normalization, site generation specs, token theme specs,
   block manifests, published snapshots, and validation/apply result contracts.
+- `deploy-targets`: canonical renderer-owned production hosts and deploy target
+  metadata used by renderer routing, compose/workflow checks, and smoke gates.
 
 ## Validation
 

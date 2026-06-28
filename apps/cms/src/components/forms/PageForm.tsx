@@ -1132,6 +1132,10 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
       setChromeDraft({
         ...chromeDraftFromSettings(siteSettingsState, footerContract),
         ...(draft.chrome as Partial<SiteChromeDraft>),
+        header: {
+          ...chromeDraftFromSettings(siteSettingsState, footerContract).header,
+          ...((draft.chrome as Partial<SiteChromeDraft>).header ?? {}),
+        },
         footer: {
           ...chromeDraftFromSettings(siteSettingsState, footerContract).footer,
           ...((draft.chrome as Partial<SiteChromeDraft>).footer ?? {}),

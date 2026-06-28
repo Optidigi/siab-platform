@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { amicarePublishedSiteSnapshot } from "@siteinabox/contracts/fixtures/tenants"
+import { fixturePublishedSiteSnapshot } from "../../../renderer/src/fixtures/published-site"
 
 const mocks = vi.hoisted(() => ({
   payload: {
@@ -22,18 +22,18 @@ import { GET } from "@/app/(payload)/api/renderer/snapshot/route"
 const ORIGINAL_ENV = { ...process.env }
 
 const snapshot = {
-  ...amicarePublishedSiteSnapshot,
+  ...fixturePublishedSiteSnapshot,
   tenantId: "1",
   tenantSlug: "snapshot-studio",
   domain: "snapshot.test",
   siteUrl: "https://snapshot.test",
   settings: {
-    ...amicarePublishedSiteSnapshot.settings,
+    ...fixturePublishedSiteSnapshot.settings,
     siteUrl: "https://snapshot.test",
     aliases: [{ host: "www.snapshot.test" }],
   },
   manifest: {
-    ...amicarePublishedSiteSnapshot.manifest,
+    ...fixturePublishedSiteSnapshot.manifest,
     tenantId: "1",
   },
 }

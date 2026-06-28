@@ -35,7 +35,7 @@ edits, migrations, compose changes, or route changes.
 - Cloudflare DNS/proxy automation for customer domains.
 - Final migration of `ami-care.nl` or current Amblast production traffic to the
   renderer.
-- Removing legacy `sites/ami-care` or `sites/amblast` containers.
+- Removing legacy `removed legacy Amicare app source` or `removed legacy Amblast app source` containers.
 - Generating tenant source files, tenant folders, workflows, or images.
 
 ## Current Repo Facts
@@ -48,8 +48,8 @@ edits, migrations, compose changes, or route changes.
 - `apps/renderer` has a production Dockerfile, compose template, health route,
   and GHCR build workflow for `ghcr.io/optidigi/siteinabox-renderer`.
 - Existing legacy tenant images still exist:
-  - `ghcr.io/optidigi/siteinabox-site-ami-care`
-  - `ghcr.io/optidigi/siteinabox-site-amblast`
+  - `ghcr.io/optidigi/siteinabox-renderer`
+  - `ghcr.io/optidigi/siteinabox-renderer`
 - CMS mail now uses `apps/cms/src/lib/email/sendEmail.ts`; Cloudflare SMTP is
   wired through `apps/cms/src/payload.config.ts` when
   `CLOUDFLARE_EMAIL_SMTP_TOKEN` is set.
@@ -86,8 +86,8 @@ Running SIAB containers:
 | `siteinabox-cms` | `ghcr.io/optidigi/siteinabox-cms:latest` | healthy |
 | `siteinabox-cms-postgres` | `postgres:18-alpine` | healthy |
 | `siteinabox` | `ghcr.io/optidigi/siteinabox-site:latest` | healthy |
-| `ami-care` | `ghcr.io/optidigi/siteinabox-site-ami-care:latest` | healthy |
-| `amblast` | `ghcr.io/optidigi/siteinabox-site-amblast:latest` | healthy |
+| `ami-care` | `ghcr.io/optidigi/siteinabox-renderer:latest` | healthy |
+| `amblast` | `ghcr.io/optidigi/siteinabox-renderer:latest` | healthy |
 | `traefik` | `traefik:v3.6` | running |
 
 Current Traefik route smoke through local Traefik:

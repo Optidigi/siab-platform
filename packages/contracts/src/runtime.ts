@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { SITE_GENERATION_BLOCK_CATALOG, type SiteBlockCatalogVariant } from "./block-catalog"
+import { SITE_CHROME_CATALOG, SITE_GENERATION_BLOCK_CATALOG, type SiteBlockCatalogVariant } from "./block-catalog"
 import { SITE_GENERATION_BLOCK_SLUGS } from "./site"
 import type {
   AnalyticsBlockMetadata,
@@ -73,6 +73,7 @@ const HEX_OR_CSS_FUNCTION_COLOR_REGEX =
 const CSS_LENGTH_REGEX = /^(0|[0-9]+(\.[0-9]+)?(px|rem|em|%)|var\(--[A-Za-z0-9_-]+\))$/
 const SITE_SHARED_CHROME_VARIANTS = ["default", "hyperUiSimple"] as const
 const SITE_HEADER_FOOTER_CHROME_VARIANTS = [...SITE_SHARED_CHROME_VARIANTS, "amicareZen", "amblastIndustrial"] as const
+type RuntimeVariantScope = "generic" | "officialTenant"
 
 const strictObject = <T extends z.ZodRawShape>(shape: T) => z.object(shape).strict()
 const nullableString = z.string().nullable().optional()
@@ -104,6 +105,20 @@ export const SITE_SECTION_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
   ]),
 ) as unknown as Record<SiteGenerationBlockSlug, ReadonlySet<string>>
 
+export const SITE_GENERIC_SECTION_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
+  SITE_GENERATION_BLOCK_SLUGS.map((slug) => [
+    slug,
+    new Set(
+      SITE_GENERATION_BLOCK_CATALOG
+        .filter((entry) => entry.slug === slug)
+        .flatMap((entry) => entry.variants as readonly SiteBlockCatalogVariant[])
+        .filter((variant) => variant.scope.kind === "global")
+        .map((variant) => variant.sectionVariant)
+        .filter((variant): variant is string => typeof variant === "string" && variant.length > 0),
+    ),
+  ]),
+) as unknown as Record<SiteGenerationBlockSlug, ReadonlySet<string>>
+
 export const SITE_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
   SITE_GENERATION_BLOCK_SLUGS.map((slug) => [
     slug,
@@ -117,7 +132,30 @@ export const SITE_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
   ]),
 ) as unknown as Record<SiteGenerationBlockSlug, ReadonlySet<string>>
 
+export const SITE_GENERIC_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
+  SITE_GENERATION_BLOCK_SLUGS.map((slug) => [
+    slug,
+    new Set(
+      SITE_GENERATION_BLOCK_CATALOG
+        .filter((entry) => entry.slug === slug)
+        .flatMap((entry) => entry.variants as readonly SiteBlockCatalogVariant[])
+        .filter((variant) => variant.scope.kind === "global")
+        .map((variant) => variant.variant)
+        .filter((variant): variant is string => typeof variant === "string" && variant.length > 0),
+    ),
+  ]),
+) as unknown as Record<SiteGenerationBlockSlug, ReadonlySet<string>>
+
 export const isSupportedBlockVariant = (
+  blockType: string,
+  variant: string | null | undefined,
+): boolean => {
+  if (!variant) return true
+  if (!SITE_GENERATION_BLOCK_SLUGS.includes(blockType as SiteGenerationBlockSlug)) return false
+  return SITE_GENERIC_VARIANTS_BY_BLOCK_SLUG[blockType as SiteGenerationBlockSlug]?.has(variant) ?? false
+}
+
+export const isSupportedOfficialTenantBlockVariant = (
   blockType: string,
   variant: string | null | undefined,
 ): boolean => {
@@ -127,6 +165,15 @@ export const isSupportedBlockVariant = (
 }
 
 export const isSupportedBlockSectionVariant = (
+  blockType: string,
+  sectionVariant: string | null | undefined,
+): boolean => {
+  if (!sectionVariant) return true
+  if (!SITE_GENERATION_BLOCK_SLUGS.includes(blockType as SiteGenerationBlockSlug)) return false
+  return SITE_GENERIC_SECTION_VARIANTS_BY_BLOCK_SLUG[blockType as SiteGenerationBlockSlug]?.has(sectionVariant) ?? false
+}
+
+export const isSupportedOfficialTenantBlockSectionVariant = (
   blockType: string,
   sectionVariant: string | null | undefined,
 ): boolean => {
@@ -691,6 +738,7 @@ const GeneratedBlockSchemaBase = z.union([
 const refineGeneratedBlock = (
   block: { blockType: string; variant?: string | null; analytics?: AnalyticsBlockMetadata | null },
   ctx: z.RefinementCtx,
+  scope: RuntimeVariantScope = "generic",
 ) => {
   for (const key of FORBIDDEN_GENERATED_PAYLOAD_KEYS) {
     if (Object.prototype.hasOwnProperty.call(block, key)) {
@@ -705,7 +753,8 @@ const refineGeneratedBlock = (
   addForbiddenGeneratedPayloadIssues((block as Record<string, unknown>).metadata, ctx, ["metadata"])
 
   const variant = block.variant
-  if (typeof variant === "string" && variant.length > 0 && !isSupportedBlockVariant(block.blockType, variant)) {
+  const supportsBlockVariant = scope === "officialTenant" ? isSupportedOfficialTenantBlockVariant : isSupportedBlockVariant
+  if (typeof variant === "string" && variant.length > 0 && !supportsBlockVariant(block.blockType, variant)) {
     ctx.addIssue({
       code: "custom",
       path: ["variant"],
@@ -714,7 +763,8 @@ const refineGeneratedBlock = (
   }
 
   const sectionVariant = block.analytics?.sectionVariant
-  if (!variant && typeof sectionVariant === "string" && sectionVariant.length > 0 && !isSupportedBlockSectionVariant(block.blockType, sectionVariant)) {
+  const supportsSectionVariant = scope === "officialTenant" ? isSupportedOfficialTenantBlockSectionVariant : isSupportedBlockSectionVariant
+  if (!variant && typeof sectionVariant === "string" && sectionVariant.length > 0 && !supportsSectionVariant(block.blockType, sectionVariant)) {
     ctx.addIssue({
       code: "custom",
       path: ["analytics", "sectionVariant"],
@@ -723,10 +773,23 @@ const refineGeneratedBlock = (
   }
 }
 
-export const BlockSchema: z.ZodType<Block> = BlockSchemaBase.superRefine(refineGeneratedBlock)
+export const BlockSchema: z.ZodType<Block> = BlockSchemaBase.superRefine((block, ctx) => {
+  refineGeneratedBlock(block, ctx)
+})
 
 export const GeneratedBlockSpecSchema: z.ZodType<GeneratedBlockSpec> =
-  GeneratedBlockSchemaBase.superRefine(refineGeneratedBlock)
+  GeneratedBlockSchemaBase.superRefine((block, ctx) => {
+    refineGeneratedBlock(block, ctx)
+  })
+
+export const OfficialTenantBlockSchema: z.ZodType<Block> = BlockSchemaBase.superRefine((block, ctx) => {
+  refineGeneratedBlock(block, ctx, "officialTenant")
+})
+
+export const OfficialTenantGeneratedBlockSpecSchema: z.ZodType<GeneratedBlockSpec> =
+  GeneratedBlockSchemaBase.superRefine((block, ctx) => {
+    refineGeneratedBlock(block, ctx, "officialTenant")
+  })
 
 function addForbiddenGeneratedPayloadIssues(
   value: unknown,
@@ -797,112 +860,114 @@ const FooterCompositionColumnSchema: z.ZodType<FooterCompositionColumn> = strict
   items: z.array(FooterCompositionItemSchema).nullable().optional(),
 })
 
-export const SiteSettingsSchema: z.ZodType<SiteSettings> = strictObject({
-  siteName: z.string().min(1),
-  siteUrl: z.string().url(),
-  description: nullableString,
-  language: z.string().min(1),
-  aliases: z.array(strictObject({ host: z.string().min(1) })).optional(),
-  contactEmail: nullableString,
-  branding: strictObject({
-    logo: MediaRefSchema.optional(),
-    favicon: MediaRefSchema.optional(),
-    primaryColor: nullableString,
-  }).nullable().optional(),
-  chrome: strictObject({
-    header: strictObject({
-      variant: z.enum(SITE_HEADER_FOOTER_CHROME_VARIANTS).nullable().optional(),
+const createSiteSettingsSchema = (
+  headerFooterChromeVariants: typeof SITE_SHARED_CHROME_VARIANTS | typeof SITE_HEADER_FOOTER_CHROME_VARIANTS,
+): z.ZodType<SiteSettings> => strictObject({
+    siteName: z.string().min(1),
+    siteUrl: z.string().url(),
+    description: nullableString,
+    language: z.string().min(1),
+    aliases: z.array(strictObject({ host: z.string().min(1) })).optional(),
+    contactEmail: nullableString,
+    branding: strictObject({
       logo: MediaRefSchema.optional(),
-      behavior: z.enum(["static", "sticky"]).nullable().optional(),
-      activeMode: z.enum(["path", "anchor", "none"]).nullable().optional(),
-      mobileMenu: z.enum(["dropdown", "drawer"]).nullable().optional(),
-      cta: LinkRefSchema.nullable().optional(),
+      favicon: MediaRefSchema.optional(),
+      primaryColor: nullableString,
     }).nullable().optional(),
-    footer: strictObject({
-      variant: z.enum(SITE_HEADER_FOOTER_CHROME_VARIANTS).nullable().optional(),
-      logo: MediaRefSchema.optional(),
-      tagline: nullableString,
-      copyright: nullableString,
-      legalLinks: z.array(LinkRefSchema).nullable().optional(),
-      columns: z.array(FooterCompositionColumnSchema).nullable().optional(),
+    chrome: strictObject({
+      header: strictObject({
+        variant: z.enum(headerFooterChromeVariants).nullable().optional(),
+        logo: MediaRefSchema.optional(),
+        behavior: z.enum(["static", "sticky"]).nullable().optional(),
+        activeMode: z.enum(["path", "anchor", "none"]).nullable().optional(),
+        mobileMenu: z.enum(["dropdown", "drawer"]).nullable().optional(),
+        cta: LinkRefSchema.nullable().optional(),
+      }).nullable().optional(),
+      footer: strictObject({
+        variant: z.enum(headerFooterChromeVariants).nullable().optional(),
+        logo: MediaRefSchema.optional(),
+        tagline: nullableString,
+        copyright: nullableString,
+        legalLinks: z.array(LinkRefSchema).nullable().optional(),
+        columns: z.array(FooterCompositionColumnSchema).nullable().optional(),
+      }).nullable().optional(),
+      banner: strictObject({
+        variant: z.enum(SITE_SHARED_CHROME_VARIANTS).nullable().optional(),
+        visible: z.boolean().nullable().optional(),
+        title: nullableString,
+        message: z.string().min(1),
+        link: LinkRefSchema.nullable().optional(),
+        dismissible: z.boolean().nullable().optional(),
+      }).nullable().optional(),
     }).nullable().optional(),
-    banner: strictObject({
-      variant: z.enum(SITE_SHARED_CHROME_VARIANTS).nullable().optional(),
-      visible: z.boolean().nullable().optional(),
-      title: nullableString,
-      message: z.string().min(1),
-      link: LinkRefSchema.nullable().optional(),
-      dismissible: z.boolean().nullable().optional(),
-    }).nullable().optional(),
-  }).nullable().optional(),
-  maintenance: strictObject({
-    enabled: z.boolean().nullable().optional(),
-    message: nullableString,
-  }).nullable().optional(),
-  contact: strictObject({
-    phone: nullableString,
-    address: nullableString,
-    social: z.array(strictObject({ platform: z.string().min(1), url: z.string().min(1) })).optional(),
-  }).nullable().optional(),
-  nap: strictObject({
-    legalName: nullableString,
-    kvkNumber: nullableString,
-    establishmentNumber: nullableString,
-    streetAddress: nullableString,
-    city: nullableString,
-    region: nullableString,
-    postalCode: nullableString,
-    country: nullableString,
-  }).nullable().optional(),
-  hours: z.array(strictObject({
-    day: z.enum(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]),
-    open: nullableString,
-    close: nullableString,
-    closed: z.boolean().optional(),
-  })).optional(),
-  serviceArea: z.array(strictObject({ name: z.string().min(1) })).optional(),
-  navHeader: z.array(strictObject({
-    label: z.string().min(1),
-    href: z.string().min(1),
-    external: z.boolean().optional(),
-  })).optional(),
-  navFooter: z.array(strictObject({
-    label: z.string().min(1),
-    href: z.string().min(1),
-    external: z.boolean().optional(),
-  })).optional(),
-  analytics: jsonRecordSchema.nullable().optional(),
-  analyticsConsent: strictObject({
-    enabled: z.boolean().nullable().optional(),
-    provider: z.enum(["posthog", "custom"]).nullable().optional(),
-    consentStorageKey: nullableString,
-    consentVersion: nullableString,
-    captureSections: z.boolean().nullable().optional(),
-    captureActions: z.boolean().nullable().optional(),
-    captureForms: z.boolean().nullable().optional(),
-  }).nullable().optional(),
-  seoJsonLd: strictObject({
-    organization: strictObject({
+    maintenance: strictObject({
       enabled: z.boolean().nullable().optional(),
-      type: z.enum(["Organization", "LocalBusiness", "ProfessionalService", "HomeAndConstructionBusiness"]).nullable().optional(),
-      name: nullableString,
-      url: nullableString,
-      logo: MediaRefSchema.optional(),
-      sameAs: z.array(z.string().url()).nullable().optional(),
+      message: nullableString,
     }).nullable().optional(),
-    localBusiness: strictObject({
+    contact: strictObject({
+      phone: nullableString,
+      address: nullableString,
+      social: z.array(strictObject({ platform: z.string().min(1), url: z.string().min(1) })).optional(),
+    }).nullable().optional(),
+    nap: strictObject({
+      legalName: nullableString,
+      kvkNumber: nullableString,
+      establishmentNumber: nullableString,
+      streetAddress: nullableString,
+      city: nullableString,
+      region: nullableString,
+      postalCode: nullableString,
+      country: nullableString,
+    }).nullable().optional(),
+    hours: z.array(strictObject({
+      day: z.enum(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]),
+      open: nullableString,
+      close: nullableString,
+      closed: z.boolean().optional(),
+    })).optional(),
+    serviceArea: z.array(strictObject({ name: z.string().min(1) })).optional(),
+    navHeader: z.array(strictObject({
+      label: z.string().min(1),
+      href: z.string().min(1),
+      external: z.boolean().optional(),
+    })).optional(),
+    navFooter: z.array(strictObject({
+      label: z.string().min(1),
+      href: z.string().min(1),
+      external: z.boolean().optional(),
+    })).optional(),
+    analytics: jsonRecordSchema.nullable().optional(),
+    analyticsConsent: strictObject({
       enabled: z.boolean().nullable().optional(),
-      type: z.enum(["LocalBusiness", "ProfessionalService", "HomeAndConstructionBusiness"]).nullable().optional(),
-      name: nullableString,
-      description: nullableString,
-      telephone: nullableString,
-      email: nullableString,
-      priceRange: nullableString,
-      serviceArea: z.array(z.string().min(1)).nullable().optional(),
+      provider: z.enum(["posthog", "custom"]).nullable().optional(),
+      consentStorageKey: nullableString,
+      consentVersion: nullableString,
+      captureSections: z.boolean().nullable().optional(),
+      captureActions: z.boolean().nullable().optional(),
+      captureForms: z.boolean().nullable().optional(),
     }).nullable().optional(),
-  }).nullable().optional(),
-  updatedAt: z.string().optional(),
-}).superRefine((settings, ctx) => {
+    seoJsonLd: strictObject({
+      organization: strictObject({
+        enabled: z.boolean().nullable().optional(),
+        type: z.enum(["Organization", "LocalBusiness", "ProfessionalService", "HomeAndConstructionBusiness"]).nullable().optional(),
+        name: nullableString,
+        url: nullableString,
+        logo: MediaRefSchema.optional(),
+        sameAs: z.array(z.string().url()).nullable().optional(),
+      }).nullable().optional(),
+      localBusiness: strictObject({
+        enabled: z.boolean().nullable().optional(),
+        type: z.enum(["LocalBusiness", "ProfessionalService", "HomeAndConstructionBusiness"]).nullable().optional(),
+        name: nullableString,
+        description: nullableString,
+        telephone: nullableString,
+        email: nullableString,
+        priceRange: nullableString,
+        serviceArea: z.array(z.string().min(1)).nullable().optional(),
+      }).nullable().optional(),
+    }).nullable().optional(),
+    updatedAt: z.string().optional(),
+  }).superRefine((settings, ctx) => {
   for (const key of FORBIDDEN_GENERATED_PAYLOAD_KEYS) {
     if (Object.prototype.hasOwnProperty.call(settings.chrome?.header ?? {}, key)) {
       ctx.addIssue({
@@ -928,7 +993,13 @@ export const SiteSettingsSchema: z.ZodType<SiteSettings> = strictObject({
   }
 })
 
+export const SiteSettingsSchema: z.ZodType<SiteSettings> = createSiteSettingsSchema(SITE_SHARED_CHROME_VARIANTS)
+export const OfficialTenantSiteSettingsSchema: z.ZodType<SiteSettings> =
+  createSiteSettingsSchema(SITE_HEADER_FOOTER_CHROME_VARIANTS)
+
 export const GeneratedSiteSettingsSchema: z.ZodType<GeneratedSiteSettings> = SiteSettingsSchema
+export const OfficialTenantGeneratedSiteSettingsSchema: z.ZodType<GeneratedSiteSettings> =
+  OfficialTenantSiteSettingsSchema
 
 const PageSchemaBase = strictObject({
   id: z.string().optional(),
@@ -953,6 +1024,14 @@ const GeneratedPageSpecSchemaBase = PageSchemaBase.omit({ updatedAt: true, block
 })
 
 export const GeneratedPageSpecSchema: z.ZodType<GeneratedPageSpec> = GeneratedPageSpecSchemaBase
+
+const OfficialTenantGeneratedPageSpecSchemaBase = PageSchemaBase.omit({ updatedAt: true, blocks: true }).extend({
+  blocks: z.array(OfficialTenantGeneratedBlockSpecSchema).min(1),
+  updatedAt: z.string().optional(),
+})
+
+export const OfficialTenantGeneratedPageSpecSchema: z.ZodType<GeneratedPageSpec> =
+  OfficialTenantGeneratedPageSpecSchemaBase
 
 export const IntakeSubmissionSchema: z.ZodType<IntakeSubmission> = strictObject({
   submittedAt: z.string().optional(),
@@ -1029,7 +1108,10 @@ export const SiteBlockManifestItemSchema: z.ZodType<SiteBlockManifestItem> = str
   fields: z.array(SiteBlockEditorFieldSchema).optional(),
 })
 
-export const SiteGenerationSpecSchema: z.ZodType<SiteGenerationSpec> = strictObject({
+const createSiteGenerationSpecSchema = (
+  settingsSchema: z.ZodType<GeneratedSiteSettings>,
+  pageSchema: z.ZodType<GeneratedPageSpec>,
+): z.ZodType<SiteGenerationSpec> => strictObject({
   schemaVersion: z.literal(1),
   intake: NormalizedIntakeSchema,
   tenant: strictObject({
@@ -1039,8 +1121,8 @@ export const SiteGenerationSpecSchema: z.ZodType<SiteGenerationSpec> = strictObj
     status: z.enum(["provisioning", "active", "suspended", "archived"]).optional(),
   }),
   theme: ThemeTokenSpecSchema,
-  settings: GeneratedSiteSettingsSchema,
-  pages: z.array(GeneratedPageSpecSchema).min(1),
+  settings: settingsSchema,
+  pages: z.array(pageSchema).min(1),
   blocks: z.array(SiteBlockManifestItemSchema).optional(),
   assets: z.array(MediaRefSchema).optional(),
   generatedAt: z.string().optional(),
@@ -1050,6 +1132,81 @@ export const SiteGenerationSpecSchema: z.ZodType<SiteGenerationSpec> = strictObj
     model: z.string().optional(),
   }).nullable().optional(),
 })
+
+export const SiteGenerationSpecSchema: z.ZodType<SiteGenerationSpec> =
+  createSiteGenerationSpecSchema(GeneratedSiteSettingsSchema, GeneratedPageSpecSchema)
+
+const tenantExclusiveBlockVariantAllowedForTenant = (
+  blockType: string,
+  field: "variant" | "sectionVariant",
+  value: string | null | undefined,
+  tenantSlug: string,
+): boolean => {
+  if (!value || !SITE_GENERATION_BLOCK_SLUGS.includes(blockType as SiteGenerationBlockSlug)) return true
+  const catalogEntry = SITE_GENERATION_BLOCK_CATALOG
+    .filter((entry) => entry.slug === blockType)
+    .flatMap((entry) => entry.variants as readonly SiteBlockCatalogVariant[])
+    .find((variant) => field === "variant" ? variant.variant === value : variant.sectionVariant === value)
+  if (!catalogEntry || catalogEntry.scope.kind === "global") return true
+  return catalogEntry.scope.tenantSlugs.includes(tenantSlug)
+}
+
+const tenantExclusiveChromeVariantAllowedForTenant = (
+  area: "header" | "footer" | "banner",
+  value: string | null | undefined,
+  tenantSlug: string,
+): boolean => {
+  if (!value) return true
+  const catalogEntry = SITE_CHROME_CATALOG.find((entry) => entry.area === area && entry.variant === value)
+  if (!catalogEntry || catalogEntry.scope.kind === "global") return true
+  return catalogEntry.scope.tenantSlugs.includes(tenantSlug)
+}
+
+const refineOfficialTenantVariantOwnership = (
+  value: { tenant?: { slug?: string } | null; tenantSlug?: string; settings?: GeneratedSiteSettings; pages?: GeneratedPageSpec[] },
+  ctx: z.RefinementCtx,
+): void => {
+  const tenantSlug = value.tenant?.slug ?? value.tenantSlug
+  if (!tenantSlug) return
+
+  const chrome = value.settings?.chrome
+  for (const area of ["header", "footer", "banner"] as const) {
+    const variant = chrome?.[area]?.variant
+    if (!tenantExclusiveChromeVariantAllowedForTenant(area, variant, tenantSlug)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["settings", "chrome", area, "variant"],
+        message: `Chrome variant "${variant}" is not allowed for official tenant "${tenantSlug}"`,
+      })
+    }
+  }
+
+  value.pages?.forEach((page, pageIndex) => {
+    page.blocks.forEach((block, blockIndex) => {
+      if (!tenantExclusiveBlockVariantAllowedForTenant(block.blockType, "variant", block.variant, tenantSlug)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["pages", pageIndex, "blocks", blockIndex, "variant"],
+          message: `Block variant "${block.variant}" is not allowed for official tenant "${tenantSlug}"`,
+        })
+      }
+      const sectionVariant = block.analytics?.sectionVariant
+      if (!block.variant && !tenantExclusiveBlockVariantAllowedForTenant(block.blockType, "sectionVariant", sectionVariant, tenantSlug)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["pages", pageIndex, "blocks", blockIndex, "analytics", "sectionVariant"],
+          message: `Block section variant "${sectionVariant}" is not allowed for official tenant "${tenantSlug}"`,
+        })
+      }
+    })
+  })
+}
+
+export const OfficialTenantSiteGenerationSpecSchema: z.ZodType<SiteGenerationSpec> =
+  createSiteGenerationSpecSchema(
+    OfficialTenantGeneratedSiteSettingsSchema,
+    OfficialTenantGeneratedPageSpecSchema,
+  ).superRefine(refineOfficialTenantVariantOwnership)
 
 export const PublishedSnapshotManifestEntrySchema = strictObject({
   type: z.enum(["page", "media", "settings"]),
@@ -1069,15 +1226,23 @@ const PublishedSnapshotPageSchema = GeneratedPageSpecSchemaBase.extend({
   updatedAt: z.string(),
 })
 
-export const PublishedSiteSnapshotSchema: z.ZodType<PublishedSiteSnapshot> = strictObject({
+const OfficialTenantPublishedSnapshotPageSchema = OfficialTenantGeneratedPageSpecSchemaBase.extend({
+  status: z.literal("published"),
+  updatedAt: z.string(),
+})
+
+const createPublishedSiteSnapshotSchema = (
+  settingsSchema: z.ZodType<GeneratedSiteSettings>,
+  pageSchema: z.ZodType<GeneratedPageSpec>,
+): z.ZodType<PublishedSiteSnapshot> => strictObject({
   schemaVersion: z.literal(1),
   tenantId: z.string().min(1),
   tenantSlug: slugSchema,
   domain: hostnameSchema,
   siteUrl: z.string().url(),
   manifest: PublishedSnapshotManifestSchema,
-  settings: GeneratedSiteSettingsSchema,
-  pages: z.array(PublishedSnapshotPageSchema).min(1),
+  settings: settingsSchema,
+  pages: z.array(pageSchema).min(1),
   theme: ThemeTokenSpecSchema.nullable().optional(),
   blocks: z.array(SiteBlockManifestItemSchema).optional(),
   media: z.array(MediaRefSchema).optional(),
@@ -1091,6 +1256,37 @@ export const PublishedSiteSnapshotSchema: z.ZodType<PublishedSiteSnapshot> = str
     })
   }
 })
+
+export const PublishedSiteSnapshotSchema: z.ZodType<PublishedSiteSnapshot> =
+  createPublishedSiteSnapshotSchema(GeneratedSiteSettingsSchema, PublishedSnapshotPageSchema)
+
+export const OfficialTenantPublishedSiteSnapshotSchema: z.ZodType<PublishedSiteSnapshot> =
+  createPublishedSiteSnapshotSchema(
+    OfficialTenantGeneratedSiteSettingsSchema,
+    OfficialTenantPublishedSnapshotPageSchema,
+  ).superRefine(refineOfficialTenantVariantOwnership)
+
+export const OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUGS = [
+  "ami-care",
+  "amicare",
+  "amicare-renderer",
+  "amblast",
+  "amblast-renderer",
+] as const
+
+const OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUG_SET = new Set<string>(OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUGS)
+
+export function isOfficialTenantPublishedSnapshotSlug(tenantSlug: string | null | undefined): boolean {
+  return OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUG_SET.has((tenantSlug ?? "").trim().toLowerCase())
+}
+
+export function schemaForPublishedSiteSnapshot(
+  snapshot: Pick<PublishedSiteSnapshot, "tenantSlug"> | { tenantSlug?: string | null },
+): z.ZodType<PublishedSiteSnapshot> {
+  return isOfficialTenantPublishedSnapshotSlug(snapshot.tenantSlug)
+    ? OfficialTenantPublishedSiteSnapshotSchema
+    : PublishedSiteSnapshotSchema
+}
 
 export const ValidationIssueSchema: z.ZodType<ValidationIssue> = strictObject({
   severity: z.enum(["error", "warning", "info"]),

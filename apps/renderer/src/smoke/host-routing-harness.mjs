@@ -1,0 +1,176 @@
+import assert from "node:assert/strict"
+import { once } from "node:events"
+import { createServer as createHttpServer } from "node:http"
+import { createServer as createNetServer } from "node:net"
+
+import { getRendererDeployTargetByHost } from "@siteinabox/contracts/deploy-targets"
+import {
+  amblastPublishedSiteSnapshot,
+  amicarePublishedSiteSnapshot,
+} from "@siteinabox/contracts/fixtures/tenants"
+
+export async function getOpenPort() {
+  const server = createNetServer()
+  server.listen(0, "127.0.0.1")
+  await once(server, "listening")
+  const address = server.address()
+  server.close()
+  await once(server, "close")
+  assert.equal(typeof address, "object")
+  return address.port
+}
+
+export async function closeServer(server) {
+  if (!server.listening) return
+  server.close()
+  await once(server, "close")
+}
+
+export async function startStubCms({ listenHost = "127.0.0.1", publicHost = listenHost } = {}) {
+  const port = await getOpenPort()
+  const snapshotsByHost = new Map([
+    ["ami-care.nl", publishedSnapshotForHost("ami-care.nl")],
+    ["amblast.nl", publishedSnapshotForHost("amblast.nl")],
+  ])
+  const server = createHttpServer((request, response) => {
+    const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`)
+    if (url.pathname !== "/api/renderer/snapshot") {
+      response.writeHead(404, { "content-type": "application/json; charset=utf-8" })
+      response.end(JSON.stringify({ error: "not_found" }))
+      return
+    }
+
+    const host = url.searchParams.get("host") ?? ""
+    const snapshot = snapshotsByHost.get(host)
+    if (!snapshot) {
+      response.writeHead(404, { "content-type": "application/json; charset=utf-8" })
+      response.end(JSON.stringify({ error: "unknown_host" }))
+      return
+    }
+
+    response.writeHead(200, { "content-type": "application/json; charset=utf-8" })
+    response.end(JSON.stringify({ snapshot }))
+  })
+  server.listen(port, listenHost)
+  await once(server, "listening")
+  return { server, url: `http://${publicHost}:${port}`, localUrl: `http://127.0.0.1:${port}` }
+}
+
+function publishedSnapshotForHost(host) {
+  const target = getRendererDeployTargetByHost(host)
+  assert.ok(target, `missing renderer deploy target for ${host}`)
+  const tenantId = `tenant-${target.id}`
+  const source = target.id === "ami-care" ? amicarePublishedSiteSnapshot : amblastPublishedSiteSnapshot
+  const snapshot = structuredClone(source)
+  const retargeted = rewriteSnapshotStrings(snapshot, [
+    [source.siteUrl, target.productionOrigin],
+    [source.settings?.siteUrl, target.productionOrigin],
+    [source.domain, target.productionHost],
+  ])
+
+  return {
+    ...retargeted,
+    tenantId,
+    tenantSlug: target.tenantSlug,
+    domain: target.productionHost,
+    siteUrl: target.productionOrigin,
+    manifest: {
+      ...retargeted.manifest,
+      tenantId,
+    },
+    settings: {
+      ...retargeted.settings,
+      siteUrl: target.productionOrigin,
+      siteName: target.id === "ami-care" ? "Amicare-Zorg" : "Amblast",
+      analytics: {
+        ...retargeted.settings.analytics,
+        provider: "posthog",
+        token: `phc_${target.id.replace("-", "_")}_smoke`,
+        posthogHost: "https://eu.posthog.com",
+      },
+    },
+  }
+}
+
+function rewriteSnapshotStrings(value, replacements) {
+  if (typeof value === "string") {
+    return replacements.reduce((next, [from, to]) => (from && from !== to ? next.split(from).join(to) : next), value)
+  }
+  if (Array.isArray(value)) return value.map((item) => rewriteSnapshotStrings(item, replacements))
+  if (!value || typeof value !== "object") return value
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, rewriteSnapshotStrings(entry, replacements)]),
+  )
+}
+
+export async function waitForRenderer(baseUrl, getFailureContext = () => "") {
+  let lastError
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    try {
+      const response = await fetch(`${baseUrl}/healthz`)
+      if (response.ok) return
+    } catch (error) {
+      lastError = error
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  const failureContext = await Promise.resolve(getFailureContext())
+  throw new Error(`Renderer did not become healthy: ${lastError?.message ?? "timeout"}\n${failureContext}`)
+}
+
+export async function fetchWithHost(baseUrl, host, pathname) {
+  return fetch(`${baseUrl}${pathname}`, {
+    headers: {
+      host,
+      "x-forwarded-host": host,
+    },
+  })
+}
+
+async function failureContextText(failureContext) {
+  await new Promise((resolve) => setTimeout(resolve, 250))
+  return typeof failureContext === "function" ? await failureContext() : failureContext
+}
+
+async function assertStatus(response, expectedStatus, label, body, failureContext) {
+  if (response.status === expectedStatus) return
+  assert.equal(response.status, expectedStatus, `${label}\n${body}\n${await failureContextText(failureContext)}`)
+}
+
+export async function assertHostRouting(baseUrl, failureContext = "", { includeMalformedEncodedPath = true } = {}) {
+  const amicareHome = await fetchWithHost(baseUrl, "ami-care.nl", "/")
+  const amicareHtml = await amicareHome.text()
+  await assertStatus(amicareHome, 200, "ami-care.nl homepage status", amicareHtml, failureContext)
+  assert.match(amicareHtml, /data-legacy-tenant="amicare"/)
+  assert.match(amicareHtml, /id="siab-analytics-config"/)
+
+  const amblastHome = await fetchWithHost(baseUrl, "amblast.nl", "/")
+  const amblastHtml = await amblastHome.text()
+  await assertStatus(amblastHome, 200, "amblast.nl homepage status", amblastHtml, failureContext)
+  assert.match(amblastHtml, /data-legacy-tenant="amblast"/)
+  assert.match(amblastHtml, /amb-/)
+  assert.match(amblastHtml, /id="siab-analytics-config"/)
+
+  const amicareRobots = await fetchWithHost(baseUrl, "ami-care.nl", "/robots.txt")
+  assert.equal(amicareRobots.status, 200)
+  assert.match(await amicareRobots.text(), /Sitemap: https:\/\/ami-care\.nl\/sitemap-index\.xml/)
+
+  const amblastRobots = await fetchWithHost(baseUrl, "amblast.nl", "/robots.txt")
+  assert.equal(amblastRobots.status, 200)
+  assert.match(await amblastRobots.text(), /Crawl-delay: 10/)
+
+  const notFoundChecks = [
+    ["unknown.example", "/"],
+    ["ami-care.nl", "/missing-page"],
+  ]
+  if (includeMalformedEncodedPath) notFoundChecks.push(["ami-care.nl", "/%E0%A4%A"])
+
+  for (const [host, pathname] of notFoundChecks) {
+    const response = await fetchWithHost(baseUrl, host, pathname)
+    const html = await response.text()
+    await assertStatus(response, 404, `${host}${pathname} status`, html, failureContext)
+    assert.match(html, /Page not found/)
+    assert.doesNotMatch(html, /id="siab-analytics-config"/)
+  }
+}

@@ -23,7 +23,7 @@ images.
 | Publish | `POST /api/publish` | `apps/cms` | CMS unit tests plus staging operator smoke | Publishes immutable snapshots and optionally activates when gates pass. |
 | Renderer snapshot API | `GET /api/renderer/snapshot?host=<host>` | `apps/cms` | CMS unit tests plus staging bearer-token smoke | Returns only active tenant active snapshots. Requires `SIAB_RENDERER_API_TOKEN` in production. |
 | Live renderer | `/{path}` by tenant host | `apps/renderer` | Renderer typecheck/build plus staging host smoke | Resolves request host through CMS snapshot API. No draft CMS reads, no fixture fallback in production. |
-| Legacy tenant snapshots | tenant routes under `sites/ami-care`, `sites/amblast` | `sites/*` | Tenant build commands | Maintained as legacy/current snapshots only. Not a model for new generated sites. |
+| Removed tenant app sources | N/A | N/A | Renderer deploy contract | Tenant-specific app source folders, images, and build commands must not be restored. |
 
 ## Operation Matrix
 
@@ -98,9 +98,7 @@ payment state, or published snapshots.
 - Platform app images remain `ghcr.io/optidigi/siteinabox-cms` and
   `ghcr.io/optidigi/siteinabox-site` unless an approved deploy contract adds
   a renderer image.
-- Existing tenant snapshot images remain unchanged unless explicitly approved:
-  `ghcr.io/optidigi/siteinabox-site-ami-care` and
-  `ghcr.io/optidigi/siteinabox-site-amblast`.
+- Tenant-specific app images have been removed; generated sites are served by `ghcr.io/optidigi/siteinabox-renderer`.
 - Traefik is the production edge proxy on the shared external `proxy` network.
 - `/intake` is served by the intake app or routed from the public marketing
   host; `/api/intake` must reach CMS.
@@ -137,8 +135,7 @@ pnpm landing:test
 pnpm intake:build
 pnpm intake:test
 pnpm site:build
-pnpm tenant:amicare:build
-pnpm tenant:amblast:build
+pnpm renderer:build
 pnpm --dir apps/cms --ignore-workspace lint:ui-boundary
 pnpm --dir apps/cms --ignore-workspace lint:ui-composition
 pnpm --dir apps/cms --ignore-workspace lint:no-css

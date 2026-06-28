@@ -24,6 +24,30 @@ export type SettingsProjectionContext = {
 
 const when = <T>(enabled: boolean, value: T): T | undefined => enabled ? value : undefined
 
+const linkRefToJson = (link: any) => {
+  if (!link || !isSafeHref(link.href)) return undefined
+  return {
+    label: link.label,
+    href: link.href,
+  }
+}
+
+const isNonEmptyString = (value: unknown) => typeof value === "string" && value.trim() !== ""
+
+const bannerToJson = (banner: any) => {
+  if (!banner?.visible) return undefined
+  const link = linkRefToJson(banner.link)
+  if (!isNonEmptyString(banner.title) && !isNonEmptyString(banner.message) && !link) return undefined
+  return {
+    variant: banner.variant,
+    visible: true,
+    title: banner.title,
+    message: banner.message,
+    link,
+    dismissible: banner.dismissible,
+  }
+}
+
 /**
  * Serialise a SiteSettings doc to its `site.json` shape.
  *
@@ -56,14 +80,22 @@ export function settingsToJson(
     } : undefined,
     chrome: doc.chrome ? {
       header: doc.chrome.header ? {
-        logo: mediaToJson(doc.chrome.header.logo)
+        variant: doc.chrome.header.variant,
+        logo: mediaToJson(doc.chrome.header.logo),
+        behavior: doc.chrome.header.behavior,
+        activeMode: doc.chrome.header.activeMode,
+        mobileMenu: doc.chrome.header.mobileMenu,
+        cta: linkRefToJson(doc.chrome.header.cta),
       } : undefined,
       footer: doc.chrome.footer ? {
+        variant: doc.chrome.footer.variant,
         logo: mediaToJson(doc.chrome.footer.logo),
         tagline: doc.chrome.footer.tagline,
         copyright: doc.chrome.footer.copyright,
+        legalLinks: (doc.chrome.footer.legalLinks ?? []).map(linkRefToJson).filter(Boolean),
         columns: normalizeFooterColumns(doc.chrome.footer.columns)
-      } : undefined
+      } : undefined,
+      banner: bannerToJson(doc.chrome.banner)
     } : undefined,
     maintenance: contract.operations.maintenance && doc.maintenance ? {
       enabled: !!doc.maintenance.enabled,

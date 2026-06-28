@@ -1,5 +1,6 @@
 ---
 import { renderToStaticMarkup } from "react-dom/server"
+import { getRendererDeployTargetByHost, isRendererProductionHost } from "@siteinabox/contracts/deploy-targets"
 import { SitePageRenderer, buildPageSeoMetadata, resolveLegacyTenant } from "@siteinabox/site-renderer"
 import "../styles/site.css"
 import { analyticsConfigJson, buildAnalyticsConfig } from "../lib/analytics-config.js"
@@ -9,35 +10,25 @@ import * as amicareLegacy from "../lib/legacy-tenants/amicare/legacy-response"
 
 const pathname = `/${Astro.params.path ?? ""}`
 const host = normalizeRequestHost(Astro.request.headers.get("x-forwarded-host") ?? Astro.request.headers.get("host"))
-const liveSnapshotHosts = new Set(["ami-care.nl", "amblast.nl"])
-const amicareLiveAssetPrefixes = [
-  "/_astro/",
-  "/media/",
-  "/api/tenant-media/7/",
-  "/favicon",
-  "/apple-touch-icon.png",
-  "/manifest.json",
-  "/og-default.png",
-  "/robots.txt",
-  "/sitemap-index.xml",
-]
-const amblastLiveAssetPrefixes = ["/uploads/", "/wp-content/", "/favicon", "/robots.txt"]
+const liveDeployTarget = getRendererDeployTargetByHost(host)
 
 const liveLegacyAssetResponse = async () => {
-  if (host === "ami-care.nl" && amicareLiveAssetPrefixes.some((prefix) => pathname.startsWith(prefix))) {
+  if (!liveDeployTarget?.legacyAssetPrefixes.some((prefix) => pathname.startsWith(prefix))) return null
+
+  if (liveDeployTarget.id === "ami-care") {
     return amicareLegacy.createAmicareLegacyResponse(pathname)
   }
-  if (host === "amblast.nl" && amblastLiveAssetPrefixes.some((prefix) => pathname.startsWith(prefix))) {
+  if (liveDeployTarget.id === "amblast") {
     return amblastLegacy.createAmblastLegacyResponse(pathname)
   }
   return null
 }
 
-if (!liveSnapshotHosts.has(host) && amblastLegacy.isAmblastLegacyHost(host)) {
+if (!isRendererProductionHost(host) && amblastLegacy.isAmblastLegacyHost(host)) {
   return await amblastLegacy.createAmblastLegacyResponseOrNotFound(pathname)
 }
 
-if (!liveSnapshotHosts.has(host) && amicareLegacy.isAmicareLegacyHost(host)) {
+if (!isRendererProductionHost(host) && amicareLegacy.isAmicareLegacyHost(host)) {
   return await amicareLegacy.createAmicareLegacyResponseOrNotFound(pathname)
 }
 

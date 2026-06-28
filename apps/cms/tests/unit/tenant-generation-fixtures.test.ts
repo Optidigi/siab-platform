@@ -8,7 +8,7 @@ import {
   tenantPublishedSiteSnapshots,
   tenantSiteGenerationSpecs,
 } from "@siteinabox/contracts/fixtures/tenants"
-import { PublishedSiteSnapshotSchema } from "@siteinabox/contracts"
+import { OfficialTenantPublishedSiteSnapshotSchema } from "@siteinabox/contracts"
 import { applySiteGenerationSpec, validateSiteGenerationSpecForCms } from "@/lib/site-generation/applySiteGenerationSpec"
 import { buildPageSeoMetadata } from "@siteinabox/site-renderer/seo"
 import { findPublishedPage, pagePath } from "../../../renderer/src/lib/snapshot"
@@ -94,7 +94,7 @@ describe("legacy tenant generation fixtures", () => {
     ] as const
 
     for (const [spec, snapshot] of pairs) {
-      expect(PublishedSiteSnapshotSchema.safeParse(snapshot).success, `${snapshot.tenantSlug}: snapshot contract`).toBe(true)
+      expect(OfficialTenantPublishedSiteSnapshotSchema.safeParse(snapshot).success, `${snapshot.tenantSlug}: snapshot contract`).toBe(true)
       expect(snapshot.schemaVersion).toBe(1)
       expect(snapshot.tenantSlug).toBe(spec.tenant.slug)
       expect(snapshot.domain).toBe(spec.tenant.domain)
@@ -280,12 +280,12 @@ describe("legacy tenant generation fixtures", () => {
 
     expect(amicareSeo).toMatchObject({
       title: "Amicare-Zorg",
-      canonical: "https://amicare.optidigi.nl/",
+      canonical: "https://ami-care.nl/",
     })
     expect(amicareSeo.openGraph?.images?.[0]?.url).toBe("/og-default.png")
     expect(amblastSeo).toMatchObject({
       title: "Portfolio | Amblast",
-      canonical: "https://amblast.optidigi.nl/portfolio",
+      canonical: "https://amblast.nl/portfolio",
     })
     expect(amblastPublishedSiteSnapshot.theme?.colors?.accent).toBe("#ffd500")
     expect(amblastPublishedSiteSnapshot.settings.branding?.logo).toMatchObject({ filename: "cropped-AMBlast_logo.png" })

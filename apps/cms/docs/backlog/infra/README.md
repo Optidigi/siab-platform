@@ -6,19 +6,15 @@ artifacts, and the provisional product app shell.
 
 ## Current State
 
-- Active platform apps are `apps/cms`, `apps/landing`, and `apps/intake`;
-  `apps/renderer` is the reserved future generic public runtime.
+- Active platform apps are `apps/cms`, `apps/landing`, `apps/intake`, and
+  `apps/renderer`.
 - Shared packages are `packages/contracts`, `packages/ui`, and
   `packages/site-template`; `packages/site-renderer` is reserved for future
   shared rendering logic.
-- Current tenant site snapshots live under `sites/*` as legacy/current
-  snapshots only.
 - Platform-owned images remain:
   - `ghcr.io/optidigi/siteinabox-cms`
   - `ghcr.io/optidigi/siteinabox-site`
-- Tenant snapshot images remain:
-  - `ghcr.io/optidigi/siteinabox-site-ami-care`
-  - `ghcr.io/optidigi/siteinabox-site-amblast`
+  - `ghcr.io/optidigi/siteinabox-renderer`
 - VPS stack files remain under `/srv/saas/infra/stacks/siteinabox/`.
 - Payload tenant data paths remain
   `/srv/data/saas/siab-payload/tenants/<tenantId>`.

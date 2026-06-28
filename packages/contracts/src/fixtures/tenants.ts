@@ -214,7 +214,7 @@ const rendererParityBlocks: SiteBlockManifestItem[] = [
 
 const amicareSettings: GeneratedSiteSettings = {
   siteName: "Amicare-Zorg",
-  siteUrl: "https://amicare.optidigi.nl",
+  siteUrl: "https://ami-care.nl",
   description: "Amicare-Zorg - werken in de jeugdzorg met hart en toewijding.",
   language: "nl",
   contactEmail: "info@ami-care.nl",
@@ -273,7 +273,7 @@ const amicareSettings: GeneratedSiteSettings = {
       enabled: true,
       type: "Organization",
       name: "Amicare-Zorg",
-      url: "https://amicare.optidigi.nl",
+      url: "https://ami-care.nl",
       logo: { id: "amicare-og", url: "/og-default.png", filename: "og-default.png", alt: "Amicare-Zorg" },
     },
     localBusiness: {
@@ -434,7 +434,7 @@ const withAmblastWeb3FormsProvider = (block: typeof quoteContactBlock | typeof d
     method: "POST" as const,
     hiddenFields: [
       { name: "from_name", value: "Amblast | Facility Services" },
-      { name: "subject", value: "Bericht via amblast.optidigi.nl" },
+      { name: "subject", value: "Bericht via amblast.nl" },
     ],
     honeypotField: "botcheck",
     fallbackHref: "mailto:info@amblast.nl",
@@ -508,7 +508,7 @@ const amblastMedia = {
 
 const amblastSettings: GeneratedSiteSettings = {
   siteName: "Amblast | Facility Services",
-  siteUrl: "https://amblast.optidigi.nl",
+  siteUrl: "https://amblast.nl",
   description: "Specialist in industriële schoonmaak in Limburg.",
   language: "nl-NL",
   contactEmail: "info@amblast.nl",
@@ -599,7 +599,7 @@ const amblastSettings: GeneratedSiteSettings = {
       enabled: true,
       type: "HomeAndConstructionBusiness",
       name: "Amblast | Facility Services",
-      url: "https://amblast.optidigi.nl",
+      url: "https://amblast.nl",
       logo: { id: "amblast-logo", url: "/uploads/logo/cropped-AMBlast_logo.png", filename: "cropped-AMBlast_logo.png", alt: "Amblast logo", width: 714, height: 179 },
     },
     localBusiness: {
@@ -1081,15 +1081,15 @@ export const amicareSiteGenerationSpec: SiteGenerationSpec = {
   intake: {
     businessName: "Amicare-Zorg",
     tenantSlug: "amicare",
-    primaryDomain: "amicare.optidigi.nl",
-    siteUrl: "https://amicare.optidigi.nl",
+    primaryDomain: "ami-care.nl",
+    siteUrl: "https://ami-care.nl",
     language: "nl",
     industry: "Jeugdzorg",
     serviceArea: ["Nederland"],
     goals: ["CMS-backed legacy tenant parity", "Renderer-compatible data validation"],
     requestedPages: [{ slug: "index", title: "Home", purpose: "Homepage" }],
   },
-  tenant: { name: "Amicare-Zorg", slug: "amicare", domain: "amicare.optidigi.nl", status: "active" },
+  tenant: { name: "Amicare-Zorg", slug: "amicare", domain: "ami-care.nl", status: "active" },
   theme: amicareTheme,
   settings: amicareSettings,
   pages: amicareRendererPages,
@@ -1111,8 +1111,8 @@ export const amblastSiteGenerationSpec: SiteGenerationSpec = {
   intake: {
     businessName: "Amblast | Facility Services",
     tenantSlug: "amblast",
-    primaryDomain: "amblast.optidigi.nl",
-    siteUrl: "https://amblast.optidigi.nl",
+    primaryDomain: "amblast.nl",
+    siteUrl: "https://amblast.nl",
     language: "nl-NL",
     industry: "Industriële reiniging",
     serviceArea: ["Limburg"],
@@ -1131,7 +1131,7 @@ export const amblastSiteGenerationSpec: SiteGenerationSpec = {
       assets: [amblastMedia.logo],
     },
   },
-  tenant: { name: "Amblast | Facility Services", slug: "amblast", domain: "amblast.optidigi.nl", status: "active" },
+  tenant: { name: "Amblast | Facility Services", slug: "amblast", domain: "amblast.nl", status: "active" },
   theme: amblastTheme,
   settings: amblastSettings,
   pages: amblastRendererPages,

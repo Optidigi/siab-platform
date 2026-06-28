@@ -1,4 +1,4 @@
-// Generated from sites/amblast/dist after pnpm tenant:amblast:build.
+// Renderer-owned legacy Amblast HTML snapshot. The original sites/amblast source app is archived outside this repo.
 // The legacy renderer treats these fragments as renderer-owned structure, not CMS-authored HTML.
 
 export type AmblastLegacyPageSlug = "index" | "over-ons" | "diensten" | "portfolio" | "contact"

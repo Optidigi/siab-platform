@@ -1,7 +1,10 @@
-import type { CollectionConfig } from "payload"
+import type { CollectionBeforeValidateHook, CollectionConfig } from "payload"
+import { ValidationError } from "payload"
+import { SITE_CHROME_CATALOG } from "@siteinabox/contracts/block-catalog"
 import { canRead, canUpdateSettings } from "@/access/roleHelpers"
 import { projectSettingsToDisk } from "@/hooks/projectToDisk"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
+import { relationshipId } from "@/lib/relationshipId"
 import { validateSafeHref } from "@/lib/security/safeHref"
 
 // HH:MM 24h matcher. Accepts 00:00–23:59.
@@ -39,6 +42,97 @@ const headerFooterChromeVariantOptions = [
   { label: "Amicare zen", value: "amicareZen" },
   { label: "Amblast industrial", value: "amblastIndustrial" },
 ]
+
+const tenantExclusiveChromeVariants = SITE_CHROME_CATALOG
+  .filter((entry) => entry.scope.kind === "tenant-exclusive")
+  .map((entry) => ({
+    area: entry.area,
+    variant: entry.variant,
+    tenantSlugs: entry.scope.kind === "tenant-exclusive" ? entry.scope.tenantSlugs : [],
+  }))
+
+const collectTenantSlugs = (value: unknown, slugs = new Set<string>()): Set<string> => {
+  if (typeof value === "string" && value.trim() !== "") {
+    slugs.add(value)
+    return slugs
+  }
+  if (!value || typeof value !== "object") return slugs
+  if (Array.isArray(value)) {
+    for (const item of value) collectTenantSlugs(item, slugs)
+    return slugs
+  }
+
+  const record = value as Record<string, unknown>
+  const slug = record.slug
+  if (typeof slug === "string" && slug.trim() !== "") slugs.add(slug)
+  collectTenantSlugs(record.tenant, slugs)
+  collectTenantSlugs(record.value, slugs)
+  return slugs
+}
+
+export const filterChromeVariantOptions = (
+  area: "header" | "footer",
+  options: { label: string; value: string }[],
+  data: unknown,
+  req?: unknown,
+) => {
+  const tenantSlugs = collectTenantSlugs(data && typeof data === "object" ? (data as Record<string, unknown>).tenant : null)
+  collectTenantSlugs(req && typeof req === "object" ? (req as any).user?.tenants : null, tenantSlugs)
+  return options.filter((option) => {
+    const exclusive = tenantExclusiveChromeVariants.find((entry) =>
+      entry.area === area && entry.variant === option.value)
+    if (!exclusive) return true
+    return exclusive.tenantSlugs.some((tenantSlug) => tenantSlugs.has(tenantSlug))
+  })
+}
+
+const findTenantSlug = async (
+  req: Parameters<CollectionBeforeValidateHook>[0]["req"],
+  tenant: unknown,
+): Promise<string | null> => {
+  const tenantId = relationshipId(tenant as Parameters<typeof relationshipId>[0])
+  if (tenantId == null) return null
+  const doc = await req.payload.findByID({
+    collection: "tenants",
+    id: tenantId as any,
+    depth: 0,
+    overrideAccess: true,
+  })
+  return typeof (doc as any)?.slug === "string" ? (doc as any).slug : null
+}
+
+export const enforceTenantExclusiveChromeVariants: CollectionBeforeValidateHook = async ({
+  collection,
+  data,
+  originalDoc,
+  req,
+}) => {
+  if (!data?.chrome) return data
+
+  const tenant = data.tenant ?? originalDoc?.tenant
+  const tenantSlug = await findTenantSlug(req, tenant)
+  const errors = tenantExclusiveChromeVariants.flatMap((entry) => {
+    const areaSettings = (data.chrome as Record<string, unknown> | undefined)?.[entry.area]
+    const variant = areaSettings && typeof areaSettings === "object" && !Array.isArray(areaSettings)
+      ? (areaSettings as Record<string, unknown>).variant
+      : undefined
+    if (variant !== entry.variant) return []
+    if (tenantSlug && entry.tenantSlugs.includes(tenantSlug)) return []
+    return [{
+      path: `chrome.${entry.area}.variant`,
+      message: `${entry.variant} is available only to ${entry.tenantSlugs.join(", ")} tenants.`,
+    }]
+  })
+
+  if (errors.length > 0) {
+    throw new ValidationError({
+      collection: collection?.slug ?? "site-settings",
+      errors,
+    })
+  }
+
+  return data
+}
 
 const linkRefFields = () => [
   { name: "label", type: "text" as const },
@@ -166,6 +260,7 @@ export const SiteSettings: CollectionConfig = {
       fields: [
         { name: "header", type: "group", fields: [
           { name: "variant", type: "select", options: headerFooterChromeVariantOptions,
+            filterOptions: ({ options, data, req }) => filterChromeVariantOptions("header", options as any, data, req),
             admin: { description: "Approved renderer variant for the header." } },
           { name: "logo", type: "upload", relationTo: "media",
             admin: { description: "Optional header-specific logo. Falls back to Branding logo." } },
@@ -186,6 +281,7 @@ export const SiteSettings: CollectionConfig = {
         ]},
         { name: "footer", type: "group", fields: [
           { name: "variant", type: "select", options: headerFooterChromeVariantOptions,
+            filterOptions: ({ options, data, req }) => filterChromeVariantOptions("footer", options as any, data, req),
             admin: { description: "Approved renderer variant for the footer." } },
           { name: "logo", type: "upload", relationTo: "media",
             admin: { description: "Optional footer-specific logo. Falls back to Branding logo." } },
@@ -263,7 +359,7 @@ export const SiteSettings: CollectionConfig = {
       admin: { description: "Footer navigation. Entries render in order; drag to reorder." } }
   ],
   hooks: {
-    beforeValidate: [validateTenantExists],
+    beforeValidate: [validateTenantExists, enforceTenantExclusiveChromeVariants],
     afterChange: [projectSettingsToDisk]
   }
 }

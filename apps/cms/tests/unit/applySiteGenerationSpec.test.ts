@@ -690,6 +690,16 @@ describe("applySiteGenerationSpec", () => {
       slug: "amblast",
       domain: "amblast.test",
     }
+    spec.settings = {
+      ...spec.settings,
+      siteName: "Amblast",
+      siteUrl: "https://amblast.test",
+      chrome: {
+        header: { variant: "amblastIndustrial", cta: { label: "Contact", href: "/contact" } },
+        footer: { variant: "amblastIndustrial", tagline: "Industrial cleaning", legalLinks: [{ label: "Privacy", href: "/privacy" }] },
+        banner: { variant: "default", visible: false, message: "Preview ready" },
+      },
+    } as any
     spec.pages[0]!.blocks = [
       {
         blockType: "mediaHero",
@@ -714,6 +724,10 @@ describe("applySiteGenerationSpec", () => {
 
     const result = await applySiteGenerationSpec(payload, spec)
     expect(result.ok).toBe(true)
+    expect(store["site-settings"][0]!.chrome).toMatchObject({
+      header: { variant: "amblastIndustrial", cta: { label: "Contact", href: "/contact" } },
+      footer: { variant: "amblastIndustrial", tagline: "Industrial cleaning" },
+    })
     expect(store.pages[0]!.blocks[0]).toMatchObject({
       blockType: "mediaHero",
       variant: "amblastShapedHero",

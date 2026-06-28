@@ -1,4 +1,5 @@
 export * from "./block-catalog"
+export * from "./deploy-targets"
 export * from "./generation"
 export * from "./rich-text"
 export * from "./runtime"

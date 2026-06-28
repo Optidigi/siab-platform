@@ -61,8 +61,8 @@ function candidateDistDirs() {
   return [
     configured,
     "/app/legacy-tenants/amblast",
-    resolve(cwd, "sites/amblast/dist"),
-    resolve(cwd, "../../sites/amblast/dist"),
+    resolve(cwd, "src/lib/legacy-tenants/_assets/amblast"),
+    resolve(cwd, "apps/renderer/src/lib/legacy-tenants/_assets/amblast"),
   ].filter(Boolean)
 }
 

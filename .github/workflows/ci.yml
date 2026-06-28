@@ -129,19 +129,7 @@ jobs:
         with:
           node-version: 26
       - run: pnpm install --frozen-lockfile
+      - run: pnpm renderer:deploy-contract
       - run: pnpm renderer:typecheck
       - run: pnpm renderer:test
       - run: pnpm renderer:build
-
-  tenant-snapshots:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 26
-      - run: pnpm --dir sites/ami-care --ignore-workspace install --frozen-lockfile
-      - run: pnpm --dir sites/ami-care --ignore-workspace build
-      - run: pnpm --dir sites/amblast --ignore-workspace install --frozen-lockfile
-      - run: pnpm --dir sites/amblast --ignore-workspace build

@@ -17,7 +17,10 @@ import {
   amicarePublishedSiteSnapshot,
   amicareSiteGenerationSpec,
 } from "@siteinabox/contracts/fixtures/tenants"
-import { GeneratedSiteSettingsSchema } from "@siteinabox/contracts/generation"
+import {
+  GeneratedSiteSettingsSchema,
+  OfficialTenantGeneratedSiteSettingsSchema,
+} from "@siteinabox/contracts/generation"
 import { SiteBanner, SiteFooter, SiteHeader } from "../chrome"
 import { v1FixturePage, v1FixtureSettings } from "../fixtures/v1"
 import { resolveLegacyTenant } from "../legacy-tenants/resolve"
@@ -39,6 +42,116 @@ function assertIncludes(value: string, expected: string, label: string) {
 function assertExcludes(value: string, unexpected: string, label: string) {
   if (value.includes(unexpected)) {
     throw new Error(`${label}: expected output not to include ${unexpected}`)
+  }
+}
+
+const testInlineText = (text: string) => ({
+  t: "root" as const,
+  variant: "inline" as const,
+  children: [{ t: "text" as const, v: text }],
+})
+
+const testBlockText = (text: string) => ({
+  t: "root" as const,
+  variant: "block" as const,
+  children: [{ t: "paragraph" as const, children: [{ t: "text" as const, v: text }] }],
+})
+
+const testRichText = (parts: Array<{ heading?: string; text?: string }>) => ({
+  t: "root" as const,
+  variant: "block" as const,
+  children: parts.flatMap((part) => {
+    const nodes: Array<
+      | { t: "heading"; level: 2; children: Array<{ t: "text"; v: string }> }
+      | { t: "paragraph"; children: Array<{ t: "text"; v: string }> }
+    > = []
+    if (part.heading) nodes.push({ t: "heading", level: 2, children: [{ t: "text", v: part.heading }] })
+    if (part.text) nodes.push({ t: "paragraph", children: [{ t: "text", v: part.text }] })
+    return nodes
+  }),
+})
+
+function assertOrdered(value: string, first: string, second: string, label: string) {
+  const firstIndex = value.indexOf(first)
+  const secondIndex = value.indexOf(second)
+  if (firstIndex === -1 || secondIndex === -1 || firstIndex > secondIndex) {
+    throw new Error(`${label}: expected ${first} before ${second}`)
+  }
+}
+
+async function readCssFixture() {
+  const loadFs = Function("return import('node:fs/promises')") as () => Promise<{
+    readFile: (path: URL, encoding: "utf8") => Promise<string>
+  }>
+  const fs = await loadFs()
+  return fs.readFile(new URL("../styles.css", import.meta.url), "utf8")
+}
+
+function splitCssSelectors(selectorList: string) {
+  const selectors: string[] = []
+  let current = ""
+  let bracketDepth = 0
+  let parenDepth = 0
+  let quote: string | null = null
+
+  for (const char of selectorList) {
+    if (quote) {
+      current += char
+      if (char === quote) quote = null
+      continue
+    }
+    if (char === '"' || char === "'") {
+      quote = char
+      current += char
+      continue
+    }
+    if (char === "[") bracketDepth += 1
+    if (char === "]") bracketDepth = Math.max(0, bracketDepth - 1)
+    if (char === "(") parenDepth += 1
+    if (char === ")") parenDepth = Math.max(0, parenDepth - 1)
+    if (char === "," && bracketDepth === 0 && parenDepth === 0) {
+      selectors.push(current.trim())
+      current = ""
+      continue
+    }
+    current += char
+  }
+
+  if (current.trim()) selectors.push(current.trim())
+  return selectors
+}
+
+function assertGenericCssIsScoped(css: string) {
+  const genericSelectorPattern = /\.(?:cms-block|rt-)[A-Za-z0-9_-]*/
+  const allowedScopes = [
+    ".site-renderer:not([data-legacy-tenant])",
+    '.site-renderer[data-legacy-tenant="amicare"]',
+    '.site-renderer[data-legacy-tenant="amblast"]',
+  ]
+  const violations: string[] = []
+  let segmentStart = 0
+
+  for (let index = 0; index < css.length; index += 1) {
+    const char = css[index]
+    if (char === "{") {
+      const prelude = css.slice(segmentStart, index)
+      const trimmed = prelude.trim()
+      if (trimmed && !trimmed.startsWith("@") && genericSelectorPattern.test(trimmed)) {
+        for (const selector of splitCssSelectors(trimmed)) {
+          if (genericSelectorPattern.test(selector) && !allowedScopes.some((scope) => selector.startsWith(scope))) {
+            const line = css.slice(0, index).split("\n").length
+            violations.push(`${line}: ${selector}`)
+          }
+        }
+      }
+      segmentStart = index + 1
+    } else if (char === "}" || char === ";") {
+      segmentStart = index + 1
+    }
+  }
+
+  if (violations.length > 0) {
+    throw new Error(`generic cms-block/rt CSS selectors must be renderer-scoped:\n${violations.join("\n")}`)
   }
 }
 
@@ -321,8 +434,10 @@ function runChromeRenderTests() {
   assertIncludes(amblastFooterMarkup, "BTW ID: NL002407752B08", "Amblast footer structured business data")
 
   assertEqual(GeneratedSiteSettingsSchema.safeParse(v1FixtureSettings).success, true, "fixture chrome validates")
-  assertEqual(GeneratedSiteSettingsSchema.safeParse(amicareSiteGenerationSpec.settings).success, true, "Amicare chrome validates")
-  assertEqual(GeneratedSiteSettingsSchema.safeParse(amblastSiteGenerationSpec.settings).success, true, "Amblast chrome validates")
+  assertEqual(GeneratedSiteSettingsSchema.safeParse(amicareSiteGenerationSpec.settings).success, false, "generic settings reject Amicare tenant-exclusive chrome")
+  assertEqual(GeneratedSiteSettingsSchema.safeParse(amblastSiteGenerationSpec.settings).success, false, "generic settings reject Amblast tenant-exclusive chrome")
+  assertEqual(OfficialTenantGeneratedSiteSettingsSchema.safeParse(amicareSiteGenerationSpec.settings).success, true, "official tenant settings accept Amicare chrome")
+  assertEqual(OfficialTenantGeneratedSiteSettingsSchema.safeParse(amblastSiteGenerationSpec.settings).success, true, "official tenant settings accept Amblast chrome")
   assertEqual(
     GeneratedSiteSettingsSchema.safeParse({
       ...v1FixtureSettings,
@@ -419,8 +534,8 @@ function runAmblastScopeTests() {
     assertEqual(SITE_SOURCE_BACKED_CHROME_VARIANTS.some((entry) => entry.variantId === variantId), false, `${variantId} excluded from reusable chrome variants`)
   }
 
-  assertEqual(amblastSiteGenerationSpec.tenant.domain, "amblast.optidigi.nl", "Amblast fixture tenant domain")
-  assertEqual(amblastSiteGenerationSpec.settings.siteUrl, "https://amblast.optidigi.nl", "Amblast fixture site URL")
+  assertEqual(amblastSiteGenerationSpec.tenant.domain, "amblast.nl", "Amblast fixture tenant domain")
+  assertEqual(amblastSiteGenerationSpec.settings.siteUrl, "https://amblast.nl", "Amblast fixture site URL")
 
   const homeBlocks = amblastSiteGenerationSpec.pages.find((page) => page.slug === "index")?.blocks ?? []
   assertEqual(homeBlocks.some((block) => block.blockType === "serviceCarousel" && block.variant === "amblastSwiperServices"), true, "Amblast home service carousel fixture")
@@ -430,11 +545,11 @@ function runAmblastScopeTests() {
   assertEqual(portfolioBlocks.some((block) => block.blockType === "beforeAfterGallery" && block.variant === "amblastPortfolio"), true, "Amblast portfolio comparison fixture")
 }
 
-function runLegacyRendererDispatchTests() {
+async function runLegacyRendererDispatchTests() {
   assertEqual(
     resolveLegacyTenant({
       tenantSlug: "amicare",
-      domain: "amicare.optidigi.nl",
+      domain: "ami-care.nl",
       settings: amicarePublishedSiteSnapshot.settings,
     }),
     "amicare",
@@ -488,7 +603,7 @@ function runLegacyRendererDispatchTests() {
   assertEqual(
     resolveLegacyTenant({
       tenantSlug: "amblast",
-      domain: "amblast.optidigi.nl",
+      domain: "amblast.nl",
       settings: amblastPublishedSiteSnapshot.settings,
     }),
     "amblast",
@@ -513,18 +628,41 @@ function runLegacyRendererDispatchTests() {
   )
   assertIncludes(amicareMarkup, 'data-legacy-tenant="amicare"', "Amicare legacy root attribute")
   assertIncludes(amicareMarkup, "data-amicare-nav", "Amicare exact nav marker")
+  assertIncludes(amicareMarkup, 'class="rt-canvas w-full [container-name:site-frame] [container-type:inline-size]"', "Amicare root container query classes")
+  assertIncludes(amicareMarkup, 'class="site-frame-root"', "Amicare site frame root")
+  assertIncludes(amicareMarkup, 'class="sticky top-0 z-50 flex w-full items-center justify-between border-b border-rule bg-bg/80 px-6 py-5 backdrop-blur-lg @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-20"', "Amicare exact nav classes")
   assertIncludes(amicareMarkup, "cms-block--cta-quote", "Amicare exact quote CTA class")
   assertIncludes(amicareMarkup, "cookie-consent-banner", "Amicare cookie consent markup")
   assertIncludes(amicareMarkup, 'src="/media/toys.jpg"', "Amicare exact hero image")
+  assertIncludes(amicareMarkup, 'alt="Speelgoed"', "Amicare exact hero image alt")
+  assertIncludes(amicareMarkup, 'loading="eager"', "Amicare eager hero image")
+  assertIncludes(amicareMarkup, 'decoding="async"', "Amicare async image decoding")
+  assertIncludes(amicareMarkup, 'class="aspect-[4/5] w-full rotate-0 transform rounded-[var(--radius-lg)] object-cover shadow-2xl @min-[48rem]/site-frame:aspect-[4/3] @min-[48rem]/site-frame:rotate-3"', "Amicare exact hero media classes")
   assertIncludes(amicareMarkup, 'src="/api/tenant-media/7/bedroom.jpg"', "Amicare exact quote background image")
+  assertIncludes(amicareMarkup, 'class="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover opacity-[0.12]"', "Amicare exact quote media classes")
   assertIncludes(amicareMarkup, "Voor jongeren en gezinnen", "Amicare exact hero eyebrow")
+  assertIncludes(amicareMarkup, 'style="max-width:14ch;font-family:var(--font-title)"', "Amicare hero title font token and width")
+  assertIncludes(amicareMarkup, "tracking-[-0.01em]", "Amicare legacy heading tracking class")
+  assertIncludes(amicareMarkup, '[font-family:var(--font-script)]', "Amicare script font token class")
+  assertIncludes(amicareMarkup, '<p class="max-w-md animate-fade-up text-[17px] leading-[1.6] text-ink-muted [animation-delay:150ms] [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[18px]">Al jarenlang werk ik met toewijding', "Amicare subheadline rich text renders inline inside legacy paragraph")
   assertIncludes(amicareMarkup, "Wat voor mij", "Amicare exact feature heading")
   assertIncludes(amicareMarkup, "Aandacht", "Amicare exact first feature")
   assertIncludes(amicareMarkup, "Betrokkenheid", "Amicare exact second feature")
   assertIncludes(amicareMarkup, "Continuïteit", "Amicare exact third feature")
-  assertIncludes(amicareMarkup, 'Het vak  mijn <em class="rt-i">hart ligt</em>.', "Amicare exact captured rich-text heading")
+  assertIncludes(amicareMarkup, '<p class="text-[16px] leading-[1.6] text-ink-muted [font-family:var(--font-text)]">Echt luisteren naar wat een jongere', "Amicare feature description rich text renders inline inside legacy paragraph")
+  assertIncludes(amicareMarkup, "prose-headings:font-serif prose-headings:tracking-[-0.01em]", "Amicare exact rich-text typography classes")
+  assertIncludes(amicareMarkup, '<div class="rt-themed rt-themed-eyebrow" data-rt-id="eyebrow">', "Amicare rich-text themed eyebrow marker")
+  assertIncludes(amicareMarkup, '<h2 class="rt-h rt-h-2">Het vak  mijn <em class="rt-i">hart ligt</em>.</h2>', "Amicare exact captured rich-text heading")
   assertIncludes(amicareMarkup, "Vertrouwen ontstaat in de tijd", "Amicare exact quote CTA")
+  assertIncludes(amicareMarkup, '<p class="mx-auto mt-7 max-w-prose text-[16px] leading-[1.7] text-ink-muted [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[17px]">Daarom werk ik graag in trajecten', "Amicare CTA description rich text renders inline inside legacy paragraph")
   assertIncludes(amicareMarkup, "info@ami-care.nl", "Amicare exact contact email")
+  assertOrdered(amicareMarkup, "cms-block--hero", "cms-block--featurelist", "Amicare block order starts with hero then feature list")
+  assertOrdered(amicareMarkup, "cms-block--featurelist", "cms-block--richtext", "Amicare block order keeps rich text after feature list")
+  assertOrdered(amicareMarkup, "cms-block--richtext", "cms-block--cta-quote", "Amicare quote CTA follows rich text")
+  assertOrdered(amicareMarkup, "cms-block--cta-quote", "cms-block--cta-contact", "Amicare contact CTA follows quote CTA")
+  assertExcludes(amicareMarkup, '<p class="max-w-md animate-fade-up text-[17px] leading-[1.6] text-ink-muted [animation-delay:150ms] [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[18px]"><p class="rt-p">', "Amicare subheadline does not render nested paragraphs")
+  assertExcludes(amicareMarkup, '<p class="text-[16px] leading-[1.6] text-ink-muted [font-family:var(--font-text)]"><p class="rt-p">', "Amicare feature descriptions do not render nested paragraphs")
+  assertExcludes(amicareMarkup, '<p class="mx-auto mt-7 max-w-prose text-[16px] leading-[1.7] text-ink-muted [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[17px]"><p class="rt-p">', "Amicare CTA descriptions do not render nested paragraphs")
   assertExcludes(amicareMarkup, "Het vak waar mijn", "Amicare excludes non-captured rich-text heading")
   assertExcludes(amicareMarkup, "Ervaringen", "Amicare excludes generated testimonials section")
   assertExcludes(amicareMarkup, "Veelgestelde vragen", "Amicare excludes generated FAQ section")
@@ -534,6 +672,26 @@ function runLegacyRendererDispatchTests() {
     false,
     "Amicare legacy renderer bypasses generic chrome approximation",
   )
+
+  const amicareContactDescriptionPage = {
+    ...amicarePage,
+    blocks: amicarePage.blocks.map((block) =>
+      block.blockType === "cta" && block.anchor === "contact"
+        ? { ...block, description: testBlockText("Mail gerust voor een kennismaking.") }
+        : block,
+    ),
+  } satisfies Page
+  const amicareContactDescriptionMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: amicareContactDescriptionPage,
+      settings: amicarePublishedSiteSnapshot.settings,
+      theme: amicarePublishedSiteSnapshot.theme,
+      tenantSlug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+    }),
+  )
+  assertIncludes(amicareContactDescriptionMarkup, '<p class="mx-auto mt-7 max-w-prose text-[16px] leading-[1.7] text-ink-muted [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[17px]">Mail gerust voor een kennismaking.</p>', "Amicare contact CTA description rich text renders inline inside legacy paragraph")
+  assertExcludes(amicareContactDescriptionMarkup, '<p class="mx-auto mt-7 max-w-prose text-[16px] leading-[1.7] text-ink-muted [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[17px]"><p class="rt-p">', "Amicare contact CTA description does not render nested paragraphs")
 
   const amblastHomeFixturePage = amblastPublishedSiteSnapshot.pages.find((page) => page.slug === "index")
   if (!amblastHomeFixturePage) throw new Error("Amblast published fixture index page exists")
@@ -558,11 +716,152 @@ function runLegacyRendererDispatchTests() {
   assertIncludes(amblastHomeMarkup, "amb-info-carousel", "Amblast service carousel exact class")
   assertIncludes(amblastHomeMarkup, "swiper-wrapper", "Amblast carousel swiper structure")
   assertIncludes(amblastHomeMarkup, 'data-amblast-behavior="site-client"', "Amblast behavior bootstrap")
+  assertIncludes(amblastHomeMarkup, 'class="amb-shape amb-shape-top"', "Amblast shape divider top preserved")
+  assertIncludes(amblastHomeMarkup, 'data-settings="{&quot;_animation&quot;:&quot;fadeInUp&quot;', "Amblast Elementor animation data preserved")
   assertEqual(
     amblastHomeMarkup.includes("site-header--source-amblast-industrial"),
     false,
     "Amblast legacy renderer bypasses generic chrome approximation",
   )
+
+  const amblastPages = [
+    { slug: "index", pageId: "845", activeHref: "/" },
+    { slug: "over-ons", pageId: "880", activeHref: "/over-ons/" },
+    { slug: "diensten", pageId: "883", activeHref: "/diensten/" },
+    { slug: "portfolio", pageId: "886", activeHref: "/portfolio" },
+    { slug: "contact", pageId: "901", activeHref: null },
+  ] as const
+
+  for (const expected of amblastPages) {
+    const fixturePage = amblastPublishedSiteSnapshot.pages.find((candidate) => candidate.slug === expected.slug)
+    if (!fixturePage) throw new Error(`Amblast published fixture ${expected.slug} page exists`)
+    const markup = renderToStaticMarkup(
+      React.createElement(SitePageRenderer, {
+        page: {
+          ...fixturePage,
+          updatedAt: fixturePage.updatedAt ?? amblastPublishedSiteSnapshot.publishedAt ?? "2026-01-01T00:00:00.000Z",
+        } satisfies Page,
+        settings: amblastPublishedSiteSnapshot.settings,
+        theme: amblastPublishedSiteSnapshot.theme,
+        tenantSlug: amblastPublishedSiteSnapshot.tenantSlug,
+        domain: amblastPublishedSiteSnapshot.domain,
+      }),
+    )
+    assertIncludes(markup, `data-amblast-page="${expected.slug}"`, `Amblast ${expected.slug} legacy page slug`)
+    assertIncludes(markup, `data-amblast-page-id="${expected.pageId}"`, `Amblast ${expected.slug} exact page ID`)
+    assertIncludes(markup, 'data-amb-el-type="section"', `Amblast ${expected.slug} Elementor section data attributes`)
+    assertIncludes(markup, 'data-widget_type=', `Amblast ${expected.slug} Elementor widget data attributes`)
+    assertIncludes(markup, "amb-section", `Amblast ${expected.slug} amb classes`)
+    assertIncludes(markup, "amb-shape", `Amblast ${expected.slug} shape divider markup`)
+    if (expected.activeHref) {
+      assertIncludes(
+        markup,
+        `<a href="${expected.activeHref}" class="amb-menu-item" aria-current="amb-page-flag"`,
+        `Amblast ${expected.slug} active nav route`,
+      )
+    }
+  }
+
+  const amblastOverFixturePage = amblastPublishedSiteSnapshot.pages.find((page) => page.slug === "over-ons")
+  if (!amblastOverFixturePage) throw new Error("Amblast published fixture over-ons page exists")
+  const editedAmblastOverPage = {
+    ...amblastOverFixturePage,
+    updatedAt: amblastOverFixturePage.updatedAt ?? amblastPublishedSiteSnapshot.publishedAt ?? "2026-01-01T00:00:00.000Z",
+    blocks: amblastOverFixturePage.blocks.map((block) => {
+      if (block.blockType === "mediaHero") {
+        return {
+          ...block,
+          headline: testInlineText("Over Amblast vandaag"),
+          foregroundImage: { id: "about-edited", url: "/uploads/portfolio/about-edited.jpg", filename: "about-edited.jpg", alt: "Edited about image" },
+        }
+      }
+      if (block.blockType === "richText") {
+        return {
+          ...block,
+          body: testRichText([
+            { heading: "Familiebedrijf met focus", text: "Aangepaste introductietekst voor de over ons pagina." },
+            { text: "Tweede alinea met veilige inhoud." },
+          ]),
+        }
+      }
+      if (block.blockType === "infoCardList") {
+        return {
+          ...block,
+          items: block.items.map((item, index) =>
+            index === 0
+              ? {
+                  ...item,
+                  title: testInlineText("Transparante prijzen"),
+                  image: { id: "about-icon-edited", url: "/uploads/icons/about-icon-edited.png", filename: "about-icon-edited.png", alt: "Edited icon" },
+                }
+              : item,
+          ),
+        }
+      }
+      if (block.blockType === "cta") {
+        return { ...block, primary: { label: "Bekijk diensten", href: '/diensten" onclick="alert(1)' } }
+      }
+      return block
+    }),
+  } satisfies Page
+  const editedAmblastOverMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: editedAmblastOverPage,
+      settings: amblastPublishedSiteSnapshot.settings,
+      theme: amblastPublishedSiteSnapshot.theme,
+      tenantSlug: amblastPublishedSiteSnapshot.tenantSlug,
+      domain: amblastPublishedSiteSnapshot.domain,
+    }),
+  )
+  assertIncludes(editedAmblastOverMarkup, "Over Amblast vandaag", "Amblast over-ons edited hero title slot")
+  assertIncludes(editedAmblastOverMarkup, "Familiebedrijf met focus", "Amblast over-ons edited rich-text heading slot")
+  assertIncludes(editedAmblastOverMarkup, "Aangepaste introductietekst voor de over ons pagina.", "Amblast over-ons edited intro text slot")
+  assertIncludes(editedAmblastOverMarkup, "/uploads/portfolio/about-edited.jpg", "Amblast over-ons edited foreground media slot")
+  assertIncludes(editedAmblastOverMarkup, "/uploads/icons/about-icon-edited.png", "Amblast over-ons edited value icon media slot")
+  assertIncludes(editedAmblastOverMarkup, "Transparante prijzen", "Amblast over-ons edited value title slot")
+  assertIncludes(editedAmblastOverMarkup, "Bekijk diensten", "Amblast over-ons edited CTA label slot")
+  assertIncludes(editedAmblastOverMarkup, 'href="/diensten&quot; onclick=&quot;alert(1)"', "Amblast over-ons escaped CTA href slot")
+  assertExcludes(editedAmblastOverMarkup, 'onclick="alert(1)', "Amblast over-ons does not create injected onclick attribute")
+
+  const amblastServicesFixturePage = amblastPublishedSiteSnapshot.pages.find((page) => page.slug === "diensten")
+  if (!amblastServicesFixturePage) throw new Error("Amblast published fixture diensten page exists")
+  const editedAmblastServicesPage = {
+    ...amblastServicesFixturePage,
+    updatedAt: amblastServicesFixturePage.updatedAt ?? amblastPublishedSiteSnapshot.publishedAt ?? "2026-01-01T00:00:00.000Z",
+    blocks: amblastServicesFixturePage.blocks.map((block) => {
+      if (block.blockType === "mediaHero") return { ...block, headline: testInlineText("Services op maat") }
+      if (block.blockType === "serviceCarousel") {
+        return {
+          ...block,
+          items: block.items.map((item, index) =>
+            index === 0
+              ? {
+                  ...item,
+                  title: testInlineText("Productielijn reiniging"),
+                  description: testBlockText("Beschrijving met <script>alert(1)</script> en vaste tags."),
+                  image: { id: "service-edited", url: "/uploads/service-cards/service-edited.png", filename: "service-edited.png", alt: "Edited service" },
+                }
+              : item,
+          ),
+        }
+      }
+      return block
+    }),
+  } satisfies Page
+  const editedAmblastServicesMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: editedAmblastServicesPage,
+      settings: amblastPublishedSiteSnapshot.settings,
+      theme: amblastPublishedSiteSnapshot.theme,
+      tenantSlug: amblastPublishedSiteSnapshot.tenantSlug,
+      domain: amblastPublishedSiteSnapshot.domain,
+    }),
+  )
+  assertIncludes(editedAmblastServicesMarkup, "Services op maat", "Amblast diensten edited hero title slot")
+  assertIncludes(editedAmblastServicesMarkup, "Productielijn reiniging", "Amblast diensten edited service title slot")
+  assertIncludes(editedAmblastServicesMarkup, "/uploads/service-cards/service-edited.png", "Amblast diensten edited service media slot")
+  assertIncludes(editedAmblastServicesMarkup, "Beschrijving met &lt;script&gt;alert(1)&lt;/script&gt; en vaste tags.", "Amblast diensten escaped service HTML slot text")
+  assertExcludes(editedAmblastServicesMarkup, "Beschrijving met <script>alert(1)</script>", "Amblast diensten does not render raw script in HTML slot")
 
   const amblastPortfolioFixturePage = amblastPublishedSiteSnapshot.pages.find((page) => page.slug === "portfolio")
   if (!amblastPortfolioFixturePage) throw new Error("Amblast published fixture portfolio page exists")
@@ -570,6 +869,135 @@ function runLegacyRendererDispatchTests() {
     ...amblastPortfolioFixturePage,
     updatedAt: amblastPortfolioFixturePage.updatedAt ?? amblastPublishedSiteSnapshot.publishedAt ?? "2026-01-01T00:00:00.000Z",
   } satisfies Page
+  const editedAmblastPortfolioPage = {
+    ...amblastPortfolioPage,
+    blocks: amblastPortfolioPage.blocks.map((block) => {
+      if (block.blockType === "mediaHero") return { ...block, headline: testInlineText("Werk in beeld") }
+      if (block.blockType === "richText") {
+        return {
+          ...block,
+          body: testRichText([{ heading: "Resultaten zonder omwegen", text: "Bekijk veilig aangepaste portfolio tekst." }]),
+        }
+      }
+      if (block.blockType === "beforeAfterGallery") {
+        return {
+          ...block,
+          pairs: block.pairs.map((pair, index) =>
+            index === 0
+              ? {
+                  ...pair,
+                  before: { id: "before-edited", url: "/uploads/portfolio/before-edited.jpg", filename: "before-edited.jpg", alt: "Before edited" },
+                  after: { id: "after-edited", url: "/uploads/portfolio/after-edited.jpg", filename: "after-edited.jpg", alt: "After edited" },
+                  beforeLabel: "Voor <script>alert(1)</script>",
+                  afterLabel: 'Na "schoon"',
+                }
+              : pair,
+          ),
+        }
+      }
+      return block
+    }),
+  } satisfies Page
+  const editedAmblastPortfolioMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: editedAmblastPortfolioPage,
+      settings: amblastPublishedSiteSnapshot.settings,
+      theme: amblastPublishedSiteSnapshot.theme,
+      tenantSlug: amblastPublishedSiteSnapshot.tenantSlug,
+      domain: amblastPublishedSiteSnapshot.domain,
+    }),
+  )
+  assertIncludes(editedAmblastPortfolioMarkup, "Werk in beeld", "Amblast portfolio edited hero title slot")
+  assertIncludes(editedAmblastPortfolioMarkup, "Resultaten zonder omwegen", "Amblast portfolio edited rich-text heading slot")
+  assertIncludes(editedAmblastPortfolioMarkup, "Bekijk veilig aangepaste portfolio tekst.", "Amblast portfolio edited body slot")
+  assertIncludes(editedAmblastPortfolioMarkup, "/uploads/portfolio/before-edited.jpg", "Amblast portfolio edited before media slot")
+  assertIncludes(editedAmblastPortfolioMarkup, "/uploads/portfolio/after-edited.jpg", "Amblast portfolio edited after media slot")
+  assertIncludes(editedAmblastPortfolioMarkup, "<span>Voor &lt;script&gt;alert(1)&lt;/script&gt;</span>", "Amblast portfolio escaped before label slot")
+  assertIncludes(editedAmblastPortfolioMarkup, "<span>Na &quot;schoon&quot;</span>", "Amblast portfolio escaped quote in label slot")
+  assertExcludes(editedAmblastPortfolioMarkup, "<span>Voor <script>alert(1)</script></span>", "Amblast portfolio does not render raw script label")
+
+  const editedAmblastHomePage = {
+    ...amblastHomePage,
+    blocks: amblastHomePage.blocks.map((block) =>
+      block.blockType === "mediaHero"
+        ? {
+            ...block,
+            headline: testInlineText("Precisie reiniging voor productie"),
+            subheadline: testBlockText("Aangepaste snapshot tekst voor de legacy hero."),
+            cta: { label: "Plan inspectie", href: "/contact?source=hero" },
+          }
+        : block,
+    ),
+  } satisfies Page
+  const editedAmblastHomeMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: editedAmblastHomePage,
+      settings: {
+        ...amblastPublishedSiteSnapshot.settings,
+        contactEmail: "planning@example.test",
+        branding: {
+          ...amblastPublishedSiteSnapshot.settings.branding,
+          logo: {
+            id: "amblast-edited-logo",
+            url: "/uploads/logo/amblast-edited.png",
+            filename: "amblast-edited.png",
+            alt: "Amblast edited logo",
+            width: 714,
+            height: 179,
+          },
+        },
+        chrome: {
+          ...amblastPublishedSiteSnapshot.settings.chrome,
+          header: {
+            ...amblastPublishedSiteSnapshot.settings.chrome?.header,
+            cta: { label: "Bel ons", href: "/contact?source=header" },
+            logo: {
+              id: "amblast-edited-logo",
+              url: "/uploads/logo/amblast-edited.png",
+              filename: "amblast-edited.png",
+              alt: "Amblast edited logo",
+              width: 714,
+              height: 179,
+            },
+          },
+          footer: {
+            ...amblastPublishedSiteSnapshot.settings.chrome?.footer,
+            tagline: "Beheer uw faciliteit",
+            logo: {
+              id: "amblast-edited-logo",
+              url: "/uploads/logo/amblast-edited.png",
+              filename: "amblast-edited.png",
+              alt: "Amblast edited logo",
+              width: 714,
+              height: 179,
+            },
+          },
+        },
+      },
+      theme: amblastPublishedSiteSnapshot.theme,
+      tenantSlug: amblastPublishedSiteSnapshot.tenantSlug,
+      domain: amblastPublishedSiteSnapshot.domain,
+    }),
+  )
+  assertIncludes(editedAmblastHomeMarkup, "Precisie reiniging voor productie", "Amblast edited hero headline slot")
+  assertIncludes(editedAmblastHomeMarkup, "Aangepaste snapshot tekst voor de legacy hero.", "Amblast edited hero text slot")
+  assertIncludes(editedAmblastHomeMarkup, 'href="/contact?source=header"', "Amblast edited header CTA link slot")
+  assertIncludes(editedAmblastHomeMarkup, "Bel ons", "Amblast edited header CTA label slot")
+  assertIncludes(editedAmblastHomeMarkup, 'href="/contact?source=hero"', "Amblast edited hero CTA link slot")
+  assertIncludes(editedAmblastHomeMarkup, "Plan inspectie", "Amblast edited hero CTA label slot")
+  assertIncludes(editedAmblastHomeMarkup, "/uploads/logo/amblast-edited.png", "Amblast edited logo media slot")
+  assertIncludes(editedAmblastHomeMarkup, "Beheer uw faciliteit", "Amblast edited footer tagline slot")
+  assertIncludes(editedAmblastHomeMarkup, 'data-id="67196b24"', "Amblast edited slots keep exact widget structure")
+  assertExcludes(editedAmblastHomeMarkup, "source=hero?source=header", "Amblast edited CTA href slots do not cascade")
+  assertOrdered(editedAmblastHomeMarkup, 'href="/contact?source=header"', 'href="/contact?source=hero"', "Amblast edited header CTA remains before hero CTA")
+  assertIncludes(
+    editedAmblastHomeMarkup,
+    '<a href="/" class="amb-menu-item" aria-current="amb-page-flag"',
+    "Amblast edited home active nav remains correct",
+  )
+  assertIncludes(editedAmblastHomeMarkup, "planning@example.test", "Amblast edited footer contact email slot")
+  assertOrdered(editedAmblastHomeMarkup, "<footer", "planning@example.test", "Amblast edited footer contact remains inside footer")
+  assertEqual(editedAmblastHomeMarkup.split("planning@example.test").length - 1, 2, "Amblast edited footer email appears only in footer href and text")
   const amblastPortfolioMarkup = renderToStaticMarkup(
     React.createElement(SitePageRenderer, {
       page: amblastPortfolioPage,
@@ -593,9 +1021,46 @@ function runLegacyRendererDispatchTests() {
   )
   assertEqual(genericMarkup.includes("data-legacy-tenant="), false, "generic fixture has no legacy root")
   assertEqual(genericMarkup.includes("data-amicare-nav"), false, "generic fixture has no Amicare nav")
+  assertEqual(genericMarkup.includes("data-amicare-nav-link"), false, "generic fixture has no Amicare nav link markers")
+  assertEqual(genericMarkup.includes("site-renderer--legacy-amicare"), false, "generic fixture has no Amicare legacy class")
+  assertEqual(genericMarkup.includes("prose-headings:font-serif"), false, "generic fixture has no Amicare rich text classes")
+  assertEqual(genericMarkup.includes("animate-float"), false, "generic fixture has no Amicare float animation")
   assertEqual(genericMarkup.includes("cookie-consent-banner"), false, "generic fixture has no Amicare cookie consent")
   assertEqual(genericMarkup.includes("amb-page-flag"), false, "generic fixture has no Amblast wrapper")
   assertEqual(genericMarkup.includes("amb-info-carousel"), false, "generic fixture has no Amblast carousel")
+
+  const css = await readCssFixture()
+  assertGenericCssIsScoped(css)
+  assertIncludes(
+    css,
+    ".site-renderer:not([data-legacy-tenant]) .cms-block {",
+    "generic cms-block CSS is scoped to non-legacy renderer",
+  )
+  assertIncludes(
+    css,
+    ".site-renderer:not([data-legacy-tenant]) .cms-block--hero {",
+    "generic hero CSS is scoped to non-legacy renderer",
+  )
+  assertIncludes(
+    css,
+    ".site-renderer:not([data-legacy-tenant]) .cms-block--cta {",
+    "generic CTA CSS is scoped to non-legacy renderer",
+  )
+  assertIncludes(
+    css,
+    ".site-renderer:not([data-legacy-tenant]) .rt-p {",
+    "generic rich-text paragraph CSS is scoped to non-legacy renderer",
+  )
+  assertExcludes(
+    css,
+    '.site-renderer[data-legacy-tenant="amicare"] .cms-block {',
+    "Amicare has no cms-block reset override",
+  )
+  assertExcludes(
+    css,
+    '.site-renderer[data-legacy-tenant="amicare"] .cms-block--hero {',
+    "Amicare has no hero reset override",
+  )
 
   const genericLegacyNameMarkup = renderToStaticMarkup(
     React.createElement(SitePageRenderer, {
@@ -618,4 +1083,4 @@ runBlockRenderTests()
 runChromeRenderTests()
 runAmicareScopeTests()
 runAmblastScopeTests()
-runLegacyRendererDispatchTests()
+await runLegacyRendererDispatchTests()

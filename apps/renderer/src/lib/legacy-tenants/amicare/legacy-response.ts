@@ -40,8 +40,8 @@ function candidateClientDirs() {
   return [
     configured,
     "/app/legacy-tenants/amicare/client",
-    resolve(cwd, "sites/ami-care/dist/client"),
-    resolve(cwd, "../../sites/ami-care/dist/client"),
+    resolve(cwd, "src/lib/legacy-tenants/_assets/amicare/client"),
+    resolve(cwd, "apps/renderer/src/lib/legacy-tenants/_assets/amicare/client"),
   ].filter((dir): dir is string => Boolean(dir))
 }
 
@@ -51,8 +51,8 @@ function candidateMediaDirs() {
   return [
     configured,
     "/app/legacy-tenants/amicare/media",
-    resolve(cwd, "sites/ami-care/src/assets"),
-    resolve(cwd, "../../sites/ami-care/src/assets"),
+    resolve(cwd, "src/lib/legacy-tenants/_assets/amicare/media"),
+    resolve(cwd, "apps/renderer/src/lib/legacy-tenants/_assets/amicare/media"),
   ].filter((dir): dir is string => Boolean(dir))
 }
 

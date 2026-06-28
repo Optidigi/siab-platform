@@ -7,10 +7,10 @@ keeping CMS-importable `SiteGenerationSpec` fixtures conservative.
 
 ## Research Summary
 
-- `sites/ami-care` has one production page with canonical content blocks, static
+- `removed legacy Amicare app source` has one production page with canonical content blocks, static
   bedroom/toys imagery, favicon/manifest assets, PostHog consent behavior, and
   `/api/forms` contact submission.
-- `sites/amblast` has five main pages, custom header/footer, shaped image heroes,
+- `removed legacy Amblast app source` has five main pages, custom header/footer, shaped image heroes,
   image/info boxes, a Swiper service carousel, two before/after portfolio sliders,
   Web3Forms contact forms, and a larger public asset set under
   `public/uploads`.

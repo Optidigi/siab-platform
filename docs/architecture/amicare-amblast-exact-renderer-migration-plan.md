@@ -2,7 +2,7 @@
 
 ## Objective
 
-Migrate `sites/ami-care` and `sites/amblast` into the generic renderer without
+Migrate `removed legacy Amicare app source` and `removed legacy Amblast app source` into the generic renderer without
 changing their visual output or behavior.
 
 The previous renderer staging work translated both sites into generic structured
@@ -30,32 +30,32 @@ existing Astro/CSS/JS source.
 
 Amicare source:
 
-- `sites/ami-care/src/layouts/BaseLayout.astro`
-- `sites/ami-care/src/components/Nav.tsx`
-- `sites/ami-care/src/components/Footer.astro`
-- `sites/ami-care/src/components/CookieConsent.astro`
-- `sites/ami-care/src/components/MaintenanceBanner.astro`
-- `sites/ami-care/src/components/cms/*.tsx`
-- `sites/ami-care/src/styles/global.css`
-- `sites/ami-care/src/styles/rich-text.css`
-- `sites/ami-care/src/lib/analytics/runtime.ts`
-- `sites/ami-care/src/lib/cms.ts`
-- `sites/ami-care/src/lib/richText.ts`
+- `removed legacy Amicare app source/src/layouts/BaseLayout.astro`
+- `removed legacy Amicare app source/src/components/Nav.tsx`
+- `removed legacy Amicare app source/src/components/Footer.astro`
+- `removed legacy Amicare app source/src/components/CookieConsent.astro`
+- `removed legacy Amicare app source/src/components/MaintenanceBanner.astro`
+- `removed legacy Amicare app source/src/components/cms/*.tsx`
+- `removed legacy Amicare app source/src/styles/global.css`
+- `removed legacy Amicare app source/src/styles/rich-text.css`
+- `removed legacy Amicare app source/src/lib/analytics/runtime.ts`
+- `removed legacy Amicare app source/src/lib/cms.ts`
+- `removed legacy Amicare app source/src/lib/richText.ts`
 
 Amblast source:
 
-- `sites/amblast/src/layouts/BaseLayout.astro`
-- `sites/amblast/src/components/layout/Header.astro`
-- `sites/amblast/src/components/layout/Footer.astro`
-- `sites/amblast/src/pages/index.astro`
-- `sites/amblast/src/pages/over-ons.astro`
-- `sites/amblast/src/pages/diensten.astro`
-- `sites/amblast/src/pages/portfolio.astro`
-- `sites/amblast/src/pages/contact.astro`
-- `sites/amblast/src/styles/global.css`
-- `sites/amblast/src/styles/amb-base.css`
-- `sites/amblast/src/scripts/site.client.ts`
-- `sites/amblast/src/content/site.ts`
+- `removed legacy Amblast app source/src/layouts/BaseLayout.astro`
+- `removed legacy Amblast app source/src/components/layout/Header.astro`
+- `removed legacy Amblast app source/src/components/layout/Footer.astro`
+- `removed legacy Amblast app source/src/pages/index.astro`
+- `removed legacy Amblast app source/src/pages/over-ons.astro`
+- `removed legacy Amblast app source/src/pages/diensten.astro`
+- `removed legacy Amblast app source/src/pages/portfolio.astro`
+- `removed legacy Amblast app source/src/pages/contact.astro`
+- `removed legacy Amblast app source/src/styles/global.css`
+- `removed legacy Amblast app source/src/styles/amb-base.css`
+- `removed legacy Amblast app source/src/scripts/site.client.ts`
+- `removed legacy Amblast app source/src/content/site.ts`
 
 Current renderer approximation to replace or quarantine:
 
@@ -105,9 +105,8 @@ Owner: one medium-effort subagent.
 
 ### Research
 
-- Run local builds for both legacy sites:
-  - `pnpm tenant:amicare:build`
-  - `pnpm tenant:amblast:build`
+- Run the canonical renderer build:
+  - `pnpm renderer:build`
 - Capture desktop and mobile screenshots for:
   - Amicare `/`
   - Amblast `/`
@@ -197,12 +196,12 @@ Owner: one medium-effort subagent.
   - `FAQ.tsx` -> exact FAQ block
   - `ContactSection.tsx` -> exact contact block
   - `CookieConsent.astro` and analytics runtime -> behavior port
-- Identify fields currently read from CMS via `sites/ami-care/src/lib/cms.ts`.
+- Identify fields currently read from CMS via `removed legacy Amicare app source/src/lib/cms.ts`.
 
 ### Implement
 
 - Port Amicare components into `packages/site-renderer/src/legacy-tenants/amicare`.
-- Preserve class names and CSS from `sites/ami-care/src/styles/global.css` and
+- Preserve class names and CSS from `removed legacy Amicare app source/src/styles/global.css` and
   `rich-text.css`, scoped under the Amicare legacy root.
 - Preserve behavior from `Nav.tsx`, cookie consent, and analytics runtime.
 - Convert data inputs to snapshot-backed structured props.
@@ -259,9 +258,9 @@ Owner: one medium-effort subagent.
   - diensten page sections
   - portfolio comparison sections
   - contact details/form page sections
-- Preserve `sites/amblast/src/styles/global.css` and `amb-base.css` with
+- Preserve `removed legacy Amblast app source/src/styles/global.css` and `amb-base.css` with
   selector behavior intact and scoped to Amblast legacy root/body class model.
-- Preserve `sites/amblast/src/scripts/site.client.ts` behavior or rewrite it
+- Preserve `removed legacy Amblast app source/src/scripts/site.client.ts` behavior or rewrite it
   only where necessary to run inside renderer without changing behavior.
 - Replace current Amblast approximation fixtures with exact legacy component
   snapshot data.
@@ -351,8 +350,6 @@ Owner: one medium-effort subagent.
   - `pnpm cms:test`
   - `pnpm renderer:typecheck`
   - `pnpm renderer:build`
-  - `pnpm tenant:amicare:build`
-  - `pnpm tenant:amblast:build`
 - Architect reviews screenshots before deployment.
 
 ## Phase 7: Deployment And Cutover Readiness Agent
@@ -428,9 +425,9 @@ For every phase:
 
 This migration is complete only when:
 
-- Amicare renderer output visually matches `sites/ami-care`/current live output
+- Amicare renderer output visually matches `removed legacy Amicare app source`/current live output
   at accepted desktop and mobile viewports.
-- Amblast renderer output visually matches `sites/amblast`/current live output
+- Amblast renderer output visually matches `removed legacy Amblast app source`/current live output
   for all pages at accepted desktop and mobile viewports.
 - Original behavior is preserved or any intentional difference is documented and
   accepted.

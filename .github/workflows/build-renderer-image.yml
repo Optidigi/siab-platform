@@ -8,8 +8,6 @@ on:
       - "packages/contracts/**"
       - "packages/site-renderer/**"
       - "packages/ui/**"
-      - "sites/ami-care/**"
-      - "sites/amblast/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -71,41 +69,7 @@ jobs:
           IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           set -euo pipefail
+          corepack enable
+          pnpm install --frozen-lockfile
           image_tag="$(printf '%s\n' "$IMAGE_TAGS" | head -n 1)"
-          docker run --rm -d --name siteinabox-renderer-smoke \
-            -e NODE_ENV=test \
-            -e HOST=0.0.0.0 \
-            -e PORT=4321 \
-            -e SIAB_RENDERER_FIXTURE_MODE=1 \
-            -e SITE_URL=http://127.0.0.1:4321 \
-            -p 4321:4321 \
-            "$image_tag"
-          trap 'docker rm -f siteinabox-renderer-smoke >/dev/null 2>&1 || true' EXIT
-          healthy=0
-          for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:4321/healthz; then
-              healthy=1
-              break
-            fi
-            sleep 1
-          done
-          if [ "$healthy" != "1" ]; then
-            docker logs siteinabox-renderer-smoke
-            exit 1
-          fi
-          amblast_home="$(curl -fsS -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/)"
-          grep -q 'wp-theme-cleanco' <<<"$amblast_home"
-          grep -q 'wpcf7-form' <<<"$amblast_home"
-          test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/portfolio-1)" = "200"
-          test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/contact-pagina)" = "200"
-          amblast_robots="$(curl -fsS -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/robots.txt)"
-          grep -q 'Crawl-delay: 10' <<<"$amblast_robots"
-          amicare_live_home="$(curl -fsS -H 'Host: ami-care.nl' http://127.0.0.1:4321/)"
-          grep -q 'id="siab-analytics-config"' <<<"$amicare_live_home"
-          grep -q 'Fixture Studio' <<<"$amicare_live_home"
-          amblast_live_home="$(curl -fsS -H 'Host: amblast.nl' http://127.0.0.1:4321/)"
-          grep -q 'id="siab-analytics-config"' <<<"$amblast_live_home"
-          grep -q 'Fixture Studio' <<<"$amblast_live_home"
-          amicare_missing="$(curl -sS -H 'Host: ami-care.nl' http://127.0.0.1:4321/missing-page)"
-          test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: ami-care.nl' http://127.0.0.1:4321/missing-page)" = "404"
-          ! grep -q 'id="siab-analytics-config"' <<<"$amicare_missing"
+          IMAGE_TAG="$image_tag" pnpm --dir apps/renderer smoke:packaged-image

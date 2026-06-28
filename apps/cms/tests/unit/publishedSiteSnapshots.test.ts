@@ -159,6 +159,41 @@ describe("published site snapshots", () => {
     expect(first.pages[0]?.status).toBe("published")
   })
 
+  it("publishes editable chrome variant settings and renderer analytics metadata", async () => {
+    const { buildPublishedSiteSnapshot } = await import("@/lib/publish/siteSnapshots")
+    const { payload, tenant, generationRuns, siteSettings } = createPayloadStub()
+    tenant.slug = "amblast"
+    tenant.siteManifest = {
+      version: 12,
+      themeId: "industrial-theme",
+      analytics: { provider: "posthog", captureSections: true, captureActions: true, captureForms: true },
+    } as any
+    ;(siteSettings as any).chrome = {
+      header: { variant: "amblastIndustrial", cta: { label: "Contact", href: "/contact" } },
+      footer: { variant: "amblastIndustrial", tagline: "Industrial cleaning", legalLinks: [{ label: "Privacy", href: "/privacy" }] },
+      banner: { variant: "hyperUiSimple", visible: true, title: "Update", message: "Now booking", link: { label: "Contact", href: "/contact" }, dismissible: true },
+    }
+
+    const snapshot = await buildPublishedSiteSnapshot(payload, 1, generationRuns[0]!)
+
+    expect(snapshot.settings.chrome).toMatchObject({
+      header: { variant: "amblastIndustrial", cta: { label: "Contact", href: "/contact" } },
+      footer: { variant: "amblastIndustrial", tagline: "Industrial cleaning", legalLinks: [{ label: "Privacy", href: "/privacy" }] },
+      banner: { variant: "hyperUiSimple", visible: true, title: "Update", message: "Now booking" },
+    })
+    expect(snapshot.settings.analytics).toMatchObject({
+      provider: "posthog",
+      consentMode: "required",
+      conversionGoals: { acceptedForms: true },
+      schemaVersion: 1,
+      tenantId: "1",
+      tenantSlug: "amblast",
+      siteDomain: "snapshot.test",
+      themeId: "industrial-theme",
+      manifestVersion: 12,
+    })
+  })
+
   it("publishes only run-linked CMS pages that are already published", async () => {
     const { buildPublishedSiteSnapshot } = await import("@/lib/publish/siteSnapshots")
     const { payload, pages, generationRuns } = createPayloadStub()
