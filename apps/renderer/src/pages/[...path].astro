@@ -67,6 +67,21 @@ const legacyTenant = resolved
       settings: resolved.snapshot.settings,
     })
   : null
+const mediaHref = (value: unknown): string | null => {
+  if (!value || typeof value !== "object") return typeof value === "string" && value ? value : null
+  const ref = value as { url?: unknown; filename?: unknown }
+  if (typeof ref.url === "string" && ref.url) return ref.url
+  if (typeof ref.filename === "string" && ref.filename) return `/media/${ref.filename}`
+  return null
+}
+const faviconHref =
+  resolved
+    ? mediaHref(resolved.snapshot.settings.branding?.favicon) ??
+      (legacyTenant === "amicare" ? "/favicon.svg" : legacyTenant === "amblast" ? "/favicon.ico" : null)
+    : null
+const appleTouchIconHref = legacyTenant ? "/apple-touch-icon.png" : null
+const manifestHref = legacyTenant ? "/manifest.json" : null
+const sitemapHref = legacyTenant ? "/sitemap-index.xml" : null
 const showRendererCookieConsent = Boolean(analyticsJson && legacyTenant !== "amicare")
 const rendererCookieConsentScript = `(() => {
   const preferenceKey = "siab_cookie_consent_v1";
@@ -121,6 +136,10 @@ const rendererCookieConsentScript = `(() => {
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="generator" content={Astro.generator} />
+        {faviconHref && <link rel="icon" href={faviconHref} />}
+        {appleTouchIconHref && <link rel="apple-touch-icon" href={appleTouchIconHref} />}
+        {manifestHref && <link rel="manifest" href={manifestHref} />}
+        {sitemapHref && <link rel="sitemap" href={sitemapHref} />}
         <title>{seo.title}</title>
         {seo.description && <meta name="description" content={seo.description} />}
         {seo.canonical && <link rel="canonical" href={seo.canonical} />}

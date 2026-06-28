@@ -157,6 +157,10 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   await assertStatus(amicareHome, 200, "ami-care.nl homepage status", amicareHtml, failureContext)
   assert.match(amicareHtml, /data-legacy-tenant="amicare"/)
   assert.match(amicareHtml, /id="siab-analytics-config"/)
+  assert.match(amicareHtml, /<link rel="icon" href="\/favicon\.svg"\/?>/)
+  assert.match(amicareHtml, /Jeugdzorg/)
+  assert.match(amicareHtml, /Begeleiding/)
+  assert.match(amicareHtml, /Vertrouwen/)
 
   const amblastHome = await fetchWithHost(baseUrl, "amblast.nl", "/")
   const amblastHtml = await amblastHome.text()

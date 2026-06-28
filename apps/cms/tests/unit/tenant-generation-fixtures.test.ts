@@ -87,6 +87,24 @@ describe("legacy tenant generation fixtures", () => {
     }
   })
 
+  it("keeps Amicare legacy hero badges and favicon in the official seed fixture", () => {
+    const home = amicareSiteGenerationSpec.pages.find((page) => page.slug === "index")
+    const hero = home?.blocks.find((block) => block.blockType === "hero")
+
+    expect(amicareSiteGenerationSpec.settings.branding?.favicon).toMatchObject({
+      url: "/favicon.svg",
+      filename: "favicon.svg",
+    })
+    expect(hero).toMatchObject({
+      variant: "amicareZenHero",
+      pills: [
+        { label: "Jeugdzorg" },
+        { label: "Begeleiding" },
+        { label: "Vertrouwen" },
+      ],
+    })
+  })
+
   it("keeps generated specs and published snapshots in data parity", () => {
     const pairs = [
       [amicareSiteGenerationSpec, amicarePublishedSiteSnapshot],

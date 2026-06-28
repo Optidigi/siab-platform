@@ -218,7 +218,10 @@ const amicareSettings: GeneratedSiteSettings = {
   description: "Amicare-Zorg - werken in de jeugdzorg met hart en toewijding.",
   language: "nl",
   contactEmail: "info@ami-care.nl",
-  branding: { primaryColor: "#a04e32" },
+  branding: {
+    primaryColor: "#a04e32",
+    favicon: { id: "amicare-favicon-svg", url: "/favicon.svg", filename: "favicon.svg", alt: "Amicare-Zorg favicon" },
+  },
   chrome: {
     header: {
       variant: "amicareZen",
@@ -313,6 +316,11 @@ const amicarePages: GeneratedPageSpec[] = [
           { text: " en toewijding." },
         ]),
         subheadline: blockText("Al jarenlang werk ik met toewijding in de jeugdzorg. Dit is het vak dat ik ken — waar mijn hart ligt, en waar ik mij dagelijks voor inzet."),
+        pills: [
+          { id: "amicare-hero-pill-jeugdzorg", label: "Jeugdzorg" },
+          { id: "amicare-hero-pill-begeleiding", label: "Begeleiding" },
+          { id: "amicare-hero-pill-vertrouwen", label: "Vertrouwen" },
+        ],
         cta: { label: "Contact", href: "#contact" },
         image: { id: "amicare-toys", url: "/media/toys.jpg", filename: "toys.jpg", alt: "Speelgoed" },
       },
