@@ -225,7 +225,7 @@ describe("legacy tenant generation fixtures", () => {
     expect(JSON.stringify(amblastPublishedSiteSnapshot.media)).toContain("IMG_20210402_151225-scaled.jpg")
   })
 
-  it("publishes Amicare chrome, analytics consent, JSON-LD, and SIAB form metadata", () => {
+  it("publishes Amicare chrome, analytics consent, JSON-LD, and exact captured homepage blocks", () => {
     expect(amicarePublishedSiteSnapshot.settings.chrome?.header).toMatchObject({
       behavior: "sticky",
       activeMode: "anchor",
@@ -237,15 +237,17 @@ describe("legacy tenant generation fixtures", () => {
       captureForms: true,
     })
     expect(amicarePublishedSiteSnapshot.settings.seoJsonLd?.organization?.enabled).toBe(true)
-    const contactBlock = amicarePublishedSiteSnapshot.pages[0]?.blocks.find((block) => block.blockType === "contactSection")
-    expect(contactBlock).toMatchObject({ blockType: "contactSection", formName: "amicare-contact" })
-    if (contactBlock?.blockType !== "contactSection") throw new Error("Expected Amicare contact section")
-    expect(contactBlock.provider).toMatchObject({
-      provider: "siab",
-      action: "/api/forms",
-      honeypotField: "company",
-      analyticsEnabled: true,
-    })
+    const pageBlocks = amicarePublishedSiteSnapshot.pages[0]?.blocks ?? []
+    expect(pageBlocks.map((block) => block.blockType)).toEqual(["hero", "featureList", "richText", "cta", "cta"])
+    expect(pageBlocks.some((block) => block.blockType === "contactSection")).toBe(false)
+    expect(pageBlocks.some((block) => block.blockType === "faq")).toBe(false)
+    expect(pageBlocks.some((block) => block.blockType === "testimonials")).toBe(false)
+    const heroBlock = pageBlocks.find((block) => block.blockType === "hero")
+    expect(JSON.stringify(heroBlock)).toContain("/media/toys.jpg")
+    const quoteBlock = pageBlocks.find((block) => block.blockType === "cta" && block.anchor === "wat-telt")
+    expect(JSON.stringify(quoteBlock)).toContain("/api/tenant-media/7/bedroom.jpg")
+    const contactBlock = pageBlocks.find((block) => block.blockType === "cta" && block.anchor === "contact")
+    expect(JSON.stringify(contactBlock)).toContain("mailto:info@ami-care.nl")
     expect(amicarePublishedSiteSnapshot.media?.map((entry) => typeof entry === "object" && entry ? entry.filename : entry)).toEqual(
       expect.arrayContaining(["bedroom.jpg", "toys.jpg", "og-default.png", "favicon.svg", "favicon.ico", "apple-touch-icon.png"]),
     )

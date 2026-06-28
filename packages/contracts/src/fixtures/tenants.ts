@@ -59,7 +59,8 @@ const amicareEditorialBody = (): RtBlockRoot => ({
       t: "heading",
       level: 2,
       children: [
-        { t: "text", v: "Het vak waar mijn " },
+        { t: "text", v: "Het vak " },
+        { t: "text", v: " mijn " },
         { t: "text", v: "hart ligt", marks: ["italic"] },
         { t: "text", v: "." },
       ],
@@ -313,7 +314,7 @@ const amicarePages: GeneratedPageSpec[] = [
         ]),
         subheadline: blockText("Al jarenlang werk ik met toewijding in de jeugdzorg. Dit is het vak dat ik ken — waar mijn hart ligt, en waar ik mij dagelijks voor inzet."),
         cta: { label: "Contact", href: "#contact" },
-        image: { id: "amicare-bedroom", url: "/media/bedroom.jpg", filename: "bedroom.jpg", alt: "Rustige kinderkamer" },
+        image: { id: "amicare-toys", url: "/media/toys.jpg", filename: "toys.jpg", alt: "Speelgoed" },
       },
       {
         blockType: "featureList",
@@ -342,6 +343,14 @@ const amicarePages: GeneratedPageSpec[] = [
         analytics: { sectionVariant: "amicare-quote-contact" },
         headline: inlineText("Vertrouwen ontstaat in de tijd, niet in één gesprek."),
         description: blockText("Daarom werk ik graag in trajecten waar continuïteit en kleine stappen het echte werk doen — voor jongeren, voor gezinnen, en voor de mensen om hen heen."),
+        backgroundImage: {
+          id: "amicare-bedroom",
+          url: "/api/tenant-media/7/bedroom.jpg",
+          filename: "bedroom.jpg",
+          alt: "Slaapkamer met zacht ochtendlicht",
+          width: 1600,
+          height: 1067,
+        },
       },
       {
         blockType: "cta",

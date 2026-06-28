@@ -11,6 +11,7 @@ const pathname = `/${Astro.params.path ?? ""}`
 const host = normalizeRequestHost(Astro.request.headers.get("x-forwarded-host") ?? Astro.request.headers.get("host"))
 const liveSnapshotHosts = new Set(["ami-care.nl", "amblast.nl"])
 const amicareLiveAssetPrefixes = [
+  "/_astro/",
   "/media/",
   "/api/tenant-media/7/",
   "/favicon",
