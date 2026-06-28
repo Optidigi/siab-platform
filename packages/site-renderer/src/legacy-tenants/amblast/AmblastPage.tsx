@@ -6,7 +6,7 @@ import type { BlockRegistry } from "../../blocks"
 import type { MediaResolver } from "../../media"
 import { resolveMedia } from "../../media"
 import { extractRichText } from "../../rich-text"
-import { ThemeStyle, themeMode } from "../../theme"
+import { PUBLIC_RENDERER_THEME_SCOPE, ThemeStyle, themeMode } from "../../theme"
 import { AMBLAST_LEGACY_PAGES, type AmblastLegacyPageSlug, resolveAmblastLegacyPageSlug } from "./legacy-html"
 
 export type AmblastPageRendererProps = {
@@ -809,7 +809,7 @@ export function AmblastPageRenderer({
       data-amblast-page={legacySlug}
       data-amblast-page-id={legacyPage.pageId}
     >
-      {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} />}
+      {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} scope={PUBLIC_RENDERER_THEME_SCOPE} />}
       <div
         className={cn("rt-canvas w-full", canvasClassName)}
         data-rt-mode={themeMode(theme)}

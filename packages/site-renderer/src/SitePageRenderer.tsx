@@ -8,7 +8,7 @@ import { AmicarePageRenderer } from "./legacy-tenants/amicare/AmicarePage"
 import { AmblastPageRenderer } from "./legacy-tenants/amblast/AmblastPage"
 import { resolveLegacyTenant } from "./legacy-tenants/resolve"
 import type { MediaResolver } from "./media"
-import { ThemeStyle, themeMode } from "./theme"
+import { PUBLIC_RENDERER_THEME_SCOPE, ThemeStyle, themeMode } from "./theme"
 
 export type SitePageRendererProps = {
   page: Page
@@ -81,7 +81,7 @@ export function SitePageRenderer({
 
   return (
     <div className={cn("site-renderer", className)} data-siab-site-renderer>
-      {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} />}
+      {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} scope={PUBLIC_RENDERER_THEME_SCOPE} />}
       <div
         className={cn("rt-canvas w-full", canvasClassName)}
         data-rt-mode={themeMode(theme)}

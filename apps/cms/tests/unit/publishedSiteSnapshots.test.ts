@@ -3,7 +3,9 @@ import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { amblastPublishedSiteSnapshot, amicarePublishedSiteSnapshot } from "@siteinabox/contracts/fixtures/tenants"
 import { SitePageRenderer } from "@siteinabox/site-renderer"
+import { PUBLIC_RENDERER_THEME_SCOPE, themeToCssVars } from "@siteinabox/site-renderer/theme/css-vars"
 import type { Page, SiteGenerationRun, Tenant } from "@/payload-types"
+import { toCssVars } from "@/lib/theme/toCssVars"
 
 const settingsDoc = {
   id: 10,
@@ -138,6 +140,12 @@ const createPayloadStub = () => {
   return { payload: payload as any, tenant, pages, generationRuns, snapshots, siteSettings }
 }
 
+const expectCssTokens = (css: string, expected: Record<string, string>) => {
+  for (const [token, value] of Object.entries(expected)) {
+    expect(css).toContain(`${token}:${value}`)
+  }
+}
+
 describe("published site snapshots", () => {
   beforeEach(() => {
     vi.useRealTimers()
@@ -159,40 +167,254 @@ describe("published site snapshots", () => {
     expect(first.pages[0]?.status).toBe("published")
   })
 
-  it("publishes Amicare snapshots with exact legacy color tokens even when tenant palette is missing", async () => {
+  it("publishes Amicare snapshots with the exact stored tenant theme", async () => {
     const { buildPublishedSiteSnapshot } = await import("@/lib/publish/siteSnapshots")
-    const { payload, tenant, generationRuns, siteSettings } = createPayloadStub()
+    const { payload, tenant, pages, generationRuns, siteSettings } = createPayloadStub()
     tenant.slug = "ami-care"
     tenant.domain = "ami-care.nl"
     tenant.theme = {
+      palette: {
+        accent: "#2563eb",
+        bg: "#f8fafc",
+        ink: "#0f172a",
+        muted: "#64748b",
+      },
       fonts: {
-        text: "Inter Variable, system-ui, sans-serif",
-        title: "Fraunces Variable, Georgia, serif",
-        heading: "Fraunces Variable, Georgia, serif",
+        text: "Geist, system-ui, sans-serif",
+        title: "Playfair Display, Georgia, serif",
+        heading: "Playfair Display, Georgia, serif",
       },
       radius: "1.5rem",
-      density: "comfortable",
-      borderStyle: "solid",
-      stylePreset: "warm-care",
-      mode: "light",
+      density: "spacious",
+      borderStyle: "dashed",
+      stylePreset: "editorial-care",
+      mode: "dark",
     } as any
     ;(siteSettings as any).branding = { primaryColor: "#a04e32" }
 
     const snapshot = await buildPublishedSiteSnapshot(payload, 1, generationRuns[0]!)
 
-    expect(snapshot.theme?.colors).toMatchObject({
-      accent: "#a04e32",
-      bg: "#fbf7f0",
-      ink: "#1f1a14",
-      muted: "#5a4f44",
-      card: "#ffffff",
-      secondary: "#efe9dd",
-      rule: "rgba(31, 26, 20, 0.12)",
+    expect(snapshot.theme).toEqual({
+      colors: {
+        accent: "#2563eb",
+        bg: "#f8fafc",
+        ink: "#0f172a",
+        muted: "#64748b",
+      },
+      darkColors: undefined,
+      fonts: {
+        text: "Geist, system-ui, sans-serif",
+        title: "Playfair Display, Georgia, serif",
+        heading: "Playfair Display, Georgia, serif",
+      },
+      radius: "1.5rem",
+      density: "spacious",
+      borderStyle: "dashed",
+      stylePreset: "editorial-care",
+      mode: "dark",
     })
-    expect(snapshot.theme?.fonts).toMatchObject({
-      script: "Caveat Variable, cursive",
+    expect(JSON.stringify(snapshot.theme)).not.toContain("#a04e32")
+    expect(JSON.stringify(snapshot.theme)).not.toContain("Fraunces Variable")
+    expect(JSON.stringify(snapshot.theme)).not.toContain("Caveat Variable")
+    expect(JSON.stringify(snapshot.theme)).not.toContain("warm-care")
+
+    const expectedVars = {
+      "--color-accent": "#2563eb",
+      "--color-bg": "#f8fafc",
+      "--color-ink": "#0f172a",
+      "--color-ink-muted": "#64748b",
+      "--font-title": "Playfair Display, Georgia, serif",
+      "--font-heading": "Playfair Display, Georgia, serif",
+      "--font-text": "Geist, system-ui, sans-serif",
+      "--radius-md": "1.5rem",
+      "--site-density": "spacious",
+      "--border-style": "dashed",
+      "--site-style-preset": "editorial-care",
+    }
+    const cmsCss = toCssVars(tenant.theme as any)
+    const publicCss = themeToCssVars(snapshot.theme, PUBLIC_RENDERER_THEME_SCOPE)
+    const publicMarkup = renderToStaticMarkup(createElement(SitePageRenderer, {
+      page: pages[0] as any,
+      settings: snapshot.settings,
+      theme: snapshot.theme,
+      tenantSlug: snapshot.tenantSlug,
+      domain: snapshot.domain,
+    }))
+
+    expectCssTokens(cmsCss, expectedVars)
+    expectCssTokens(publicCss, expectedVars)
+    expect(publicCss).toContain(`${PUBLIC_RENDERER_THEME_SCOPE}{`)
+    expect(publicCss).toContain(`${PUBLIC_RENDERER_THEME_SCOPE}[data-rt-mode="dark"]{--color-bg:#09090b`)
+    expect(publicMarkup).toContain('data-rt-mode="dark"')
+    expect(publicMarkup).toContain(PUBLIC_RENDERER_THEME_SCOPE)
+    expect(publicMarkup).toContain("--color-bg:#09090b")
+  })
+
+  it("publishes Amblast snapshots with explicit dark palette tokens that match CMS and public renderer CSS", async () => {
+    const { buildPublishedSiteSnapshot } = await import("@/lib/publish/siteSnapshots")
+    const { payload, tenant, pages, generationRuns } = createPayloadStub()
+    tenant.slug = "amblast"
+    tenant.domain = "amblast.nl"
+    const cmsTheme = {
+      palette: {
+        accent: "#ffd500",
+        bg: "#ffffff",
+        ink: "#333333",
+        muted: "#6b6b6b",
+      },
+      darkPalette: {
+        accent: "#86e9ef",
+        bg: "#111827",
+        ink: "#f9fafb",
+        muted: "#cbd5e1",
+      },
+      fonts: {
+        text: "Barlow, Arial, sans-serif",
+        title: "Barlow Condensed, Arial, sans-serif",
+        heading: "Barlow, Arial, sans-serif",
+      },
+      radius: "6px",
+      density: "comfortable",
+      borderStyle: "solid",
+      stylePreset: "industrial-cleaning",
+      mode: "dark",
+    } as any
+    tenant.theme = cmsTheme
+
+    const snapshot = await buildPublishedSiteSnapshot(payload, 1, generationRuns[0]!)
+    const expectedVars = {
+      "--color-accent": "#ffd500",
+      "--color-bg": "#ffffff",
+      "--color-ink": "#333333",
+      "--color-ink-muted": "#6b6b6b",
+      "--font-title": "Barlow Condensed, Arial, sans-serif",
+      "--font-heading": "Barlow, Arial, sans-serif",
+      "--font-text": "Barlow, Arial, sans-serif",
+      "--radius-md": "6px",
+      "--site-density": "comfortable",
+      "--border-style": "solid",
+      "--site-style-preset": "industrial-cleaning",
+    }
+    const expectedDarkVars = {
+      "--color-accent": "#86e9ef",
+      "--color-bg": "#111827",
+      "--color-ink": "#f9fafb",
+      "--color-ink-muted": "#cbd5e1",
+    }
+    const cmsCss = toCssVars(tenant.theme as any)
+    const publicCss = themeToCssVars(snapshot.theme, PUBLIC_RENDERER_THEME_SCOPE)
+    const publicMarkup = renderToStaticMarkup(createElement(SitePageRenderer, {
+      page: pages[0] as any,
+      settings: snapshot.settings,
+      theme: snapshot.theme,
+      tenantSlug: snapshot.tenantSlug,
+      domain: snapshot.domain,
+    }))
+
+    expect(snapshot).toMatchObject({
+      tenantSlug: "amblast",
+      domain: "amblast.nl",
+      theme: {
+        colors: cmsTheme.palette,
+        darkColors: cmsTheme.darkPalette,
+        fonts: cmsTheme.fonts,
+        radius: "6px",
+        density: "comfortable",
+        borderStyle: "solid",
+        stylePreset: "industrial-cleaning",
+        mode: "dark",
+      },
     })
-    expect(snapshot.theme?.radius).toBe("1.5rem")
+    expectCssTokens(cmsCss, expectedVars)
+    expectCssTokens(cmsCss, expectedDarkVars)
+    expectCssTokens(publicCss, expectedVars)
+    expectCssTokens(publicCss, expectedDarkVars)
+    expect(publicCss).toContain(`${PUBLIC_RENDERER_THEME_SCOPE}{`)
+    expect(publicCss).toContain(`${PUBLIC_RENDERER_THEME_SCOPE}[data-rt-mode="dark"]{`)
+    expect(publicMarkup).toContain('data-legacy-tenant="amblast"')
+    expect(publicMarkup).toContain('data-rt-mode="dark"')
+    expect(publicMarkup).toContain(PUBLIC_RENDERER_THEME_SCOPE)
+    expect(publicMarkup).toContain("--color-bg:#111827")
+  })
+
+  it("publishes generic generated-site theme tokens through the same snapshot and CSS path", async () => {
+    const { buildPublishedSiteSnapshot } = await import("@/lib/publish/siteSnapshots")
+    const { payload, tenant, generationRuns } = createPayloadStub()
+    tenant.slug = "generated-studio"
+    tenant.domain = "generated-studio.test"
+    const cmsTheme = {
+      palette: {
+        accent: "#16a34a",
+        bg: "#f7fee7",
+        ink: "#052e16",
+        muted: "#4d7c0f",
+      },
+      fonts: {
+        text: "Inter, system-ui, sans-serif",
+        title: "Poppins, system-ui, sans-serif",
+        heading: "Poppins, system-ui, sans-serif",
+      },
+      radius: "12px",
+      density: "compact",
+      borderStyle: "none",
+      stylePreset: "fresh-local",
+      mode: "light",
+    } as any
+    tenant.theme = cmsTheme
+
+    const snapshot = await buildPublishedSiteSnapshot(payload, 1, generationRuns[0]!)
+    const expectedVars = {
+      "--color-accent": "#16a34a",
+      "--color-bg": "#f7fee7",
+      "--color-ink": "#052e16",
+      "--color-ink-muted": "#4d7c0f",
+      "--font-title": "Poppins, system-ui, sans-serif",
+      "--font-heading": "Poppins, system-ui, sans-serif",
+      "--font-text": "Inter, system-ui, sans-serif",
+      "--radius-md": "12px",
+      "--site-density": "compact",
+      "--border-style": "none",
+      "--site-style-preset": "fresh-local",
+    }
+    const cmsCss = toCssVars(tenant.theme as any)
+    const publicCss = themeToCssVars(snapshot.theme, PUBLIC_RENDERER_THEME_SCOPE)
+
+    expect(snapshot).toMatchObject({
+      tenantSlug: "generated-studio",
+      domain: "generated-studio.test",
+      theme: {
+        colors: cmsTheme.palette,
+        fonts: cmsTheme.fonts,
+        radius: "12px",
+        density: "compact",
+        borderStyle: "none",
+        stylePreset: "fresh-local",
+        mode: "light",
+      },
+    })
+    expectCssTokens(cmsCss, expectedVars)
+    expectCssTokens(publicCss, expectedVars)
+    expect(publicCss).toContain(`${PUBLIC_RENDERER_THEME_SCOPE}{`)
+    expect(publicCss).not.toContain('[data-rt-mode="dark"]')
+  })
+
+  it("does not re-expand cleared Amicare theme tokens during publish", async () => {
+    const { buildPublishedSiteSnapshot } = await import("@/lib/publish/siteSnapshots")
+    const { payload, tenant, generationRuns, siteSettings } = createPayloadStub()
+    tenant.slug = "ami-care"
+    tenant.domain = "ami-care.nl"
+    tenant.theme = {
+      palette: { accent: "", bg: "", ink: "", muted: "" },
+      darkPalette: { accent: "", bg: "", ink: "", muted: "" },
+      fonts: { text: "", title: "", heading: "" },
+      radius: "",
+      stylePreset: "",
+    } as any
+    ;(siteSettings as any).branding = { primaryColor: "#a04e32" }
+
+    const snapshot = await buildPublishedSiteSnapshot(payload, 1, generationRuns[0]!)
+
+    expect(snapshot.theme).toBeNull()
   })
 
   it("publishes editable chrome variant settings and renderer analytics metadata", async () => {

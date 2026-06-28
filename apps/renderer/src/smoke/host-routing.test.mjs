@@ -4,6 +4,7 @@ import test from "node:test"
 
 import {
   assertHostRouting,
+  assertStubCmsSnapshots,
   closeServer,
   getOpenPort,
   startStubCms,
@@ -23,6 +24,7 @@ async function stopChild(child) {
 
 test("routes production hosts through CMS snapshots, dispatches legacy renderers, and keeps 404s analytics-free", async (t) => {
   const cms = await startStubCms()
+  await assertStubCmsSnapshots(cms)
   const port = await getOpenPort()
   const baseUrl = `http://127.0.0.1:${port}`
   const child = spawn("pnpm", ["exec", "astro", "dev", "--host", "127.0.0.1", "--port", String(port)], {

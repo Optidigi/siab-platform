@@ -21,7 +21,8 @@
     "lint:no-css": "node scripts/check-no-css.mjs",
     "payload:contract": "node scripts/check-payload-contract.mjs",
     "posthog:sync-settings": "node scripts/sync-posthog-project-settings.mjs",
-    "seed:renderer-staging": "tsx scripts/seed-renderer-staging-tenants.ts"
+    "seed:renderer-staging": "tsx scripts/seed-renderer-staging-tenants.ts",
+    "snapshots:repair-official": "tsx scripts/repair-official-tenant-snapshots.ts"
   },
   "dependencies": {
     "@better-auth/infra": "^0.2.14",

@@ -24,7 +24,7 @@ import type { BlockRegistry } from "../../blocks"
 import type { MediaResolver, ResolvedMedia } from "../../media"
 import { resolveMedia } from "../../media"
 import { RichTextRenderer, extractRichText } from "../../rich-text"
-import { ThemeStyle, themeMode } from "../../theme"
+import { PUBLIC_RENDERER_THEME_SCOPE, ThemeStyle, themeMode } from "../../theme"
 
 export type AmicarePageRendererProps = {
   page: Page
@@ -895,7 +895,7 @@ export function AmicarePageRenderer({
       data-siab-site-renderer
       data-legacy-tenant="amicare"
     >
-      {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} />}
+      {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} scope={PUBLIC_RENDERER_THEME_SCOPE} />}
       <div
         className={cn("rt-canvas w-full [container-name:site-frame] [container-type:inline-size]", canvasClassName)}
         data-rt-mode={themeMode(theme)}

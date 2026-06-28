@@ -53,7 +53,7 @@ export async function startStubCms({ listenHost = "127.0.0.1", publicHost = list
   })
   server.listen(port, listenHost)
   await once(server, "listening")
-  return { server, url: `http://${publicHost}:${port}`, localUrl: `http://127.0.0.1:${port}` }
+  return { server, snapshotsByHost, url: `http://${publicHost}:${port}`, localUrl: `http://127.0.0.1:${port}` }
 }
 
 function publishedSnapshotForHost(host) {
@@ -128,6 +128,28 @@ export async function fetchWithHost(baseUrl, host, pathname) {
   })
 }
 
+export async function assertStubCmsSnapshots(cms) {
+  const expected = [
+    ["ami-care.nl", "ami-care", "#a04e32", "warm-care"],
+    ["amblast.nl", "amblast", "#ffd500", "industrial-cleaning"],
+  ]
+
+  for (const [host, tenantSlug, accent, stylePreset] of expected) {
+    const response = await fetch(`${cms.url}/api/renderer/snapshot?host=${encodeURIComponent(host)}`)
+    const body = await response.text()
+    assert.equal(response.status, 200, `${host} snapshot route status\n${body}`)
+    const { snapshot } = JSON.parse(body)
+    assert.equal(snapshot.tenantSlug, tenantSlug, `${host} snapshot tenant slug`)
+    assert.equal(snapshot.domain, host, `${host} snapshot domain`)
+    assert.equal(snapshot.siteUrl, `https://${host}`, `${host} snapshot site URL`)
+    assert.equal(snapshot.settings.siteUrl, `https://${host}`, `${host} snapshot settings site URL`)
+    assert.equal(snapshot.theme?.colors?.accent, accent, `${host} snapshot theme accent`)
+    assert.equal(snapshot.theme?.stylePreset, stylePreset, `${host} snapshot theme style preset`)
+    assert.equal(snapshot.manifest?.tenantId, snapshot.tenantId, `${host} snapshot manifest tenant id`)
+    assert.equal(cms.snapshotsByHost.get(host)?.tenantSlug, tenantSlug, `${host} active stub snapshot map`)
+  }
+}
+
 async function failureContextText(failureContext) {
   await new Promise((resolve) => setTimeout(resolve, 250))
   return typeof failureContext === "function" ? await failureContext() : failureContext
@@ -156,6 +178,11 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   const amicareHtml = await amicareHome.text()
   await assertStatus(amicareHome, 200, "ami-care.nl homepage status", amicareHtml, failureContext)
   assert.match(amicareHtml, /data-legacy-tenant="amicare"/)
+  assert.match(amicareHtml, /data-siab-theme-overrides/)
+  assert.match(amicareHtml, /\.site-renderer\[data-siab-site-renderer\] \.rt-canvas/)
+  assert.match(amicareHtml, /--color-accent:#a04e32/)
+  assert.match(amicareHtml, /--font-title:Fraunces Variable, Georgia, serif/)
+  assert.match(amicareHtml, /--site-style-preset:warm-care/)
   assert.match(amicareHtml, /id="siab-analytics-config"/)
   assert.match(amicareHtml, /<link rel="icon" href="\/favicon\.svg"\/?>/)
   assert.match(amicareHtml, /Jeugdzorg/)
@@ -167,6 +194,11 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   await assertStatus(amblastHome, 200, "amblast.nl homepage status", amblastHtml, failureContext)
   assert.match(amblastHtml, /data-legacy-tenant="amblast"/)
   assert.match(amblastHtml, /amb-/)
+  assert.match(amblastHtml, /data-siab-theme-overrides/)
+  assert.match(amblastHtml, /\.site-renderer\[data-siab-site-renderer\] \.rt-canvas/)
+  assert.match(amblastHtml, /--color-accent:#ffd500/)
+  assert.match(amblastHtml, /--font-title:Barlow, Arial, sans-serif/)
+  assert.match(amblastHtml, /--site-style-preset:industrial-cleaning/)
   assert.match(amblastHtml, /id="siab-analytics-config"/)
 
   const amicareRobots = await fetchWithHost(baseUrl, "ami-care.nl", "/robots.txt")

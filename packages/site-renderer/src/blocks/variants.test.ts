@@ -25,6 +25,7 @@ import { SiteBanner, SiteFooter, SiteHeader } from "../chrome"
 import { v1FixturePage, v1FixtureSettings } from "../fixtures/v1"
 import { resolveLegacyTenant } from "../legacy-tenants/resolve"
 import { SitePageRenderer } from "../SitePageRenderer"
+import { PUBLIC_RENDERER_THEME_SCOPE, themeToCssVars } from "../theme"
 import { rendererVariantClassName, resolveBlockVariant, runtimeVariantDataAttribute } from "./variants"
 
 function assertEqual<T>(actual: T, expected: T, label: string) {
@@ -77,6 +78,28 @@ function assertOrdered(value: string, first: string, second: string, label: stri
   if (firstIndex === -1 || secondIndex === -1 || firstIndex > secondIndex) {
     throw new Error(`${label}: expected ${first} before ${second}`)
   }
+}
+
+function selectorSpecificity(selector: string): [number, number, number] {
+  const withoutStrings = selector.replace(/"[^"]*"|'[^']*'/g, "")
+  const ids = withoutStrings.match(/#[A-Za-z0-9_-]+/g)?.length ?? 0
+  const classAttributePseudo = withoutStrings.match(/(\.[A-Za-z0-9_-]+|\[[^\]]+\]|:(?!:)[A-Za-z0-9_-]+)/g)?.length ?? 0
+  const withoutSpecificTokens = withoutStrings
+    .replace(/#[A-Za-z0-9_-]+/g, " ")
+    .replace(/(\.[A-Za-z0-9_-]+|\[[^\]]+\]|:{1,2}[A-Za-z0-9_-]+)/g, " ")
+  const elements = withoutSpecificTokens
+    .split(/[\s>+~*,()]+/)
+    .filter((part) => part && part !== "&")
+    .length
+  return [ids, classAttributePseudo, elements]
+}
+
+function compareSpecificity(left: [number, number, number], right: [number, number, number]): number {
+  for (let index = 0; index < left.length; index += 1) {
+    const delta = left[index]! - right[index]!
+    if (delta !== 0) return delta
+  }
+  return 0
 }
 
 async function readCssFixture() {
@@ -545,6 +568,67 @@ function runAmblastScopeTests() {
   assertEqual(portfolioBlocks.some((block) => block.blockType === "beforeAfterGallery" && block.variant === "amblastPortfolio"), true, "Amblast portfolio comparison fixture")
 }
 
+function runThemeCssVarTests() {
+  const amicareCss = themeToCssVars(amicarePublishedSiteSnapshot.theme, PUBLIC_RENDERER_THEME_SCOPE)
+
+  assertIncludes(amicareCss, `${PUBLIC_RENDERER_THEME_SCOPE}{`, "themeToCssVars supports public renderer scope")
+  assertIncludes(amicareCss, "--color-accent:#a04e32", "themeToCssVars emits Amicare accent in public renderer scope")
+  assertIncludes(amicareCss, "--color-bg:#fbf7f0", "themeToCssVars emits Amicare background in public renderer scope")
+  assertIncludes(amicareCss, "--color-ink:#1f1a14", "themeToCssVars emits Amicare ink in public renderer scope")
+  assertIncludes(amicareCss, "--color-ink-muted:#5a4f44", "themeToCssVars emits Amicare muted ink in public renderer scope")
+  assertIncludes(amicareCss, "--font-title:Fraunces Variable, Georgia, serif", "themeToCssVars emits Amicare title font in public renderer scope")
+  assertIncludes(amicareCss, "--font-heading:Fraunces Variable, Georgia, serif", "themeToCssVars emits Amicare heading font in public renderer scope")
+  assertIncludes(amicareCss, "--font-text:Inter Variable, system-ui, sans-serif", "themeToCssVars emits Amicare text font in public renderer scope")
+  assertIncludes(amicareCss, "--font-script:Caveat Variable, cursive", "themeToCssVars emits Amicare script font in public renderer scope")
+  assertIncludes(amicareCss, "--radius-md:0.5rem", "themeToCssVars emits Amicare radius in public renderer scope")
+  assertIncludes(amicareCss, "--site-style-preset:warm-care", "themeToCssVars emits Amicare style preset in public renderer scope")
+  assertIncludes(amicareCss, "--site-density:comfortable", "themeToCssVars emits Amicare density in public renderer scope")
+  assertIncludes(amicareCss, "--border-style:solid", "themeToCssVars emits Amicare border style in public renderer scope")
+
+  const amblastCss = themeToCssVars(amblastPublishedSiteSnapshot.theme, PUBLIC_RENDERER_THEME_SCOPE)
+  assertIncludes(amblastCss, `${PUBLIC_RENDERER_THEME_SCOPE}{`, "themeToCssVars supports Amblast public renderer scope")
+  assertIncludes(amblastCss, "--color-accent:#ffd500", "themeToCssVars emits Amblast accent in public renderer scope")
+  assertIncludes(amblastCss, "--color-bg:#ffffff", "themeToCssVars emits Amblast background in public renderer scope")
+  assertIncludes(amblastCss, "--color-ink:#333333", "themeToCssVars emits Amblast ink in public renderer scope")
+  assertIncludes(amblastCss, "--color-ink-muted:#6b6b6b", "themeToCssVars emits Amblast muted ink in public renderer scope")
+  assertIncludes(amblastCss, "--font-title:Barlow, Arial, sans-serif", "themeToCssVars emits Amblast title font in public renderer scope")
+  assertIncludes(amblastCss, "--font-heading:Barlow, Arial, sans-serif", "themeToCssVars emits Amblast heading font in public renderer scope")
+  assertIncludes(amblastCss, "--font-text:Barlow, Arial, sans-serif", "themeToCssVars emits Amblast text font in public renderer scope")
+  assertIncludes(amblastCss, "--radius-md:6px", "themeToCssVars emits Amblast radius in public renderer scope")
+  assertIncludes(amblastCss, "--site-style-preset:industrial-cleaning", "themeToCssVars emits Amblast style preset in public renderer scope")
+
+  const darkFallbackCss = themeToCssVars(
+    {
+      ...amicarePublishedSiteSnapshot.theme,
+      darkColors: undefined,
+      mode: "dark",
+    },
+    PUBLIC_RENDERER_THEME_SCOPE,
+  )
+  assertIncludes(
+    darkFallbackCss,
+    `${PUBLIC_RENDERER_THEME_SCOPE}[data-rt-mode="dark"]{--color-bg:#09090b`,
+    "dark mode without an explicit dark palette emits fallback dark canvas variables",
+  )
+  assertIncludes(darkFallbackCss, "--color-ink:#fafafa", "dark fallback emits readable ink")
+  assertIncludes(darkFallbackCss, "--color-rule:rgba(255, 255, 255, 0.12)", "dark fallback emits rule color")
+
+  const publicSpecificity = selectorSpecificity(PUBLIC_RENDERER_THEME_SCOPE)
+  const legacyBaseSpecificity = selectorSpecificity('.site-renderer[data-legacy-tenant="amblast"]')
+  const legacyCanvasSpecificity = selectorSpecificity('.site-renderer[data-legacy-tenant="amblast"] .rt-canvas')
+
+  assertEqual(
+    compareSpecificity(publicSpecificity, legacyBaseSpecificity) > 0,
+    true,
+    "public renderer theme scope outranks legacy tenant base selector",
+  )
+  assertEqual(
+    compareSpecificity(publicSpecificity, legacyCanvasSpecificity) >= 0,
+    true,
+    "public renderer theme scope is not weaker than legacy tenant canvas selector",
+  )
+}
+
 async function runLegacyRendererDispatchTests() {
   assertEqual(
     resolveLegacyTenant({
@@ -626,7 +710,16 @@ async function runLegacyRendererDispatchTests() {
       domain: amicarePublishedSiteSnapshot.domain,
     }),
   )
+  const publicRendererScope = ".site-renderer[data-siab-site-renderer] .rt-canvas"
   assertIncludes(amicareMarkup, 'data-legacy-tenant="amicare"', "Amicare legacy root attribute")
+  assertIncludes(amicareMarkup, "data-siab-site-renderer", "Amicare public renderer root attribute")
+  assertIncludes(amicareMarkup, 'data-rt-mode="light"', "Amicare light theme mode marker")
+  assertIncludes(amicareMarkup, `${publicRendererScope}{`, "Amicare theme overrides use public renderer scope")
+  assertIncludes(amicareMarkup, "--color-accent:#a04e32", "Amicare emits non-default accent token")
+  assertIncludes(amicareMarkup, "--color-bg:#fbf7f0", "Amicare emits non-default background token")
+  assertIncludes(amicareMarkup, "--font-title:Fraunces Variable, Georgia, serif", "Amicare emits non-default title font token")
+  assertIncludes(amicareMarkup, "--font-text:Inter Variable, system-ui, sans-serif", "Amicare emits non-default text font token")
+  assertIncludes(amicareMarkup, "--radius-sm:0.25rem;--radius-md:0.5rem;--radius-lg:1rem", "Amicare emits non-default radius tokens")
   assertIncludes(amicareMarkup, "data-amicare-nav", "Amicare exact nav marker")
   assertIncludes(amicareMarkup, 'class="rt-canvas w-full [container-name:site-frame] [container-type:inline-size]"', "Amicare root container query classes")
   assertIncludes(amicareMarkup, 'class="site-frame-root"', "Amicare site frame root")
@@ -675,6 +768,27 @@ async function runLegacyRendererDispatchTests() {
     false,
     "Amicare legacy renderer bypasses generic chrome approximation",
   )
+
+  const darkAmicareMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: amicarePage,
+      settings: amicarePublishedSiteSnapshot.settings,
+      theme: {
+        ...amicarePublishedSiteSnapshot.theme,
+        mode: "dark",
+        darkColors: undefined,
+      },
+      tenantSlug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+    }),
+  )
+  assertIncludes(darkAmicareMarkup, 'data-rt-mode="dark"', "Amicare dark theme mode marker")
+  assertIncludes(
+    darkAmicareMarkup,
+    `${publicRendererScope}[data-rt-mode="dark"]{--color-bg:#09090b;--color-ink:#fafafa;--color-ink-muted:#a1a1aa;--color-card:#18181b;--color-secondary:#27272a;--color-rule:rgba(255, 255, 255, 0.12)}`,
+    "Amicare dark mode without darkColors emits CMS canvas fallback tokens",
+  )
+  assertIncludes(darkAmicareMarkup, "--color-accent:#a04e32", "Amicare dark fallback keeps base accent token")
 
   const amicareContactDescriptionPage = {
     ...amicarePage,
@@ -1086,4 +1200,5 @@ runBlockRenderTests()
 runChromeRenderTests()
 runAmicareScopeTests()
 runAmblastScopeTests()
+runThemeCssVarTests()
 await runLegacyRendererDispatchTests()
