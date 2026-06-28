@@ -24,4 +24,25 @@ describe("PageForm wiring boundaries", () => {
       'from "@/components/forms/PageForm"',
     )
   })
+
+  it("routes official legacy tenant canvas rendering through the shared renderer", () => {
+    const canvasMode = read("src/components/editor/canvas/CanvasMode.tsx")
+    const pageForm = read("src/components/forms/PageForm.tsx")
+
+    expect(canvasMode).toContain('from "@siteinabox/site-renderer"')
+    expect(canvasMode).toContain("resolveLegacyTenant")
+    expect(canvasMode).toContain("<SitePageRenderer")
+    expect(pageForm).toContain("rendererSettings")
+    expect(pageForm).toContain("tenantSlug")
+  })
+
+  it("keeps live publishing separate from page save and publishes current CMS pages", () => {
+    const pageForm = read("src/components/forms/PageForm.tsx")
+
+    expect(pageForm).toContain("Publish live")
+    expect(pageForm).toContain("canPublishLive")
+    expect(pageForm).toContain('fetch("/api/publish"')
+    expect(pageForm).toContain("includeAllPublishedPages: true")
+    expect(pageForm).toContain("manualActivation: true")
+  })
 })

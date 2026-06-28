@@ -26,6 +26,7 @@ const PUBLISH_SNAPSHOT_MUTATION_CONTEXT = { publishSnapshotLifecycleMutation: tr
 export type PublishSiteOptions = {
   tenantId: string | number
   generationRunId?: string | number | null
+  includeAllPublishedPages?: boolean
   activate?: boolean
   manualActivation?: boolean
   publishedBy?: string | number | null
@@ -134,11 +135,16 @@ async function latestApprovedRunForTenant(payload: Payload, tenantId: string | n
   }) ?? null)
 }
 
-async function pagesForSnapshot(payload: Payload, tenantId: string | number, run: SiteGenerationRun | null): Promise<Page[]> {
+async function pagesForSnapshot(
+  payload: Payload,
+  tenantId: string | number,
+  run: SiteGenerationRun | null,
+  options: { includeAllPublishedPages?: boolean } = {},
+): Promise<Page[]> {
   const runPageIds = Array.isArray(run?.pages)
     ? run.pages.map((page) => relationshipId(page)).filter(Boolean)
     : []
-  if (runPageIds.length === 0) {
+  if (runPageIds.length === 0 && !options.includeAllPublishedPages) {
     throw new Error("Cannot publish without a generation run that records published pages.")
   }
 
@@ -152,6 +158,8 @@ async function pagesForSnapshot(payload: Payload, tenantId: string | number, run
   })
 
   const pages = result.docs as Page[]
+  if (options.includeAllPublishedPages) return pages
+
   const allowed = new Set(runPageIds)
   return pages.filter((page) => allowed.has(String(page.id)))
 }
@@ -195,6 +203,7 @@ export async function buildPublishedSiteSnapshot(
   payload: Payload,
   tenantId: string | number,
   run: SiteGenerationRun | null,
+  options: { includeAllPublishedPages?: boolean } = {},
 ): Promise<PublishedSiteSnapshot> {
   const tenant = await getTenant(payload, tenantId)
   if (tenant.status === "archived" || tenant.status === "suspended") {
@@ -202,7 +211,7 @@ export async function buildPublishedSiteSnapshot(
   }
 
   const [pages, settingsDoc, version] = await Promise.all([
-    pagesForSnapshot(payload, tenant.id, run),
+    pagesForSnapshot(payload, tenant.id, run, options),
     getOrCreateSiteSettings(tenant.id),
     nextSnapshotVersion(payload, tenant.id),
   ])
@@ -330,8 +339,11 @@ export async function publishSiteSnapshot(
   payload: Payload,
   options: PublishSiteOptions,
 ) {
-  const run = await getGenerationRun(payload, options.generationRunId) ?? await latestApprovedRunForTenant(payload, options.tenantId)
-  const snapshot = await buildPublishedSiteSnapshot(payload, options.tenantId, run)
+  const explicitRun = await getGenerationRun(payload, options.generationRunId)
+  const run = explicitRun ?? (options.includeAllPublishedPages ? null : await latestApprovedRunForTenant(payload, options.tenantId))
+  const snapshot = await buildPublishedSiteSnapshot(payload, options.tenantId, run, {
+    includeAllPublishedPages: options.includeAllPublishedPages,
+  })
   const hash = snapshotHash(snapshot)
   const snapshotDoc = await payload.create({
     collection: "published-site-snapshots" as any,

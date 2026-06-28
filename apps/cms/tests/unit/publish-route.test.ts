@@ -90,6 +90,7 @@ describe("publish route", () => {
     expect(mocks.publishSiteSnapshot).toHaveBeenCalledWith(mocks.payload, {
       tenantId: 7,
       generationRunId: 50,
+      includeAllPublishedPages: false,
       activate: false,
       manualActivation: false,
       publishedBy: 1,
@@ -117,7 +118,34 @@ describe("publish route", () => {
     expect(mocks.publishSiteSnapshot).toHaveBeenCalledWith(mocks.payload, expect.objectContaining({
       activate: true,
       manualActivation: true,
+      includeAllPublishedPages: false,
       activationReason: "manual activation",
+    }))
+  })
+
+  it("publishes current CMS pages for direct live editor publishes", async () => {
+    mocks.payload.auth.mockResolvedValue({ user: { id: 1, role: "super-admin" } })
+    mocks.publishSiteSnapshot.mockResolvedValue({
+      activated: true,
+      snapshot: { id: 12, status: "active", version: 3, domain: "example.test" },
+    })
+
+    const res = await POST(req({
+      tenantId: 7,
+      includeAllPublishedPages: true,
+      activate: true,
+      manualActivation: true,
+      reason: "publish current CMS state",
+    }))
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true, activated: true, snapshotId: 12, status: "active" })
+    expect(mocks.publishSiteSnapshot).toHaveBeenCalledWith(mocks.payload, expect.objectContaining({
+      generationRunId: null,
+      includeAllPublishedPages: true,
+      activate: true,
+      manualActivation: true,
+      activationReason: "publish current CMS state",
     }))
   })
 

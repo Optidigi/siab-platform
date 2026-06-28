@@ -218,6 +218,33 @@ describe("published site snapshots", () => {
     await expect(buildPublishedSiteSnapshot(payload, 1, generationRuns[0]!)).rejects.toThrow("generation run that records published pages")
   })
 
+  it("can publish current CMS state without a generation-run page list", async () => {
+    const { publishSiteSnapshot } = await import("@/lib/publish/siteSnapshots")
+    const { payload, pages } = createPayloadStub()
+    pages.push({
+      id: 101,
+      tenant: 1,
+      slug: "services",
+      title: "Services",
+      status: "published",
+      blocks: [{ blockType: "hero", headline: inlineText("Current services") }],
+      updatedAt: "2026-06-25T20:03:00.000Z",
+      createdAt: "2026-06-25T20:03:00.000Z",
+    } as Page)
+
+    const result = await publishSiteSnapshot(payload, {
+      tenantId: 1,
+      includeAllPublishedPages: true,
+      activate: true,
+      manualActivation: true,
+      activationReason: "direct CMS publish",
+    })
+
+    expect(result.activated).toBe(true)
+    expect(result.snapshot.snapshot.pages.map((page: any) => page.slug)).toEqual(["index", "services"])
+    expect(result.snapshot.sourceGenerationRun).toBeUndefined()
+  })
+
   it("rejects invalid snapshot payloads before storage", async () => {
     const { buildPublishedSiteSnapshot } = await import("@/lib/publish/siteSnapshots")
     const { payload, pages, generationRuns, snapshots } = createPayloadStub()

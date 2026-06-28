@@ -136,6 +136,13 @@ const rendererCookieConsentScript = `(() => {
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="generator" content={Astro.generator} />
+        <style is:global>
+          html,
+          body {
+            margin: 0;
+            min-width: 320px;
+          }
+        </style>
         {faviconHref && <link rel="icon" href={faviconHref} />}
         {appleTouchIconHref && <link rel="apple-touch-icon" href={appleTouchIconHref} />}
         {manifestHref && <link rel="manifest" href={manifestHref} />}

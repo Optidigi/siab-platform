@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     const result = await publishSiteSnapshot(payload, {
       tenantId,
       generationRunId: asId(body.generationRunId),
+      includeAllPublishedPages: body.includeAllPublishedPages === true,
       activate: body.activate === true,
       manualActivation: body.manualActivation === true,
       publishedBy: auth.user.id,

@@ -25,6 +25,7 @@ import { parsePayloadError } from "@/lib/api"
 import { scrollToFirstError } from "@/lib/formScroll"
 import { ChevronLeft, Trash2, ExternalLink, Copy, Navigation, PanelBottom, PanelTop, Plus, X, SlidersHorizontal } from "lucide-react"
 import type { Page } from "@/payload-types"
+import type { SiteSettings } from "@siteinabox/contracts"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS, STYLE_PRESETS } from "@/lib/theme/presets"
@@ -778,7 +779,7 @@ function SiteChromeQuickMenu({
   )
 }
 
-export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, userEditorMode, tenantCss, theme, siteSettings, canManageNav, canEditSettings, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; baseHref: string; tenantOrigin: string; manifest: RtManifest; userEditorMode?: EditorMode | null; tenantCss?: string | null; theme?: ThemeTokens | null; siteSettings?: any; canManageNav?: boolean; canEditSettings?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
+export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin, manifest, userEditorMode, tenantCss, theme, siteSettings, rendererSettings, canManageNav, canEditSettings, canPublishLive, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; userEditorMode?: EditorMode | null; tenantCss?: string | null; theme?: ThemeTokens | null; siteSettings?: any; rendererSettings?: SiteSettings | null; canManageNav?: boolean; canEditSettings?: boolean; canPublishLive?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -793,6 +794,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
     { name: "ogImage", type: "upload", relationTo: "media", label: t("openGraphImage") }
   ]
   const [pending, setPending] = useState(false)
+  const [publishLivePending, setPublishLivePending] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [showSaved, setShowSaved] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -800,6 +802,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
   const [draftChecked, setDraftChecked] = useState(false)
   const draftCandidateRef = useRef<PageEditorDraft | null>(null)
   const draftWriteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const publishLiveAfterSaveRef = useRef(false)
 
   // OBS-21 / FE-85 — page-flag nav membership. The two toggles are a view over
   // the tenant's SiteSettings nav lists, but changes are local until the page
@@ -1164,8 +1167,11 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
 
   const onSubmit = async (values: Values) => {
     if (readOnly) return
+    const publishLiveAfterSave = publishLiveAfterSaveRef.current
+    publishLiveAfterSaveRef.current = false
     const saveStartedAt = performance.now()
     setPending(true)
+    if (publishLiveAfterSave) setPublishLivePending(true)
     setSubmitError(null)
     setShowSaved(false)
     // Persist tenant theme alongside the page save when the user has
@@ -1301,8 +1307,26 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
     }
     try {
       await Promise.all([themePromise, saveNavMembership(), saveChrome()])
+      if (publishLiveAfterSave) {
+        const publishRes = await fetch("/api/publish", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            tenantId,
+            includeAllPublishedPages: true,
+            activate: true,
+            manualActivation: true,
+            reason: `publish current CMS state after page ${initial?.id ?? createdPageId ?? "new"} edit`,
+          }),
+        })
+        if (!publishRes.ok) {
+          const detail = await parsePayloadError(publishRes)
+          throw new Error(detail.message)
+        }
+      }
     } catch (err) {
       setPending(false)
+      setPublishLivePending(false)
       const msg = err instanceof Error ? err.message : t("saveFailed")
       setSubmitError(msg)
       captureCmsBrowserEvent({
@@ -1319,6 +1343,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
       return
     }
     setPending(false)
+    setPublishLivePending(false)
     setSubmitError(null)
     // FN-2026-0012 — the prior shape passed `{ keepValues: true }`, which
     // keeps the *current* DOM input values but does NOT advance RHF's dirty
@@ -1377,6 +1402,12 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
   const retry = () => form.handleSubmit(onSubmit, onInvalid)()
   const triggerSave = useCallback(() => {
     if (readOnly) return
+    form.handleSubmit(onSubmit, onInvalid)()
+  }, [form, onSubmit, onInvalid, readOnly])
+
+  const publishLive = useCallback(() => {
+    if (readOnly) return
+    publishLiveAfterSaveRef.current = true
     form.handleSubmit(onSubmit, onInvalid)()
   }, [form, onSubmit, onInvalid, readOnly])
 
@@ -1910,7 +1941,18 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
               )}
               {liveLinks}
               {!readOnly && (
-                <div className="ml-auto">
+                <div className="ml-auto flex items-end gap-2">
+                  {initial && canPublishLive && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={pending || publishLivePending}
+                      onClick={publishLive}
+                    >
+                      {publishLivePending ? "Publishing..." : "Publish live"}
+                    </Button>
+                  )}
                   <PublishControls control={controlAny} pending={pending} isDirty={isDirty} errorCount={errorCount} dirtyCount={dirtyCount} variant="bare" />
                 </div>
               )}
@@ -1959,6 +2001,9 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
                     deleteBlock={deleteBlock}
                     duplicateBlock={duplicateBlock}
                     pageTitle={pageTitle}
+                    tenantSlug={tenantSlug}
+                    domain={tenantOrigin}
+                    rendererSettings={rendererSettings}
                     onDeletePage={onDeletePage}
                     onOpenBlockInspector={openBlockInSidebar}
                     renderMobileList={renderMobileList}
@@ -2005,6 +2050,9 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
                       deleteBlock={deleteBlock}
                       duplicateBlock={duplicateBlock}
                       pageTitle={pageTitle}
+                      tenantSlug={tenantSlug}
+                      domain={tenantOrigin}
+                      rendererSettings={rendererSettings}
                       onDeletePage={onDeletePage}
                       onOpenBlockInspector={openBlockInSidebar}
                       renderMobileList={renderMobileList}

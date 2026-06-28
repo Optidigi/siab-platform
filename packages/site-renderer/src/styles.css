@@ -3,7 +3,7 @@
 @import "@fontsource-variable/inter/index.css";
 @import "@fontsource-variable/caveat/index.css";
 
-:root {
+.site-renderer {
   color-scheme: light;
   background: #f8fafc;
   color: #111827;
@@ -25,23 +25,24 @@
   --font-script: "Comic Sans MS", "Segoe Print", cursive;
 }
 
-* {
+.site-renderer,
+.site-renderer * {
   box-sizing: border-box;
 }
 
-body {
+.site-renderer {
   margin: 0;
   min-width: 320px;
   background: var(--color-bg, #f8fafc);
   color: var(--color-ink, #111827);
 }
 
-a {
+.site-renderer a {
   color: inherit;
 }
 
-img,
-svg {
+.site-renderer img,
+.site-renderer svg {
   max-width: 100%;
 }
 
