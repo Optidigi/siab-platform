@@ -1,4 +1,7 @@
 import { execFile } from "node:child_process"
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { promisify } from "node:util"
 
 import { assertHostRouting, closeServer, getOpenPort, startStubCms, waitForRenderer } from "./host-routing-harness.mjs"
@@ -15,12 +18,16 @@ const cms = await startStubCms({ listenHost: "0.0.0.0", publicHost: "host.docker
 const rendererPort = await getOpenPort()
 const baseUrl = `http://127.0.0.1:${rendererPort}`
 const containerName = `siteinabox-renderer-smoke-${process.pid}`
+const dataDir = await mkdtemp(join(tmpdir(), "siab-renderer-media-"))
 
 async function docker(args, options = {}) {
   return execFileAsync("docker", args, { maxBuffer: 1024 * 1024 * 10, ...options })
 }
 
 try {
+  await mkdir(join(dataDir, "tenants", "tenant-ami-care", "media"), { recursive: true })
+  await writeFile(join(dataDir, "tenants", "tenant-ami-care", "media", "bedroom.jpg"), "stub media")
+
   await docker([
     "run",
     "--rm",
@@ -37,6 +44,10 @@ try {
     `SIAB_CMS_URL=${cms.url}`,
     "-e",
     `SITE_URL=${baseUrl}`,
+    "-e",
+    "DATA_DIR=/data-out",
+    "-v",
+    `${dataDir}:/data-out:ro`,
     "-p",
     `${rendererPort}:4321`,
     imageTag,
@@ -58,6 +69,7 @@ try {
   })
 } finally {
   await docker(["rm", "-f", containerName]).catch(() => {})
+  await rm(dataDir, { recursive: true, force: true })
   await closeServer(cms.server)
 }
 
