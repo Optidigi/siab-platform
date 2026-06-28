@@ -3,7 +3,9 @@ import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import {
+  buildRenameSourceTenantForUniqueKeysQuery,
   buildStaticPlan,
+  canonicalTenantMappings,
   parseArgs,
 } from "../../scripts/canonicalize-production-tenants.mjs"
 
@@ -40,6 +42,23 @@ describe("canonicalize-production-tenants ops script", () => {
     expect(plan).toContain("reset tenants_id_seq")
     expect(plan).toContain("copy /srv/data/saas/siab-payload/tenants/7 -> /srv/data/saas/siab-payload/tenants/1")
     expect(plan).toContain("never delete old tenant media directories")
+  })
+
+  it("casts rename query text placeholders so PostgreSQL can infer parameter types", () => {
+    const query = buildRenameSourceTenantForUniqueKeysQuery(canonicalTenantMappings[0])
+
+    expect(query.text).toContain("slug = $2::text")
+    expect(query.text).toContain("domain = $3::text")
+    expect(query.text).toContain("notes = concat_ws(E'\\n', notes, $4::text)")
+    expect(query.text).toContain("slug = $5::text OR domain = $6::text")
+    expect(query.values).toEqual([
+      7,
+      "canonicalized-from-7-ami-care",
+      "canonicalized-from-7.ami-care.nl",
+      "Canonicalization script temporarily renamed this source tenant before remapping to id 1.",
+      "ami-care",
+      "ami-care.nl",
+    ])
   })
 
   it("does not embed production host mutation commands", () => {

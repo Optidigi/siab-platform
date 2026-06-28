@@ -229,26 +229,31 @@ function assertTargetAvailability(rows) {
   }
 }
 
-async function renameSourceTenantForUniqueKeys(client, mapping) {
+export function buildRenameSourceTenantForUniqueKeysQuery(mapping) {
   const archivedSlug = `canonicalized-from-${mapping.sourceId}-${mapping.slug}`
   const archivedDomain = `canonicalized-from-${mapping.sourceId}.${mapping.domain}`
-  await client.query(
-    `UPDATE tenants
-        SET slug = $2,
-            domain = $3,
-            notes = concat_ws(E'\n', notes, $4),
+  return {
+    text: `UPDATE tenants
+        SET slug = $2::text,
+            domain = $3::text,
+            notes = concat_ws(E'\\n', notes, $4::text),
             updated_at = now()
       WHERE id = $1
-        AND (slug = $5 OR domain = $6)`,
-    [
+        AND (slug = $5::text OR domain = $6::text)`,
+    values: [
       mapping.sourceId,
       archivedSlug,
       archivedDomain,
       `Canonicalization script temporarily renamed this source tenant before remapping to id ${mapping.targetId}.`,
       mapping.slug,
       mapping.domain,
-    ]
-  )
+    ],
+  }
+}
+
+async function renameSourceTenantForUniqueKeys(client, mapping) {
+  const query = buildRenameSourceTenantForUniqueKeysQuery(mapping)
+  await client.query(query.text, query.values)
 }
 
 async function createCanonicalTenant(client, columns, mapping) {
