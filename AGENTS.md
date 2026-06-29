@@ -21,15 +21,12 @@ Current surfaces:
 - `packages/contracts` - shared data contracts.
 - `packages/site-renderer` - shared rendering core for CMS preview/canvas and
   the public renderer.
-- `packages/site-template` - retained for existing template maintenance and
-  reference.
 
 ## Workflow Routing
 
 - For CMS app work, read `apps/cms/AGENTS.md` and follow its rules.
 - For public marketing site work, work in `apps/landing`.
 - For public intake product work, work in `apps/intake`.
-- For template maintenance, work in `packages/site-template`.
 - For public generated-site runtime work, use `apps/renderer`.
 - For shared rendering logic, use `packages/site-renderer`.
 - Do not restore command-driven site generation workflows.

@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl"
 /**
  * Canvas-mode renderer for the FAQ block.
  *
- * Emits the same DOM class structure as siab-site-template's FAQ.tsx so
+ * Emits the shared renderer FAQ DOM class structure so
  * tenant CSS targets the same classes.
  *
  * All <details> are rendered open=true and the <summary> click is prevented

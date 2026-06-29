@@ -11,8 +11,9 @@ depended on command-run site generation are no longer current source of truth.
   in `apps/intake`.
 - Shared data contracts live in `packages/contracts`.
 - Shared UI primitives and app-neutral composites live in `packages/ui`.
-- Existing tenant snapshots remain under `sites/*` and may use
-  `packages/site-template` for renderer/reference contracts.
+- Existing generated-site runtime is CMS data plus the generic renderer and
+  shared `packages/site-renderer` code. Tenant-specific source folders under
+  `sites/*` and the old `packages/site-template` package have been removed.
 
 ## Current Product Rules
 

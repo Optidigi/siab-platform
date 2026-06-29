@@ -9,8 +9,7 @@ artifacts, and the provisional product app shell.
 - Active platform apps are `apps/cms`, `apps/landing`, `apps/intake`, and
   `apps/renderer`.
 - Shared packages are `packages/contracts`, `packages/ui`, and
-  `packages/site-template`; `packages/site-renderer` is reserved for future
-  shared rendering logic.
+  `packages/site-renderer`.
 - Platform-owned images remain:
   - `ghcr.io/optidigi/siteinabox-cms`
   - `ghcr.io/optidigi/siteinabox-site`
@@ -41,6 +40,9 @@ artifacts, and the provisional product app shell.
   approved infra automation, not as prompt/runbook command flows.
 - Keep local MCP declarations in `.mcp.json`, `.mcp.toml`,
   `.codex/config.toml`, and `.codex/mcp.toml` synchronized.
+- Migrate `amblast.nl` from the current legacy/official tenant path to the
+  generic SIAB renderer/CMS flow in a near-term cleanup slice. Keep
+  `amblast.nl` live until that migration is executed and verified.
 
 ## Implemented Foundation
 
@@ -62,3 +64,18 @@ renderer, and proxy preservation of the public `Host` / `X-Forwarded-Host`.
 Aliases serve the same active snapshot; canonical redirects remain out of
 scope. Domain verification remains a super-admin manual checklist on existing
 tenant fields, with no DNS automation.
+
+### 2026-06-29 — Legacy source cleanup
+
+**Status:** Applied.
+
+Removed obsolete tenant/template source directories from the monorepo:
+`sites/`, `packages/site-template/`, and `packages/tools/`. The current source
+contract is CMS tenant data plus the platform-owned renderer in
+`packages/site-renderer` / `apps/renderer`; deleted tenant-specific source
+trees must not be restored.
+
+Production cleanup removed stale renderer staging tenants for
+`amicare.optidigi.nl` and `amblast.optidigi.nl`. The production `amblast.nl`
+tenant remains intentionally live until the near-term SIAB migration above is
+completed.

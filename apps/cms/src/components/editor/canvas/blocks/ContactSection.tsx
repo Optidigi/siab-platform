@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl"
 /**
  * Canvas-mode renderer for the ContactSection block.
  *
- * Emits the same DOM class structure as siab-site-template's ContactSection.tsx
+ * Emits the shared renderer contact-section DOM class structure
  * so tenant CSS targets the same classes.
  *
  * Editable fields: title (inline rich-text), description (block rich-text).

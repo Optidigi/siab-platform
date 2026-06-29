@@ -93,7 +93,7 @@ export const Tenants: CollectionConfig = {
         { name: "checkedBy", type: "relationship", relationTo: "users" },
         { name: "notes", type: "textarea" }
       ] },
-    { name: "siteRepo", type: "text", admin: { description: "GitHub source for siteManifest.json, e.g. Optidigi/siteinabox:sites/clientasite" } },
+    { name: "siteRepo", type: "text", admin: { description: "Optional GitHub source for siteManifest.json, e.g. Optidigi/client-site" } },
     { name: "notes", type: "textarea" },
     { name: "siteManifest", type: "json", required: false,
       admin: {

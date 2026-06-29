@@ -23,8 +23,6 @@
     "site-renderer:typecheck": "pnpm --dir packages/site-renderer typecheck",
     "site:build": "pnpm landing:build",
     "site:test": "pnpm landing:test",
-    "template:build": "pnpm --dir packages/site-template --ignore-workspace build",
-    "template:test": "pnpm --dir packages/site-template --ignore-workspace test",
     "ui:typecheck": "pnpm --dir packages/ui typecheck"
   }
 }

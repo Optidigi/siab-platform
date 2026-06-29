@@ -9,7 +9,7 @@ import { useTranslations } from "next-intl"
 /**
  * Canvas-mode renderer for the Testimonials block.
  *
- * Emits the same DOM class structure as siab-site-template's Testimonials.tsx
+ * Emits the shared renderer testimonials DOM class structure
  * so tenant CSS targets the same classes.
  *
  * NOTE: The site component types `title` as RtField / rich-text, but the

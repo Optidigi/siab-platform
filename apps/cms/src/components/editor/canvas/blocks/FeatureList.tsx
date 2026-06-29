@@ -13,7 +13,7 @@ const MAX_FEATURE_CARDS = 3
 /**
  * Canvas-mode renderer for the FeatureList block.
  *
- * Emits the same DOM class structure as siab-site-template's FeatureList.tsx
+ * Emits the shared renderer feature-list DOM class structure
  * so tenant CSS targets the same classes.
  *
  * Fields:

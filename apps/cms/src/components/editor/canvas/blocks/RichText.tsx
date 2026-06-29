@@ -8,7 +8,7 @@ import type { RtBlock, RtRoot } from "@/lib/richText/RtNode"
 /**
  * Canvas-mode renderer for the RichText block.
  *
- * Emits the same DOM class structure as siab-site-template's RichText.tsx
+ * Emits the shared renderer rich-text DOM class structure
  * so tenant CSS targets the same classes.
  *
  * Fields:

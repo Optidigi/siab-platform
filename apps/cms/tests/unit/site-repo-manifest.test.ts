@@ -26,20 +26,20 @@ describe("siteRepo manifest fetch", () => {
 
   it("parses owner/repo and GitHub URL repo formats", () => {
     expect(parseGitHubRepo("optidigi/site-client")).toEqual({ owner: "optidigi", repo: "site-client" })
-    expect(parseGitHubRepo("Optidigi/siteinabox:packages/site-template")).toEqual({
+    expect(parseGitHubRepo("Optidigi/client-site:site")).toEqual({
       owner: "Optidigi",
-      repo: "siteinabox",
-      pathPrefix: "packages/site-template",
+      repo: "client-site",
+      pathPrefix: "site",
     })
     expect(parseGitHubRepo("https://github.com/optidigi/site-client.git")).toEqual({
       owner: "optidigi",
       repo: "site-client",
     })
-    expect(parseGitHubRepo("https://github.com/Optidigi/siteinabox/tree/main/packages/site-template")).toEqual({
+    expect(parseGitHubRepo("https://github.com/Optidigi/client-site/tree/main/site")).toEqual({
       owner: "Optidigi",
-      repo: "siteinabox",
+      repo: "client-site",
       ref: "main",
-      pathPrefix: "packages/site-template",
+      pathPrefix: "site",
     })
     expect(parseGitHubRepo("git@github.com:optidigi/site-client.git")).toEqual({
       owner: "optidigi",
@@ -73,16 +73,16 @@ describe("siteRepo manifest fetch", () => {
     const fetchMock = vi.fn().mockResolvedValue(githubFile(manifest))
     vi.stubGlobal("fetch", fetchMock)
 
-    const result = await fetchSiteManifestFromRepo("https://github.com/Optidigi/siteinabox/tree/main/packages/site-template")
+    const result = await fetchSiteManifestFromRepo("https://github.com/Optidigi/client-site/tree/main/site")
 
     expect(result).toEqual({
       ok: true,
-      repo: "Optidigi/siteinabox",
-      path: "packages/site-template/siteManifest.json",
+      repo: "Optidigi/client-site",
+      path: "site/siteManifest.json",
       manifest,
     })
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.github.com/repos/Optidigi/siteinabox/contents/packages/site-template/siteManifest.json?ref=main",
+      "https://api.github.com/repos/Optidigi/client-site/contents/site/siteManifest.json?ref=main",
       expect.objectContaining({ cache: "no-store" }),
     )
   })

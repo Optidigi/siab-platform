@@ -14,9 +14,8 @@ import { MapPin } from "lucide-react"
 /**
  * Canvas-mode renderer for the Hero block.
  *
- * Mirrors siab-site-template's Hero.tsx pixel-for-pixel: same classes,
- * same animations (animate-fade-up / animate-fade / animate-float), same
- * decorative floating cards (pull-quote + MapPin) for Amicare's legacy hero variant.
+ * Mirrors the shared legacy Amicare hero DOM: same classes, animations, and
+ * decorative floating cards (pull-quote + MapPin).
  */
 
 const AMICARE_PULL_QUOTE = "Écht verschil maken voor jongeren en gezinnen."

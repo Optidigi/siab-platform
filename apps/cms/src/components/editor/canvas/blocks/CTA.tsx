@@ -10,7 +10,7 @@ import { cn } from "@siteinabox/ui/lib/utils"
 /**
  * Canvas-mode renderer for the CTA block.
  *
- * Emits the same DOM class structure as siab-site-template's CTA.tsx
+ * Emits the shared renderer CTA DOM class structure
  * so tenant CSS targets the same classes.
  *
  * Variant classes follow the site renderer, but every CTA field remains

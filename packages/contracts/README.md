@@ -7,8 +7,7 @@ tenant site snapshots.
 
 - Put cross-package data shapes here when more than one app/package must agree
   on the same payload.
-- Keep runtime rendering behavior out of this package. Legacy/current snapshot
-  rendering lives in `packages/site-template` and `sites/*`; future shared
+- Keep runtime rendering behavior out of this package. Shared CMS/public site
   rendering belongs in `packages/site-renderer`.
 - Future site generation contracts should describe validated tenant, site, page,
   theme, SEO, and published snapshot data. They must not describe generated

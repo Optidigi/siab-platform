@@ -1,6 +1,0 @@
-/* TEAM */
-  Site by: optidigi
-  Site: https://optidigi.nl
-
-/* TECHNOLOGY */
-  Astro, Tailwind CSS, nginx, Docker, GitHub Actions

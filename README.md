@@ -15,7 +15,6 @@ packages/
   contracts/        # shared data contracts
   ui/               # shared UI primitives/components
   site-renderer/    # shared CMS/public rendering core
-  site-template/    # renderer/reference for current tenant snapshots
 ```
 
 ## Architecture Direction
@@ -70,7 +69,6 @@ pnpm landing:build
 pnpm intake:build
 pnpm renderer:deploy-contract
 pnpm renderer:build
-pnpm template:build
 ```
 
 ## Tooling State

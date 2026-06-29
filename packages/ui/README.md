@@ -16,9 +16,8 @@ Shared UI primitives and low-level UI utilities for SIAB apps.
   importing CMS internals.
 - New app and CMS work must import shared primitives/components from this
   package, not from another app.
-- Current tenant-site rendering logic lives in legacy/current
-  `packages/site-template` and `sites/*` snapshots. Future shared site
-  rendering belongs in `packages/site-renderer`; UI primitives stay here.
+- Tenant-site rendering logic belongs in `packages/site-renderer`; UI
+  primitives stay here.
 
 ## Imports
 

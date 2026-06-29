@@ -6,8 +6,7 @@ infra.
 App-local docs stay with the app that owns them:
 
 - `apps/cms/docs/` for Payload/CMS internals and backlog history.
-- `packages/site-template/docs/` for tenant snapshot renderer/reference contracts
-  used by current tenant snapshots.
+- `packages/site-renderer/` for shared CMS/public rendering behavior.
 
 Monorepo-level policies:
 
