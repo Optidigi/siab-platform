@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation"
-import "@/styles/site-renderer-preview.css"
 import { requireAuth } from "@/lib/authGate"
 import { PageForm } from "@/components/forms/PageForm"
 import { PageHeader } from "@/components/page-header"

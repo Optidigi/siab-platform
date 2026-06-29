@@ -27,18 +27,14 @@ describe("CMS preview renderer stylesheet scope", () => {
     expect(read("apps/cms/src/app/(payload)/layout.tsx")).not.toContain("site-renderer-preview.css")
   })
 
-  it("imports renderer/provider preview CSS only from customer preview and page-editor routes", () => {
+  it("imports renderer/provider preview CSS only from the isolated customer preview layout", () => {
     const importingFiles = [frontendRoot, payloadRoot].flatMap((root) => collectSourceFiles(root))
       .filter((file) => readFileSync(file, "utf8").includes("site-renderer-preview.css"))
       .map((file) => path.relative(repoRoot, file).split(path.sep).join("/"))
 
     expect(importingFiles.sort()).toEqual([
-      "apps/cms/src/app/(frontend)/(admin)/pages/[id]/page.tsx",
-      "apps/cms/src/app/(frontend)/(admin)/pages/new/page.tsx",
-      "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/[id]/page.tsx",
-      "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/new/page.tsx",
       "apps/cms/src/app/(frontend)/(site-preview)/layout.tsx",
-    ].sort())
+    ])
     expect(read("apps/cms/src/app/(frontend)/(site-preview)/layout.tsx")).toContain(previewImport)
   })
 

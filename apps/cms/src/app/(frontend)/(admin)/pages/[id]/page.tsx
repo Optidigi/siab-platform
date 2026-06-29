@@ -1,5 +1,4 @@
 import { notFound, redirect } from "next/navigation"
-import "@/styles/site-renderer-preview.css"
 import { requireAuth } from "@/lib/authGate"
 import { getPageById, listPages } from "@/lib/queries/pages"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"

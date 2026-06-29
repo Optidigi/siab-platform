@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import "@/styles/site-renderer-preview.css"
 import { getTenantBySlug } from "@/lib/queries/tenants"
 import { getPageById, listPages } from "@/lib/queries/pages"
 import { requireSuperAdminSelectedSite } from "@/lib/routePolicy"
