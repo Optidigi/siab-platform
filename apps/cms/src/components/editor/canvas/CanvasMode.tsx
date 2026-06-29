@@ -93,6 +93,24 @@ export interface CanvasModeProps {
 
 type AnchorRect = Pick<DOMRect, "left" | "right" | "top" | "width">
 
+const SHARED_SITE_CHROME_SELECTOR =
+  "[data-site-chrome], [data-site-chrome-wrapper], [data-site-chrome-menu-trigger], [data-amicare-nav], .site-frame-root > nav, .site-frame-root > footer"
+
+function shouldSuppressCanvasNavigation(target: HTMLElement | null) {
+  if (!target) return false
+  if (target.closest("[data-siab-canvas-chrome], [role='dialog'], [data-radix-popper-content-wrapper]")) {
+    return false
+  }
+
+  const link = target.closest<HTMLAnchorElement>("a[href]")
+  if (link && !link.classList.contains("rt-click-edit")) return true
+
+  const submitter = target.closest<HTMLButtonElement | HTMLInputElement>("button, input")
+  if (!submitter || !submitter.closest(".rt-canvas")) return false
+  if (submitter instanceof HTMLButtonElement) return submitter.type === "submit"
+  return submitter instanceof HTMLInputElement && submitter.type === "submit"
+}
+
 function useFixedAnchorRect(
   ref: React.RefObject<HTMLElement | null>,
   enabled = true,
@@ -158,7 +176,7 @@ const CanvasGapOverlay: React.FC<{
           {overlayPosition.styleElement}
           <div
             data-siab-canvas-chrome="insert-gap"
-            className={`${overlayPosition.className} pointer-events-none fixed z-[15] flex h-8 items-center justify-center group/gap`}
+            className={`${overlayPosition.className} pointer-events-none fixed z-[19] flex h-8 items-center justify-center group/gap`}
           >
             <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border opacity-0 transition-opacity group-hover/gap:opacity-100" />
             <button
@@ -794,7 +812,7 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
       return
     }
     const target = event.target as HTMLElement | null
-    if (target?.closest("[data-site-chrome], [data-site-chrome-wrapper], [data-site-chrome-menu-trigger]")) return
+    if (target?.closest(SHARED_SITE_CHROME_SELECTOR)) return
     event.preventDefault()
     event.stopPropagation()
     const blockNode = target?.closest<HTMLElement>("[data-block-index]")
@@ -890,7 +908,13 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
           <div
             onContextMenuCapture={onCanvasContextMenu}
             onClickCapture={(event) => {
-              if ((event.target as HTMLElement | null)?.closest("a[href]")) event.preventDefault()
+              if (shouldSuppressCanvasNavigation(event.target as HTMLElement | null)) {
+                event.preventDefault()
+              }
+            }}
+            onSubmitCapture={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
             }}
           >
             <DndContext
@@ -979,7 +1003,13 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
             data-rt-mode={theme?.mode === "dark" ? "dark" : "light"}
             onContextMenuCapture={onCanvasContextMenu}
             onClickCapture={(event) => {
-              if ((event.target as HTMLElement | null)?.closest("a[href]")) event.preventDefault()
+              if (shouldSuppressCanvasNavigation(event.target as HTMLElement | null)) {
+                event.preventDefault()
+              }
+            }}
+            onSubmitCapture={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
             }}
           >
             <div

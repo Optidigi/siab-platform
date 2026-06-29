@@ -145,20 +145,43 @@ test.describe("Round 3 — root-cause regressions", () => {
     expect(gutterPlacement.parentTag).toBe("BODY")
     expect(gutterPlacement.insideCanvas).toBe(false)
 
-    await chromeGutter.locator("[data-site-chrome-menu-trigger]").click()
-    await expect(page.getByRole("button", { name: /open inspector/i })).toBeVisible({ timeout: 5_000 })
-    await page.keyboard.press("Escape")
-    await expect(page.getByRole("button", { name: /open inspector/i })).toHaveCount(0)
+    const trigger = chromeGutter.locator("[data-site-chrome-menu-trigger]")
+    const triggerTopmost = await trigger.evaluate((node) => {
+      const rect = node.getBoundingClientRect()
+      const x = rect.left + rect.width / 2
+      const y = rect.top + rect.height / 2
+      return document.elementFromPoint(x, y)?.closest("[data-site-chrome-menu-trigger]") === node
+    })
+    expect(triggerTopmost).toBe(true)
 
-    await nav.click({ button: "right" })
+    await trigger.click()
     await expect(page.getByRole("button", { name: /open inspector/i })).toBeVisible({ timeout: 5_000 })
     await page.keyboard.press("Escape")
     await expect(page.getByRole("button", { name: /open inspector/i })).toHaveCount(0)
+    await expect(page.locator('body > [role="presentation"].fixed.inset-0.z-50')).toHaveCount(0)
+
+    const navLinkCenter = await nav.locator("a[href]").first().evaluate((node) => {
+      const rect = node.getBoundingClientRect()
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    })
+    await page.mouse.click(navLinkCenter.x, navLinkCenter.y, { button: "right" })
+    await expect(page.getByRole("button", { name: /open inspector/i })).toBeVisible({ timeout: 5_000 })
+    await page.keyboard.press("Escape")
+    await expect(page.getByRole("button", { name: /open inspector/i })).toHaveCount(0)
+    await expect(page.locator('body > [role="presentation"].fixed.inset-0.z-50')).toHaveCount(0)
 
     const footer = page.locator(".rt-canvas .site-frame-root > footer").first()
     await expect(footer).toBeVisible({ timeout: 10_000 })
     await footer.click({ button: "right" })
     await expect(page.getByRole("button", { name: /open inspector/i })).toBeVisible({ timeout: 5_000 })
+    await page.keyboard.press("Escape")
+    await expect(page.getByRole("button", { name: /open inspector/i })).toHaveCount(0)
+    await expect(page.locator('body > [role="presentation"].fixed.inset-0.z-50')).toHaveCount(0)
+
+    const beforeLinkClick = page.url()
+    await page.mouse.click(navLinkCenter.x, navLinkCenter.y)
+    await page.waitForTimeout(500)
+    expect(page.url()).toBe(beforeLinkClick)
 
     expect(pageErrors).toEqual([])
   })

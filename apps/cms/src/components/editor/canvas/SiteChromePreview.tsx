@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { ChevronRight, GripVertical, Menu, MoreVertical, Navigation, PanelBottom, PanelTop } from "lucide-react"
 import { useTranslations } from "next-intl"
@@ -680,13 +680,13 @@ function ChromeActionsMenu({
     open ? `left:${formatCssPx(left)};top:${formatCssPx(top)};` : null,
   )
 
-  const openAt = (nextPoint: SiteChromeSelectPoint) => {
+  const openAt = useCallback((nextPoint: SiteChromeSelectPoint) => {
     if (onSelect) {
       onSelect(nextPoint)
       return
     }
     setPoint(nextPoint)
-  }
+  }, [onSelect])
 
   const clearGutterHideTimer = () => {
     if (gutterHideTimerRef.current == null) return
@@ -701,28 +701,48 @@ function ChromeActionsMenu({
       return
     }
     clearGutterHideTimer()
+    const hideDelayMs = useOverlayTarget ? 800 : 250
     gutterHideTimerRef.current = window.setTimeout(() => {
       gutterHideTimerRef.current = null
       setGutterVisible(false)
-    }, 250)
+    }, hideDelayMs)
   }
 
   useEffect(() => clearGutterHideTimer, [])
 
+  const setActiveOverlayTarget = useCallback((target: HTMLElement) => {
+    overlayAnchorRef.current = target
+    setOverlayAnchor(target)
+  }, [])
+
+  useEffect(() => {
+    if (!useOverlayTarget || !overlayTargetSelector) return
+    const onDocumentContextMenu = (event: MouseEvent) => {
+      const target = event.target instanceof HTMLElement
+        ? event.target.closest<HTMLElement>(overlayTargetSelector)
+        : null
+      if (!target) return
+      setActiveOverlayTarget(target)
+      event.preventDefault()
+      event.stopPropagation()
+      if (isReadOnly) return
+      openAt({ x: event.clientX, y: event.clientY })
+    }
+
+    document.addEventListener("contextmenu", onDocumentContextMenu, true)
+    return () => document.removeEventListener("contextmenu", onDocumentContextMenu, true)
+  }, [isReadOnly, openAt, overlayTargetSelector, setActiveOverlayTarget, useOverlayTarget])
+
   useEffect(() => {
     if (!useOverlayTarget || overlayTargets.length === 0) return
-    const setActiveTarget = (target: HTMLElement) => {
-      overlayAnchorRef.current = target
-      setOverlayAnchor(target)
-    }
     const listeners = overlayTargets.map((target) => {
       const onMouseEnter = () => {
-        setActiveTarget(target)
+        setActiveOverlayTarget(target)
         setGutterVisibleSafely(true)
       }
       const onMouseLeave = () => setGutterVisibleSafely(false)
       const onFocusIn = () => {
-        setActiveTarget(target)
+        setActiveOverlayTarget(target)
         setGutterVisibleSafely(true)
       }
       const onFocusOut = (event: FocusEvent) => {
@@ -731,7 +751,7 @@ function ChromeActionsMenu({
         }
       }
       const onClick = (event: MouseEvent) => {
-        setActiveTarget(target)
+        setActiveOverlayTarget(target)
         event.preventDefault()
         event.stopPropagation()
         if (onSelect) {
@@ -741,7 +761,7 @@ function ChromeActionsMenu({
         setPoint({ x: event.clientX, y: event.clientY })
       }
       const onContextMenu = (event: MouseEvent) => {
-        setActiveTarget(target)
+        setActiveOverlayTarget(target)
         event.preventDefault()
         event.stopPropagation()
         if (isReadOnly) return
@@ -767,7 +787,7 @@ function ChromeActionsMenu({
         target.removeEventListener("contextmenu", onContextMenu)
       })
     }
-  }, [isReadOnly, onSelect, overlayTargets, useOverlayTarget])
+  }, [isReadOnly, onSelect, overlayTargets, setActiveOverlayTarget, useOverlayTarget])
 
   const menu = open && typeof document !== "undefined" ? createPortal(
     <div

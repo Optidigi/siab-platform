@@ -125,12 +125,14 @@ export const CanvasChromeGutterOverlay: React.FC<{
   const rect = useFixedAnchorRect(anchorRef, premeasure || show, measureKey)
   const hasDropdownActions = !!onDuplicate || !!onDelete
   const left = rect ? Math.max(CHROME_VIEWPORT_GAP, rect.right - 72) : 0
-  const top = rect
-    ? Math.max(CHROME_VIEWPORT_GAP, rect.top + CHROME_VIEWPORT_GAP, cmsChromeBottomAt(left + 28))
-    : 0
+  const cmsChromeBottom = rect ? cmsChromeBottomAt(left + 28) : CHROME_VIEWPORT_GAP
+  const naturalTop = rect ? Math.max(CHROME_VIEWPORT_GAP, rect.top + CHROME_VIEWPORT_GAP) : 0
+  const shouldClampToCmsChrome = dataChrome === "site-chrome-gutter" || (rect ? rect.top >= 0 : false)
+  const top = shouldClampToCmsChrome ? Math.max(naturalTop, cmsChromeBottom) : naturalTop
+  const hiddenAfterAnchorScrolledAway = rect ? rect.top < 0 && naturalTop < cmsChromeBottom : false
   const position = useCspStyleRule(
     "canvas-gutter-overlay",
-    show && rect
+    show && rect && !hiddenAfterAnchorScrolledAway
       ? `left:${formatCssPx(left)};top:${formatCssPx(top)};`
       : null,
   )
@@ -139,14 +141,14 @@ export const CanvasChromeGutterOverlay: React.FC<{
     if (menuOpen) setVisible(true)
   }, [menuOpen, setVisible])
 
-  if (!show || !rect || typeof document === "undefined") return null
+  if (!show || !rect || hiddenAfterAnchorScrolledAway || typeof document === "undefined") return null
 
   return createPortal(
     <>
       {position.styleElement}
       <div
         data-siab-canvas-chrome={dataChrome}
-        className={`${position.className} fixed z-[15] inline-flex items-center gap-0.5 rounded-md border border-border bg-background/95 p-0.5 text-foreground opacity-100 shadow-sm backdrop-blur-sm`}
+        className={`${position.className} fixed z-[19] inline-flex items-center gap-0.5 rounded-md border border-border bg-background/95 p-0.5 text-foreground opacity-100 shadow-sm backdrop-blur-sm`}
         onMouseEnter={() => setVisible(true)}
         onMouseLeave={() => {
           if (!menuOpen) setVisible(false)

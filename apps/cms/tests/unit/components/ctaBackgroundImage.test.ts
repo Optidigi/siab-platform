@@ -49,7 +49,7 @@ describe("CTA quote background image contract", () => {
     expect(inlineImage).toContain("left:${formatCssPx(Math.max(8, chromeRect.left + 8))}")
     expect(inlineImage).toContain("top:${formatCssPx(Math.max(8, chromeRect.top + 8))}")
     expect(inlineImage).toContain("{overlayPosition.styleElement}")
-    expect(inlineImage).toContain("${overlayPosition.className} fixed z-[15]")
+    expect(inlineImage).toContain("${overlayPosition.className} fixed z-[19]")
     expect(inlineImage).toContain('className="pointer-events-none absolute inset-0 z-10 block"')
     expect(inlineImage).not.toContain('className={["rt-click-edit cursor-pointer", backgroundStyle.className')
     expect(inlineImage).toContain("showDefaultChrome")

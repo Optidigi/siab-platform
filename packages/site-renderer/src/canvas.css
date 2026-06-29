@@ -97,6 +97,10 @@
   pointer-events: none;
 }
 
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-canvas[data-rt-view] [data-amicare-nav] {
+  z-index: 0;
+}
+
 .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.top-0) {
   top: 0;
 }
