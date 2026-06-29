@@ -61,6 +61,7 @@ describe("canvas chrome fidelity", () => {
     const canvasMode = read("src/components/editor/canvas/CanvasMode.tsx")
     const gutterOverlay = read("src/components/editor/canvas/CanvasChromeGutterOverlay.tsx")
     const inlineImage = read("src/components/editor/canvas/inline/InlineImage.tsx")
+    const siteChrome = read("src/components/editor/canvas/SiteChromePreview.tsx")
 
     expect(canvasMode).toContain('import { createPortal } from "react-dom"')
     expect(canvasMode).toContain('import { CanvasChromeGutterOverlay } from "@/components/editor/canvas/CanvasChromeGutterOverlay"')
@@ -73,6 +74,9 @@ describe("canvas chrome fidelity", () => {
     expect(canvasMode).toContain("document.body")
     expect(gutterOverlay).toContain("document.body")
     expect(inlineImage).toContain("document.body")
+    expect(siteChrome).toContain("overlayTargetSelector={siteChromeTargetSelector(zone)}")
+    expect(siteChrome).toContain("overlayAnchor.addEventListener(\"click\", onClick)")
+    expect(siteChrome).toContain("<CanvasChromeGutterOverlay")
   })
 
   it("shares block hover visibility with nested image canvas chrome", () => {
@@ -112,5 +116,18 @@ describe("canvas chrome fidelity", () => {
     expect(canvasCss).toContain('.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-canvas .amicare-button-primary.rt-click-edit')
     expect(canvasCss).toContain("width: auto;")
     expect(canvasCss).not.toContain("display: flex;\n  flex-direction: column;\n  gap: 1.75rem;")
+  })
+
+  it("keeps Amicare hero card and footer utility styles aligned with the live renderer", () => {
+    const canvasCss = read("../../packages/site-renderer/src/canvas.css")
+
+    expect(canvasCss).toContain('[class~="@min-[48rem]/site-frame:grid-cols-4"]')
+    expect(canvasCss).toContain('[class~="@min-[48rem]/site-frame:grid-cols-5"]')
+    expect(canvasCss).toContain('[class~="@min-[48rem]/site-frame:grid-cols-6"]')
+    expect(canvasCss).toContain(":where(.text-\\[12px\\])")
+    expect(canvasCss).toContain(":where(.text-\\[14px\\])")
+    expect(canvasCss).toContain(".cms-block--hero > div:nth-of-type(3) > p")
+    expect(canvasCss).not.toContain(".cms-block--hero p {\n  max-width: 28rem;")
+    expect(canvasCss).not.toContain(".cms-block--hero p {\n    font-size: 1.125rem;")
   })
 })

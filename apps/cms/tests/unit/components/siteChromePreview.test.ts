@@ -56,6 +56,7 @@ describe("SiteChromePreview chrome actions", () => {
     const pageForm = pageFormSource()
 
     expect(file).toContain("export function SiteChromeActionFrame")
+    expect(file).toContain("overlayTargetSelector={siteChromeTargetSelector(zone)}")
     expect(file).toContain("trigger={children}")
     expect(file).toContain("export type SiteChromeSelection")
     expect(file).toContain("export type SiteChromeSelectPoint")
@@ -75,11 +76,17 @@ describe("SiteChromePreview chrome actions", () => {
     const gutterOverlay = gutterOverlaySource()
 
     expect(file).toContain("showOptionsButton")
-    expect(file).toContain("data-site-chrome-wrapper")
+    expect(file).toContain("const siteChromeTargetSelector = (zone: SiteChromeZone)")
+    expect(file).toContain(".rt-canvas [data-amicare-nav]")
+    expect(file).toContain(".rt-canvas .site-frame-root > footer")
     expect(file).toContain('import { CanvasChromeGutterOverlay } from "@/components/editor/canvas/CanvasChromeGutterOverlay"')
     expect(file).toContain("<CanvasChromeGutterOverlay")
     expect(file).toContain('dataChrome="site-chrome-gutter"')
     expect(file).toContain("visible={gutterVisible || selected}")
+    expect(file).toContain("useOverlayTarget ? (")
+    expect(file).toContain("trigger")
+    expect(file).toContain("overlayAnchor.addEventListener(\"click\", onClick)")
+    expect(file).toContain("overlayAnchor.addEventListener(\"contextmenu\", onContextMenu)")
     expect(file).not.toContain("group/site-chrome")
     expect(file).not.toContain("absolute right-3 top-3 z-[60]")
     expect(file).toContain("cms-block--site-chrome")
@@ -100,6 +107,18 @@ describe("SiteChromePreview chrome actions", () => {
     expect(file).not.toContain('onSelect({ zone: "footer" }, { x: event.clientX, y: event.clientY })')
     expect(canvasMode).toContain("onContextMenuCapture={onCanvasContextMenu}")
     expect(canvasMode).toContain('[data-site-chrome], [data-site-chrome-wrapper], [data-site-chrome-menu-trigger]')
+  })
+
+  it("keeps shared renderer chrome DOM direct and uses a portal overlay target for edit affordances", () => {
+    const file = source()
+    const pageForm = pageFormSource()
+
+    expect(pageForm).toContain("<SiteChromeActionFrame")
+    expect(file).toContain("const useOverlayTarget = showOptionsButton && !!overlayTargetSelector")
+    expect(file).toContain("{useOverlayTarget ? (")
+    expect(file).toContain(") : (")
+    expect(file).toContain("activeAnchorRef = useOverlayTarget ? overlayAnchorRef : anchorRef")
+    expect(file).not.toContain('<div\n        ref={anchorRef}\n        className={cn(\n          "cms-block relative",\n          `cms-block--site-chrome cms-block--site-chrome-${zone}`,\n        )}\n        data-active={selected || undefined}\n        data-site-chrome-wrapper={showOptionsButton ? "true" : undefined}\n        onMouseEnter={() => setGutterVisible(true)}\n        onMouseLeave={() => setGutterVisible(false)}\n        onFocusCapture={() => setGutterVisible(true)}\n        onBlurCapture={(event) => {')
   })
 
   it("disables canvas context menus in sidebar mode", () => {

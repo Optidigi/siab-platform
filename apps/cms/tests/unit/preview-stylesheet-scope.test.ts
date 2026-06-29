@@ -113,9 +113,13 @@ describe("CMS preview renderer stylesheet scope", () => {
     expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] :where(.object-cover)")
     expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] [class~=\"@min-[48rem]/site-frame:aspect-[4/3]\"]")
     expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] [class~=\"@min-[48rem]/site-frame:px-12\"]")
+    for (const count of [1, 2, 3, 4, 5, 6]) {
+      expect(canvasCss).toContain(`.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-${count}"]`)
+    }
     expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] [class~=\"@min-[64rem]/site-frame:px-20\"]")
     expect(canvasCss).not.toMatch(/(^|\n)\s*\.sticky\s*\{/)
     expect(canvasCss).not.toMatch(/(^|\n)\s*\.flex\s*\{/)
     expect(canvasCss).not.toMatch(/(^|\n)\s*\.w-full\s*\{/)
+    expect(canvasCss).not.toMatch(/(^|\n)\s*\.grid-cols-[1-6]\s*\{/)
   })
 })

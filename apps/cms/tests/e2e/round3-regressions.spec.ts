@@ -117,6 +117,40 @@ test.describe("Round 3 — root-cause regressions", () => {
     expect(pageErrors).toEqual([])
   })
 
+  test("site chrome edit affordance is portaled without wrapping rendered nav or footer", async ({ page }) => {
+    const pageErrors: string[] = []
+    page.on("pageerror", (err) => pageErrors.push(err.message))
+
+    await ensureEditorMode(page, "canvas")
+
+    const domShape = await page.locator(".rt-canvas .site-frame-root").first().evaluate((root) => ({
+      firstTag: root.firstElementChild?.tagName,
+      footerParentClass: root.querySelector("footer")?.parentElement?.className ?? null,
+      wrappedChromeCount: root.querySelectorAll(":scope > [data-site-chrome-wrapper], :scope > .cms-block--site-chrome").length,
+    }))
+    expect(domShape.firstTag).toBe("NAV")
+    expect(domShape.footerParentClass).toBe("site-frame-root")
+    expect(domShape.wrappedChromeCount).toBe(0)
+
+    const nav = page.locator(".rt-canvas .site-frame-root > nav").first()
+    await expect(nav).toBeVisible({ timeout: 10_000 })
+    await nav.hover()
+
+    const chromeGutter = page.locator('[data-siab-canvas-chrome="site-chrome-gutter"]').first()
+    await expect(chromeGutter).toBeVisible({ timeout: 5_000 })
+    const gutterPlacement = await chromeGutter.evaluate((node) => ({
+      parentTag: node.parentElement?.tagName,
+      insideCanvas: Boolean(node.closest(".rt-canvas")),
+    }))
+    expect(gutterPlacement.parentTag).toBe("BODY")
+    expect(gutterPlacement.insideCanvas).toBe(false)
+
+    await chromeGutter.locator("[data-site-chrome-menu-trigger]").click()
+    await expect(page.getByRole("button", { name: /open inspector/i })).toBeVisible({ timeout: 5_000 })
+
+    expect(pageErrors).toEqual([])
+  })
+
   test("Bug #4 — clicking into a canvas richtext slot does NOT mark form dirty", async ({ page }) => {
     const pageErrors: string[] = []
     page.on("pageerror", (err) => pageErrors.push(err.message))
@@ -128,7 +162,8 @@ test.describe("Round 3 — root-cause regressions", () => {
     await expect(saveBtn).toBeDisabled()
 
     // Click into the hero headline richtext slot — do not type
-    const headline = page.locator(".rt-canvas").getByText(/jeugdzorg/i).first()
+    const headline = page.locator(".rt-canvas .cms-block--hero h1.rt-slot").first()
+    await expect(headline).toBeVisible({ timeout: 10_000 })
     await headline.click()
     await page.waitForTimeout(800) // allow time for any RHF onChange propagation and re-render
 

@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { ChevronRight, GripVertical, Menu, MoreVertical, Navigation, PanelBottom, PanelTop } from "lucide-react"
 import { useTranslations } from "next-intl"
@@ -65,6 +65,10 @@ const chromeLabel = (zone: SiteChromeZone) => zone === "header" ? "Header" : "Fo
 
 const itemLabel = (item: FooterCompositionItem, fallback: string) => trimString(item.label) ?? fallback
 const footerItemTypes = new Set<string>(FOOTER_ITEM_TYPES)
+const siteChromeTargetSelector = (zone: SiteChromeZone) =>
+  zone === "header"
+    ? '.rt-canvas [data-site-chrome="header"], .rt-canvas [data-amicare-nav], .rt-canvas .site-frame-root > nav'
+    : '.rt-canvas [data-site-chrome="footer"], .rt-canvas .site-frame-root > footer'
 
 const inlineRootFromText = (value: string): RtRoot => ({
   t: "root",
@@ -205,6 +209,7 @@ export function SiteChromePreview({
       onNavigate={onNavigate}
       onSelect={onSelect ? (point) => onSelect({ zone }, point) : undefined}
       showOptionsButton
+      overlayTargetSelector={siteChromeTargetSelector(zone)}
       trigger={
         isHeader ? (
           <>
@@ -534,6 +539,7 @@ export function SiteChromeActionFrame({
       onNavigate={onNavigate}
       onSelect={onSelect ? (point) => onSelect({ zone }, point) : undefined}
       showOptionsButton
+      overlayTargetSelector={siteChromeTargetSelector(zone)}
       trigger={children}
     />
   )
@@ -598,6 +604,7 @@ function ChromeActionsMenu({
   onNavigate,
   onSelect,
   showOptionsButton = false,
+  overlayTargetSelector,
   trigger,
 }: {
   label: string
@@ -607,6 +614,7 @@ function ChromeActionsMenu({
   onNavigate?: (href: string) => void
   onSelect?: (point?: SiteChromeSelectPoint) => void
   showOptionsButton?: boolean
+  overlayTargetSelector?: string
   trigger: ReactNode
 }) {
   const t = useTranslations("editor")
@@ -614,8 +622,12 @@ function ChromeActionsMenu({
   const isReadOnly = isReadOnlyView(view)
   const [point, setPoint] = useState<{ x: number; y: number } | null>(null)
   const anchorRef = useRef<HTMLDivElement | null>(null)
+  const overlayAnchorRef = useRef<HTMLElement | null>(null)
+  const [overlayAnchor, setOverlayAnchor] = useState<HTMLElement | null>(null)
   const [gutterVisible, setGutterVisible] = useState(false)
   const open = point != null
+  const useOverlayTarget = showOptionsButton && !!overlayTargetSelector
+  const activeAnchorRef = useOverlayTarget ? overlayAnchorRef : anchorRef
 
   useEffect(() => {
     if (!open) return
@@ -625,6 +637,19 @@ function ChromeActionsMenu({
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [open])
+
+  useLayoutEffect(() => {
+    if (!useOverlayTarget || !overlayTargetSelector) return
+    const findTarget = () => {
+      const next = document.querySelector<HTMLElement>(overlayTargetSelector)
+      overlayAnchorRef.current = next
+      setOverlayAnchor(next)
+    }
+    findTarget()
+    const observer = new MutationObserver(findTarget)
+    observer.observe(document.body, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [overlayTargetSelector, useOverlayTarget])
 
   // siab-responsive-ignore-next-line -- CMS action menu is fixed to the browser viewport, not tenant layout.
   const left = point && typeof window !== "undefined" ? Math.max(8, Math.min(point.x, window.innerWidth - 240)) : 0
@@ -642,6 +667,48 @@ function ChromeActionsMenu({
     }
     setPoint(nextPoint)
   }
+
+  useEffect(() => {
+    if (!useOverlayTarget || !overlayAnchor) return
+    const onMouseEnter = () => setGutterVisible(true)
+    const onMouseLeave = () => setGutterVisible(false)
+    const onFocusIn = () => setGutterVisible(true)
+    const onFocusOut = (event: FocusEvent) => {
+      if (!overlayAnchor.contains(event.relatedTarget as Node | null)) {
+        setGutterVisible(false)
+      }
+    }
+    const onClick = (event: MouseEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+      if (onSelect) {
+        onSelect()
+        return
+      }
+      setPoint({ x: event.clientX, y: event.clientY })
+    }
+    const onContextMenu = (event: MouseEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+      if (isReadOnly) return
+      openAt({ x: event.clientX, y: event.clientY })
+    }
+
+    overlayAnchor.addEventListener("mouseenter", onMouseEnter)
+    overlayAnchor.addEventListener("mouseleave", onMouseLeave)
+    overlayAnchor.addEventListener("focusin", onFocusIn)
+    overlayAnchor.addEventListener("focusout", onFocusOut)
+    overlayAnchor.addEventListener("click", onClick)
+    overlayAnchor.addEventListener("contextmenu", onContextMenu)
+    return () => {
+      overlayAnchor.removeEventListener("mouseenter", onMouseEnter)
+      overlayAnchor.removeEventListener("mouseleave", onMouseLeave)
+      overlayAnchor.removeEventListener("focusin", onFocusIn)
+      overlayAnchor.removeEventListener("focusout", onFocusOut)
+      overlayAnchor.removeEventListener("click", onClick)
+      overlayAnchor.removeEventListener("contextmenu", onContextMenu)
+    }
+  }, [isReadOnly, onSelect, overlayAnchor, useOverlayTarget])
 
   const menu = open && typeof document !== "undefined" ? createPortal(
     <div
@@ -702,43 +769,47 @@ function ChromeActionsMenu({
 
   return (
     <>
-      <div
-        ref={anchorRef}
-        className={cn(
-          "cms-block relative",
-          `cms-block--site-chrome cms-block--site-chrome-${zone}`,
-        )}
-        data-active={selected || undefined}
-        data-site-chrome-wrapper={showOptionsButton ? "true" : undefined}
-        onMouseEnter={() => setGutterVisible(true)}
-        onMouseLeave={() => setGutterVisible(false)}
-        onFocusCapture={() => setGutterVisible(true)}
-        onBlurCapture={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-            setGutterVisible(false)
-          }
-        }}
-        onClick={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          if (onSelect) {
-            onSelect()
-            return
-          }
-          setPoint({ x: event.clientX, y: event.clientY })
-        }}
-        onContextMenu={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          if (isReadOnly) return
-          openAt({ x: event.clientX, y: event.clientY })
-        }}
-      >
-        {trigger}
-      </div>
+      {useOverlayTarget ? (
+        trigger
+      ) : (
+        <div
+          ref={anchorRef}
+          className={cn(
+            "cms-block relative",
+            `cms-block--site-chrome cms-block--site-chrome-${zone}`,
+          )}
+          data-active={selected || undefined}
+          data-site-chrome-wrapper={showOptionsButton ? "true" : undefined}
+          onMouseEnter={() => setGutterVisible(true)}
+          onMouseLeave={() => setGutterVisible(false)}
+          onFocusCapture={() => setGutterVisible(true)}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+              setGutterVisible(false)
+            }
+          }}
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            if (onSelect) {
+              onSelect()
+              return
+            }
+            setPoint({ x: event.clientX, y: event.clientY })
+          }}
+          onContextMenu={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            if (isReadOnly) return
+            openAt({ x: event.clientX, y: event.clientY })
+          }}
+        >
+          {trigger}
+        </div>
+      )}
       {showOptionsButton && !isReadOnly && (
         <CanvasChromeGutterOverlay
-          anchorRef={anchorRef}
+          anchorRef={activeAnchorRef}
           visible={gutterVisible || selected}
           setVisible={setGutterVisible}
           optionsLabel={t("siteChromeActions", { zone: label })}
