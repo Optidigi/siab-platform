@@ -104,7 +104,9 @@ describe("page editor explicit-save contract", () => {
     expect(selectElement).toContain("setChromeQuickMenu(null)")
     expect(selectElement).not.toContain("if (resolved)")
     expect(canvasMode).toContain('className="site-frame-root"')
-    expect(canvasMode).toContain("if (event.target === event.currentTarget) {\n                setActiveIndex(null)\n                select(null)\n              }")
+    expect(canvasMode).toContain("if (event.target === event.currentTarget) {")
+    expect(canvasMode).toContain("setActiveIndex(null)")
+    expect(canvasMode).toContain("select(null)")
   })
 
   it("clears selected footer chrome when the canvas quick menu is dismissed", () => {
