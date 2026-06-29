@@ -102,7 +102,7 @@ describe("SiteChromePreview chrome actions", () => {
     expect(gutterOverlay).toContain("left:${formatCssPx(Math.max(8, rect.right - 72))}")
     expect(gutterOverlay).toContain("top:${formatCssPx(Math.max(8, rect.top + 8))}")
     expect(gutterOverlay).toContain("{position.styleElement}")
-    expect(gutterOverlay).toContain("${position.className} fixed z-40")
+    expect(gutterOverlay).toContain("${position.className} fixed z-[15]")
     expect(canvasMode).toContain("<CanvasChromeGutterOverlay")
     expect(file).not.toContain('onSelect({ zone: "footer" }, { x: event.clientX, y: event.clientY })')
     expect(canvasMode).toContain("onContextMenuCapture={onCanvasContextMenu}")

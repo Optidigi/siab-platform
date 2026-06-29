@@ -27,7 +27,7 @@ import { ChevronLeft, Trash2, ExternalLink, Copy, Navigation, PanelBottom, Panel
 import type { Page } from "@/payload-types"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS, STYLE_PRESETS } from "@/lib/theme/presets"
+import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { type EditorMode, resolveDefaultMode } from "@/lib/editor/editorMode"
 import { EDITOR_DESKTOP_BREAKPOINT } from "@/lib/editor/constants"
 import { ModeBar } from "@/components/editor/mode/mode-bar"
@@ -1988,8 +1988,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                   palettes={PALETTE_PRESETS}
                   fonts={FONT_PRESETS}
                   radiusLevels={RADIUS_PRESETS}
-                  densityLevels={DENSITY_PRESETS}
-                  stylePresetLevels={STYLE_PRESETS}
                 />
               </div>
             </div>

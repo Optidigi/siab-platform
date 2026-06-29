@@ -15,8 +15,9 @@ describe("preview customizer source contract", () => {
 
     expect(componentSource).toContain('@siteinabox/site-renderer')
     expect(componentSource).toContain("<SitePageRenderer")
-    expect(componentSource).toContain("densityLevels={DENSITY_PRESETS}")
-    expect(componentSource).toContain("stylePresetLevels={STYLE_PRESETS}")
+    expect(componentSource).toContain("radiusLevels={RADIUS_PRESETS}")
+    expect(componentSource).not.toContain("densityLevels={DENSITY_PRESETS}")
+    expect(componentSource).not.toContain("stylePresetLevels={STYLE_PRESETS}")
     expect(componentSource).toContain('aria-label="Preview pages"')
     expect(componentSource).toContain('access.type === "grant"')
     expect(componentSource).toContain("Expires {formatExpiry(access.exp)}")

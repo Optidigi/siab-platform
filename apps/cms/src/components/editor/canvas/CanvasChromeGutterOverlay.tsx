@@ -104,7 +104,7 @@ export const CanvasChromeGutterOverlay: React.FC<{
       {position.styleElement}
       <div
         data-siab-canvas-chrome={dataChrome}
-        className={`${position.className} fixed z-40 inline-flex items-center gap-0.5 rounded-md border border-border bg-background/95 p-0.5 text-foreground opacity-100 shadow-sm backdrop-blur-sm`}
+        className={`${position.className} fixed z-[15] inline-flex items-center gap-0.5 rounded-md border border-border bg-background/95 p-0.5 text-foreground opacity-100 shadow-sm backdrop-blur-sm`}
         onMouseEnter={() => setVisible(true)}
         onMouseLeave={() => {
           if (!menuOpen) setVisible(false)

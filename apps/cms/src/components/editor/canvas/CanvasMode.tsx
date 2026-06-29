@@ -158,7 +158,7 @@ const CanvasGapOverlay: React.FC<{
           {overlayPosition.styleElement}
           <div
             data-siab-canvas-chrome="insert-gap"
-            className={`${overlayPosition.className} fixed z-40 flex h-8 items-center justify-center group/gap`}
+            className={`${overlayPosition.className} fixed z-[15] flex h-8 items-center justify-center group/gap`}
           >
             <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border opacity-0 transition-opacity group-hover/gap:opacity-100" />
             <button

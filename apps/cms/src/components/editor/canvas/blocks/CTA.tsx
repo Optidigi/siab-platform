@@ -24,9 +24,11 @@ export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive,
   const idx = block.__index as number
   const isAmicareLegacy = legacyTenant === "amicare"
 
-  const primaryHref: string | null | undefined = block.primary?.href?.trim()
+  const contactCta = block.primary?.href?.trim() ? block.primary : block.secondary
+  const contactHref: string | null | undefined = contactCta?.href?.trim()
   const isContact =
-    primaryHref?.startsWith("mailto:") || primaryHref?.startsWith("tel:")
+    contactHref?.startsWith("mailto:") || contactHref?.startsWith("tel:")
+  const setContactCta = (value: any) => onUpdate({ ...block, primary: value, secondary: null })
   const sectionId = block.anchor || (isContact ? "contact" : isAmicareLegacy ? "wat-telt" : "cta")
   const sectionClassName = isContact
     ? "cms-block cms-block--cta cms-block--cta-contact relative isolate overflow-hidden border-t border-rule px-6 py-24 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-28 @min-[64rem]/site-frame:px-24"
@@ -128,25 +130,34 @@ export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive,
           elementPath={{ blockIndex: idx, field: "description" }}
         />
 
-        <div className={isContact ? "space-y-4" : "mt-6 flex flex-wrap items-center justify-center gap-3"}>
-          <InlineCtaButton
-            value={block.primary}
-            onChange={setPrimary}
-            className={isContact
-              ? "inline-block font-serif text-[28px] text-ink underline decoration-1 underline-offset-[8px] transition-colors hover:text-accent hover:decoration-accent @min-[48rem]/site-frame:text-[44px]"
-              : "inline-block rounded-md border border-rule px-6 py-3 text-[14px] font-medium text-ink transition-colors hover:border-accent hover:text-accent [font-family:var(--font-text)]"
-            }
-            emptyLabel={t("addContactLink")}
-            elementPath={{ blockIndex: idx, field: "primary" }}
-          />
-          <InlineCtaButton
-            value={block.secondary}
-            onChange={setSecondary}
-            className="inline-block rounded-md border border-rule px-6 py-3 text-[14px] font-medium text-ink transition-colors hover:border-accent hover:text-accent [font-family:var(--font-text)]"
-            emptyLabel={t("addCtaButton")}
-            elementPath={{ blockIndex: idx, field: "secondary" }}
-          />
-        </div>
+        {isContact ? (
+          <div className="space-y-4">
+            <InlineCtaButton
+              value={contactCta}
+              onChange={setContactCta}
+              className="inline-block font-serif text-[28px] text-ink underline decoration-1 underline-offset-[8px] transition-colors hover:text-accent hover:decoration-accent @min-[48rem]/site-frame:text-[44px]"
+              emptyLabel={t("addContactLink")}
+              elementPath={{ blockIndex: idx, field: "primary" }}
+            />
+          </div>
+        ) : (
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <InlineCtaButton
+              value={block.primary}
+              onChange={setPrimary}
+              className="inline-block rounded-md border border-rule px-6 py-3 text-[14px] font-medium text-ink transition-colors hover:border-accent hover:text-accent [font-family:var(--font-text)]"
+              emptyLabel={t("addContactLink")}
+              elementPath={{ blockIndex: idx, field: "primary" }}
+            />
+            <InlineCtaButton
+              value={block.secondary}
+              onChange={setSecondary}
+              className="inline-block rounded-md border border-rule px-6 py-3 text-[14px] font-medium text-ink transition-colors hover:border-accent hover:text-accent [font-family:var(--font-text)]"
+              emptyLabel={t("addCtaButton")}
+              elementPath={{ blockIndex: idx, field: "secondary" }}
+            />
+          </div>
+        )}
       </div>
     </section>
   )

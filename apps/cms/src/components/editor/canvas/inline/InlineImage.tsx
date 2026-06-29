@@ -212,7 +212,7 @@ export const InlineImage: React.FC<InlineImageProps> = ({
           {overlayPosition.styleElement}
           <div
             data-siab-canvas-chrome="inline-image"
-            className={`${overlayPosition.className} fixed z-40 inline-flex items-center gap-0.5 rounded-md border border-border bg-background/95 p-0.5 text-foreground shadow-sm backdrop-blur-sm`}
+            className={`${overlayPosition.className} fixed z-[15] inline-flex items-center gap-0.5 rounded-md border border-border bg-background/95 p-0.5 text-foreground shadow-sm backdrop-blur-sm`}
             onMouseEnter={() => canvasChrome.setVisible(true)}
             onMouseLeave={() => canvasChrome.setVisible(false)}
             onFocus={() => canvasChrome.setVisible(true)}

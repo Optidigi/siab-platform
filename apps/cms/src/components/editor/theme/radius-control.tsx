@@ -88,14 +88,10 @@ export const RadiusControl: React.FC<{
 export const ShapeControl: React.FC<{
   theme: ThemeTokens | null
   radiusLevels?: RadiusLevel[]
-  densityLevels?: DensityLevel[]
-  stylePresetLevels?: StylePresetLevel[]
   onChange: (next: Pick<ThemeTokens, "radius" | "density" | "stylePreset">) => void
 }> = ({
   theme,
   radiusLevels = DEFAULT_RADIUS_LEVELS,
-  densityLevels = DEFAULT_DENSITY_LEVELS,
-  stylePresetLevels = DEFAULT_STYLE_PRESET_LEVELS,
   onChange,
 }) => {
   const activeRadiusLevel = findRadiusLevel(theme?.radius, radiusLevels)
@@ -127,49 +123,6 @@ export const ShapeControl: React.FC<{
         })}
       </ToggleGroup>
 
-      <ToggleGroup
-        type="single"
-        value={theme?.density ?? ""}
-        onValueChange={(density) => {
-          if (density === "compact" || density === "comfortable" || density === "spacious") {
-            onChange({ density })
-          }
-        }}
-        className="justify-start gap-1"
-      >
-        {densityLevels.map((level) => (
-          <ToggleGroupItem
-            key={level.id}
-            value={level.id}
-            aria-label={level.label}
-            className="h-9 rounded-md border border-border bg-background px-3 text-xs data-[state=on]:border-primary data-[state=on]:bg-primary/5"
-          >
-            {level.label}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-
-      <ToggleGroup
-        type="single"
-        value={theme?.stylePreset ?? ""}
-        onValueChange={(stylePreset) => {
-          if (stylePreset && stylePresetLevels.some((level) => level.id === stylePreset)) {
-            onChange({ stylePreset })
-          }
-        }}
-        className="justify-start gap-1"
-      >
-        {stylePresetLevels.map((level) => (
-          <ToggleGroupItem
-            key={level.id}
-            value={level.id}
-            aria-label={level.label}
-            className="h-9 rounded-md border border-border bg-background px-3 text-xs data-[state=on]:border-primary data-[state=on]:bg-primary/5"
-          >
-            {level.label}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
     </div>
   )
 }

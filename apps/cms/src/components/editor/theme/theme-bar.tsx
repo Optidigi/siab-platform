@@ -11,9 +11,7 @@ import { PalettePicker, type PalettePreset } from "@/components/editor/theme/pal
 import { FontPicker, type FontPreset } from "@/components/editor/theme/font-picker"
 import {
   ShapeControl,
-  type DensityLevel,
   type RadiusLevel,
-  type StylePresetLevel,
 } from "@/components/editor/theme/radius-control"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import type { RtManifest } from "@/lib/richText/manifest"
@@ -31,8 +29,6 @@ export function ThemeBar({
   palettes,
   fonts,
   radiusLevels,
-  densityLevels,
-  stylePresetLevels,
 }: {
   theme: ThemeTokens | null
   manifest: RtManifest
@@ -40,8 +36,6 @@ export function ThemeBar({
   palettes: PalettePreset[]
   fonts: FontPreset[]
   radiusLevels?: RadiusLevel[]
-  densityLevels?: DensityLevel[]
-  stylePresetLevels?: StylePresetLevel[]
 }) {
   const t = useTranslations("editor")
   // Theme edits are *not* autosaved — they flow up via onThemeChange so the
@@ -123,8 +117,6 @@ export function ThemeBar({
             <ShapeControl
               theme={theme}
               radiusLevels={radiusLevels}
-              densityLevels={densityLevels}
-              stylePresetLevels={stylePresetLevels}
               onChange={(next) => handleUpdate(next)}
             />
           )}
