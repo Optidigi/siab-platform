@@ -6,6 +6,7 @@ const repoRoot = path.resolve(process.cwd(), process.cwd().endsWith(`${path.sep}
 const frontendRoot = path.join(repoRoot, "apps/cms/src/app/(frontend)")
 const payloadRoot = path.join(repoRoot, "apps/cms/src/app/(payload)")
 const previewImport = 'import "@/styles/site-renderer-preview.css"'
+const canvasStylesheetImport = 'import "@/styles/site-renderer-canvas.css"'
 const canvasCssImport = '@import "@siteinabox/site-renderer/canvas.css";'
 const canvasScope = ".site-renderer[data-siab-site-renderer]"
 
@@ -50,16 +51,32 @@ describe("CMS preview renderer stylesheet scope", () => {
     expect(rendererCss).toMatch(/^\*\s*\{/m)
   })
 
-  it("loads only the scoped embedded renderer canvas stylesheet in CMS app CSS", () => {
+  it("keeps renderer canvas CSS out of CMS app-global CSS", () => {
     const siabCss = read("apps/cms/src/styles/siab.css")
     const globalsCss = read("apps/cms/src/styles/globals.css")
 
     expect(globalsCss).toContain('@import "./siab.css";')
     expect(globalsCss).toContain('@import "./shadcn.css";')
     expect(siabCss).toContain('@source "../../../../packages/site-renderer/src";')
-    expect(siabCss).toContain(canvasCssImport)
+    expect(siabCss).not.toContain(canvasCssImport)
     expect(siabCss).not.toContain("site-renderer-preview.css")
     expect(siabCss).not.toContain('@import "@siteinabox/site-renderer/styles.css"')
+  })
+
+  it("loads scoped embedded renderer canvas CSS only from editor route layouts", () => {
+    const canvasStylesheet = read("apps/cms/src/styles/site-renderer-canvas.css")
+    const importingFiles = [frontendRoot, payloadRoot].flatMap((root) => collectSourceFiles(root))
+      .filter((file) => readFileSync(file, "utf8").includes("site-renderer-canvas.css"))
+      .map((file) => path.relative(repoRoot, file).split(path.sep).join("/"))
+
+    expect(canvasStylesheet).toContain(canvasCssImport)
+    expect(importingFiles.sort()).toEqual([
+      "apps/cms/src/app/(frontend)/(admin)/pages/[id]/layout.tsx",
+      "apps/cms/src/app/(frontend)/(admin)/pages/new/layout.tsx",
+      "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/[id]/layout.tsx",
+      "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/new/layout.tsx",
+    ])
+    for (const file of importingFiles) expect(read(file)).toContain(canvasStylesheetImport)
   })
 
   it("exports embedded renderer canvas CSS as a scoped package contract", () => {
