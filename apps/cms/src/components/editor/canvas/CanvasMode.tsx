@@ -20,6 +20,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { ChevronDown, ChevronRight, Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
+import { SitePageRenderer, createRendererMediaResolver, resolveLegacyTenant } from "@siteinabox/site-renderer"
 import { CanvasBlockRenderer } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { CanvasMobile } from "@/components/editor/canvas/mobile/CanvasMobile"
 import { Button } from "@siteinabox/ui/components/button"
@@ -49,6 +50,7 @@ import { useIsMobile } from "@siteinabox/ui/hooks/use-mobile"
 import { EDITOR_DESKTOP_BREAKPOINT } from "@/lib/editor/constants"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
+import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 import { toCssVars } from "@/lib/theme/toCssVars"
 import { isReadOnlyView, type CanvasView } from "@/components/editor/canvas/canvasView"
 import type { MobileSectionListSlotContext } from "@/components/editor/canvas/mobile/mobile-section-list"
@@ -66,6 +68,10 @@ export interface CanvasModeProps {
   view: CanvasView
   readOnly?: boolean
   theme?: ThemeTokens | null
+  rendererSettings?: any
+  tenantId?: number | string | null
+  tenantSlug?: string | null
+  tenantDomain?: string | null
   dangerZone?: React.ReactNode
   seoCard?: React.ReactNode
   reorderBlocks: (from: number, to: number) => void
@@ -564,6 +570,83 @@ const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
   )
 }
 
+const SortableRenderedBlockItem: React.FC<{
+  id: string
+  index: number
+  isActive: boolean
+  readOnly?: boolean
+  children: React.ReactNode
+  onActivate: () => void
+  onDelete: () => void
+  onDuplicate: () => void
+}> = ({ id, index, isActive, readOnly = false, children, onActivate, onDelete, onDuplicate }) => {
+  const t = useTranslations("editor")
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled: readOnly })
+  const anchorRef = React.useRef<HTMLDivElement | null>(null)
+  const [gutterVisible, setGutterVisible] = React.useState(false)
+
+  const setRefs = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      setNodeRef(node)
+      anchorRef.current = node
+    },
+    [setNodeRef],
+  )
+
+  const transformValue = formatRuntimeCssValue(CSS.Transform.toString(transform))
+  const transitionValue = formatRuntimeCssValue(transition)
+  const sortableStyle = useCspStyleRule(
+    "canvas-rendered-sortable-block",
+    `${transformValue ? `transform:${transformValue};` : ""}${transitionValue ? `transition:${transitionValue};` : ""}`,
+  )
+
+  return (
+    <>
+      {sortableStyle.styleElement}
+      <div
+        ref={setRefs}
+        className={cn(sortableStyle.className, "relative", isDragging && "opacity-50")}
+        data-block-index={index}
+        data-rt-selected={isActive ? "true" : undefined}
+        onClick={(event) => {
+          if ((event.target as HTMLElement | null)?.closest("[data-siab-canvas-chrome]")) return
+          onActivate()
+        }}
+        onMouseEnter={() => setGutterVisible(true)}
+        onMouseLeave={() => setGutterVisible(false)}
+        onFocusCapture={() => setGutterVisible(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            setGutterVisible(false)
+          }
+        }}
+      >
+        {!readOnly && (
+          <CanvasChromeGutterOverlay
+            anchorRef={anchorRef}
+            visible={gutterVisible}
+            setVisible={setGutterVisible}
+            dragHandleRef={setActivatorNodeRef}
+            dragHandleProps={{ ...attributes, ...listeners }}
+            optionsLabel={t("blockActions")}
+            onDelete={onDelete}
+            onDuplicate={onDuplicate}
+          />
+        )}
+        {children}
+      </div>
+    </>
+  )
+}
+
 export const CanvasMode: React.FC<CanvasModeProps> = ({
   manifest,
   tenantCss,
@@ -571,6 +654,10 @@ export const CanvasMode: React.FC<CanvasModeProps> = ({
   dangerZone,
   seoCard,
   theme,
+  rendererSettings,
+  tenantId,
+  tenantSlug,
+  tenantDomain,
   readOnly = false,
   reorderBlocks,
   deleteBlock,
@@ -619,6 +706,10 @@ export const CanvasMode: React.FC<CanvasModeProps> = ({
       tenantCss={tenantCss}
       view={view}
       theme={theme}
+      rendererSettings={rendererSettings}
+      tenantId={tenantId}
+      tenantSlug={tenantSlug}
+      tenantDomain={tenantDomain}
       readOnly={readOnly}
       reorderBlocks={reorderBlocks}
       deleteBlock={deleteBlock}
@@ -637,7 +728,12 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
   tenantCss,
   view,
   theme,
+  rendererSettings,
+  tenantId,
+  tenantSlug,
+  tenantDomain,
   readOnly = false,
+  pageTitle,
   headerChrome,
   footerChrome,
   onOpenBlockInspector,
@@ -729,6 +825,22 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
   const sortableIds = blocks.map((_, i) => String(i))
+  const rendererTheme = React.useMemo(() => cmsThemeToRendererTheme(theme), [theme])
+  const mediaResolver = React.useMemo(
+    () => tenantId != null ? createRendererMediaResolver(String(tenantId)) : undefined,
+    [tenantId],
+  )
+  const legacyTenant = rendererSettings
+    ? resolveLegacyTenant({ tenantSlug, domain: tenantDomain, settings: rendererSettings })
+    : null
+  const useSharedAmicareShell = legacyTenant === "amicare"
+  const rendererPage = React.useMemo(() => ({
+    title: pageTitle || "Untitled",
+    slug: "index",
+    status: "published" as const,
+    blocks,
+    updatedAt: new Date(0).toISOString(),
+  }), [blocks, pageTitle])
   const deleteTargetBlock = deleteTargetIndex != null ? blocks[deleteTargetIndex] : undefined
   const deleteTargetConfig = deleteTargetBlock
     ? manifest.blocks?.find((blockType) => blockType.slug === deleteTargetBlock.blockType)
@@ -759,35 +871,13 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
         {theme && (
           <style nonce={cspNonce} suppressHydrationWarning data-rt-theme-overrides dangerouslySetInnerHTML={{ __html: toCssVars(theme) }} />
         )}
-        <div
-          className="rt-canvas w-full [&_a[href]:not(.rt-click-edit)]:pointer-events-none"
-          data-rt-view={view}
-          data-rt-mode={theme?.mode === "dark" ? "dark" : "light"}
-          onContextMenuCapture={onCanvasContextMenu}
-          onClickCapture={(event) => {
-            if ((event.target as HTMLElement | null)?.closest("a[href]")) event.preventDefault()
-          }}
-        >
+        {useSharedAmicareShell ? (
           <div
-            className="site-frame-root"
-            onClick={(event) => {
-              if (event.target === event.currentTarget) {
-                setActiveIndex(null)
-                select(null)
-              }
+            onContextMenuCapture={onCanvasContextMenu}
+            onClickCapture={(event) => {
+              if ((event.target as HTMLElement | null)?.closest("a[href]")) event.preventDefault()
             }}
           >
-            {headerChrome}
-            {!effectiveReadOnly && (
-              <CanvasGapOverlay
-                onInsert={(slug, seed) => insertBlockAtWithRemap(0, slug, seed)}
-              />
-            )}
-            {blocks.length === 0 && (
-              <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
-                <p>{t("noBlocksYet")} {!isReadOnlyView(view) ? t("addFirstBlockHint") : t("switchToCanvasToAddBlocks")}</p>
-              </div>
-            )}
             <DndContext
               id={dndId}
               sensors={sensors}
@@ -795,35 +885,127 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
               onDragEnd={onDragEnd}
             >
               <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-                {blocks.map((block, i) => (
-                  <React.Fragment key={i}>
-                    <SortableBlockItem
-                      id={String(i)}
-                      block={block}
-                      index={i}
-                      isActive={activeIndex === i}
-                      manifest={manifest}
-                      onActivate={() => {
-                        setActiveIndex(i)
-                        select(null)
-                      }}
-                      onUpdate={updateBlock(i)}
-                      onDelete={() => requestDeleteBlock(i)}
-                      onDuplicate={() => duplicateBlockWithRemap(i)}
-                      readOnly={effectiveReadOnly}
-                    />
-                    {!effectiveReadOnly && (
-                      <CanvasGapOverlay
-                        onInsert={(slug, seed) => insertBlockAtWithRemap(i + 1, slug, seed)}
-                      />
-                    )}
-                  </React.Fragment>
-                ))}
+                <SitePageRenderer
+                  page={rendererPage as any}
+                  settings={rendererSettings}
+                  theme={rendererTheme}
+                  tenantSlug={tenantSlug}
+                  domain={tenantDomain}
+                  mediaResolver={mediaResolver}
+                  nonce={cspNonce}
+                  includeThemeStyle
+                  includeBehaviorScripts={false}
+                  canvasAttributes={{ "data-rt-view": view } as React.HTMLAttributes<HTMLDivElement>}
+                  canvasClassName="[&_a[href]:not(.rt-click-edit)]:pointer-events-none"
+                  formAction="#"
+                  renderBlocks={({ defaultRenderBlocks }) => (
+                    <>
+                      {!effectiveReadOnly && (
+                        <CanvasGapOverlay
+                          onInsert={(slug, seed) => insertBlockAtWithRemap(0, slug, seed)}
+                        />
+                      )}
+                      {blocks.length === 0 && (
+                        <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
+                          <p>{t("noBlocksYet")} {!isReadOnlyView(view) ? t("addFirstBlockHint") : t("switchToCanvasToAddBlocks")}</p>
+                        </div>
+                      )}
+                      {blocks.map((block, index) => (
+                        <React.Fragment key={`${block.blockType}-${index}`}>
+                          <SortableRenderedBlockItem
+                            id={String(index)}
+                            index={index}
+                            isActive={activeIndex === index}
+                            onActivate={() => {
+                              setActiveIndex(index)
+                              select(null)
+                            }}
+                            onDelete={() => requestDeleteBlock(index)}
+                            onDuplicate={() => duplicateBlockWithRemap(index)}
+                            readOnly={effectiveReadOnly}
+                          >
+                            {defaultRenderBlocks[index]}
+                          </SortableRenderedBlockItem>
+                          {!effectiveReadOnly && (
+                            <CanvasGapOverlay
+                              onInsert={(slug, seed) => insertBlockAtWithRemap(index + 1, slug, seed)}
+                            />
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </>
+                  )}
+                />
               </SortableContext>
             </DndContext>
-            {footerChrome}
           </div>
-        </div>
+        ) : (
+          <div
+            className="rt-canvas w-full [&_a[href]:not(.rt-click-edit)]:pointer-events-none"
+            data-rt-view={view}
+            data-rt-mode={theme?.mode === "dark" ? "dark" : "light"}
+            onContextMenuCapture={onCanvasContextMenu}
+            onClickCapture={(event) => {
+              if ((event.target as HTMLElement | null)?.closest("a[href]")) event.preventDefault()
+            }}
+          >
+            <div
+              className="site-frame-root"
+              onClick={(event) => {
+                if (event.target === event.currentTarget) {
+                  setActiveIndex(null)
+                  select(null)
+                }
+              }}
+            >
+              {headerChrome}
+              {!effectiveReadOnly && (
+                <CanvasGapOverlay
+                  onInsert={(slug, seed) => insertBlockAtWithRemap(0, slug, seed)}
+                />
+              )}
+              {blocks.length === 0 && (
+                <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
+                  <p>{t("noBlocksYet")} {!isReadOnlyView(view) ? t("addFirstBlockHint") : t("switchToCanvasToAddBlocks")}</p>
+                </div>
+              )}
+              <DndContext
+                id={dndId}
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={onDragEnd}
+              >
+                <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+                  {blocks.map((block, i) => (
+                    <React.Fragment key={i}>
+                      <SortableBlockItem
+                        id={String(i)}
+                        block={block}
+                        index={i}
+                        isActive={activeIndex === i}
+                        manifest={manifest}
+                        onActivate={() => {
+                          setActiveIndex(i)
+                          select(null)
+                        }}
+                        onUpdate={updateBlock(i)}
+                        onDelete={() => requestDeleteBlock(i)}
+                        onDuplicate={() => duplicateBlockWithRemap(i)}
+                        readOnly={effectiveReadOnly}
+                      />
+                      {!effectiveReadOnly && (
+                        <CanvasGapOverlay
+                          onInsert={(slug, seed) => insertBlockAtWithRemap(i + 1, slug, seed)}
+                        />
+                      )}
+                    </React.Fragment>
+                  ))}
+                </SortableContext>
+              </DndContext>
+              {footerChrome}
+            </div>
+          </div>
+        )}
       </div>
       {!effectiveReadOnly && (
         <>

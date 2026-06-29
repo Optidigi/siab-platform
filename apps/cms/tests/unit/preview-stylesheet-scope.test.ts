@@ -27,15 +27,19 @@ describe("CMS preview renderer stylesheet scope", () => {
     expect(read("apps/cms/src/app/(payload)/layout.tsx")).not.toContain("site-renderer-preview.css")
   })
 
-  it("imports renderer/provider preview CSS only from the customer preview route group layout", () => {
+  it("imports renderer/provider preview CSS only from customer preview and page-editor routes", () => {
     const importingFiles = [frontendRoot, payloadRoot].flatMap((root) => collectSourceFiles(root))
       .filter((file) => readFileSync(file, "utf8").includes("site-renderer-preview.css"))
       .map((file) => path.relative(repoRoot, file).split(path.sep).join("/"))
 
-    expect(importingFiles).toEqual(["apps/cms/src/app/(frontend)/(site-preview)/layout.tsx"])
-    const [previewLayout] = importingFiles
-    expect(previewLayout).toBeDefined()
-    expect(read(previewLayout as string)).toContain(previewImport)
+    expect(importingFiles.sort()).toEqual([
+      "apps/cms/src/app/(frontend)/(admin)/pages/[id]/page.tsx",
+      "apps/cms/src/app/(frontend)/(admin)/pages/new/page.tsx",
+      "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/[id]/page.tsx",
+      "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/new/page.tsx",
+      "apps/cms/src/app/(frontend)/(site-preview)/layout.tsx",
+    ].sort())
+    expect(read("apps/cms/src/app/(frontend)/(site-preview)/layout.tsx")).toContain(previewImport)
   })
 
   it("keeps shared renderer CSS out of the CMS frontend shell", () => {

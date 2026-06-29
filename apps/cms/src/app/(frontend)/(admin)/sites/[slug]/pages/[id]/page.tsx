@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
+import "@/styles/site-renderer-preview.css"
 import { getTenantBySlug } from "@/lib/queries/tenants"
-import { getPageById } from "@/lib/queries/pages"
+import { getPageById, listPages } from "@/lib/queries/pages"
 import { requireSuperAdminSelectedSite } from "@/lib/routePolicy"
 import { PageForm } from "@/components/forms/PageForm"
 import { PageHeader } from "@/components/page-header"
@@ -35,11 +36,12 @@ export default async function EditPage({ params }: { params: Promise<{ slug: str
   // pattern already used in this file's `generateMetadata` (UX-2026-0001
   // batch-1).
   const tenantOrigin = process.env.NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE ?? `https://${tenant.domain}`
-  const [page, manifest, tenantCss, settings] = await Promise.all([
+  const [page, manifest, tenantCss, settings, rendererNavPages] = await Promise.all([
     getPageById(Number(id)).catch(() => null),
     loadTenantManifest(tenant.id),
     loadTenantCss(tenant.id),
     getOrCreateSiteSettings(tenant.id),
+    listPages(tenant.id),
   ])
   if (!page) notFound()
   if (!sameRelationshipId(page.tenant, tenant.id)) notFound()
@@ -56,6 +58,8 @@ export default async function EditPage({ params }: { params: Promise<{ slug: str
       <PageForm
         initial={page as any}
         tenantId={tenant.id}
+        tenantSlug={tenant.slug}
+        tenantDomain={tenant.domain}
         baseHref={`/sites/${slug}/pages`}
         // FN-2026-0047 — preview iframe origin. Production: https://<domain>.
         // Dev (no /etc/hosts entry, no local reverse proxy): operator can set
@@ -69,6 +73,7 @@ export default async function EditPage({ params }: { params: Promise<{ slug: str
         userEditorMode={user.editorMode ?? null}
         theme={tenant.theme as ThemeTokens | null}
         siteSettings={settings}
+        rendererNavPages={(rendererNavPages as any[]).filter((page) => page.status === "published").map((page) => ({ id: page.id, slug: page.slug, title: page.title }))}
         canManageNav
         canEditSettings
         autoPublishLive={isOfficialTenant(tenant)}

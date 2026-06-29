@@ -169,9 +169,9 @@ export const defaultFooterColumns = (
   settings: any,
   contract: FooterCompositionContract | null,
 ): FooterCompositionColumn[] => {
-  if (!contract) return []
   const existing = normalizeFooterColumns(settings?.chrome?.footer?.columns, contract)
-  if (existing.length) return setFooterColumnCount(existing, existing.length)
+  if (existing.length) return contract ? setFooterColumnCount(existing, existing.length, contract) : existing
+  if (!contract) return []
 
   const allowed = new Set(contract.items.map((item) => item.type))
   const selected = preferredFooterTypes.filter((type) => allowed.has(type)).slice(0, contract.defaultColumnCount)

@@ -89,6 +89,8 @@ import {
 import { useTranslations } from "next-intl"
 import { normalizePageBlockUploadIds, normalizeUploadId } from "@/lib/uploadValues"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
+import { resolveSettingsContract } from "@/lib/settingsContract"
+import type { NavPage } from "@/lib/projection/resolveNav"
 import { SiteChromePreview, SiteChromeRow, type SiteChromeSelection, type SiteChromeSelectPoint, type SiteChromeZone } from "@/components/editor/canvas/SiteChromePreview"
 import { MediaPicker } from "@/components/media/MediaPicker"
 import {
@@ -110,6 +112,7 @@ import {
   chromeDraftFromSettings,
   chromePatchFromDraft,
   mergeChromeSettings,
+  rendererSettingsFromChromeDraft,
   type SiteChromeDraft,
 } from "@/lib/siteChromeDraft"
 
@@ -795,7 +798,7 @@ function SiteChromeQuickMenu({
   )
 }
 
-export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, userEditorMode, tenantCss, theme, siteSettings, canManageNav, canEditSettings, autoPublishLive, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; baseHref: string; tenantOrigin: string; manifest: RtManifest; userEditorMode?: EditorMode | null; tenantCss?: string | null; theme?: ThemeTokens | null; siteSettings?: any; canManageNav?: boolean; canEditSettings?: boolean; autoPublishLive?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
+export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref, tenantOrigin, manifest, userEditorMode, tenantCss, theme, siteSettings, rendererNavPages = [], canManageNav, canEditSettings, autoPublishLive, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; tenantDomain?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; userEditorMode?: EditorMode | null; tenantCss?: string | null; theme?: ThemeTokens | null; siteSettings?: any; rendererNavPages?: NavPage[]; canManageNav?: boolean; canEditSettings?: boolean; autoPublishLive?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -876,6 +879,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
   const [chromeQuickMenu, setChromeQuickMenu] = useState<{ selection: SiteChromeSelection; point: SiteChromeSelectPoint } | null>(null)
   const siteSettingsState = siteSettings ?? null
   const footerContract = useMemo(() => resolveFooterContract(manifest), [manifest])
+  const settingsContract = useMemo(() => resolveSettingsContract(manifest), [manifest])
   const [chromeDraft, setChromeDraftState] = useState<SiteChromeDraft>(() => chromeDraftFromSettings(siteSettingsState, footerContract))
   const [chromeBaseline, setChromeBaselineState] = useState<SiteChromeDraft>(() => chromeDraftFromSettings(siteSettingsState, footerContract))
   const chromeDraftRef = useRef<SiteChromeDraft>(chromeDraft)
@@ -903,6 +907,13 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
   const chromeSettingsState = useMemo(
     () => siteSettingsState ? mergeChromeSettings(siteSettingsState, chromeDraft) : null,
     [siteSettingsState, chromeDraft],
+  )
+  const rendererSettingsState = useMemo(
+    () => rendererSettingsFromChromeDraft(siteSettingsState, chromeDraft, {
+      publishedPages: rendererNavPages,
+      settingsContract,
+    }),
+    [chromeDraft, rendererNavPages, settingsContract, siteSettingsState],
   )
 
   const selectElement = useCallback<Dispatch<SetStateAction<ElementPath | null>>>((next) => {
@@ -1971,6 +1982,10 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
                     manifest={manifest}
                     tenantCss={stableTenantCss}
                     theme={themeState}
+                    rendererSettings={rendererSettingsState}
+                    tenantId={tenantId}
+                    tenantSlug={tenantSlug}
+                    tenantDomain={tenantDomain}
                     readOnly={readOnly}
                     headerChrome={headerChrome}
                     footerChrome={footerChrome}
@@ -2017,6 +2032,10 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
                         manifest={manifest}
                         tenantCss={stableTenantCss}
                         theme={themeState}
+                        rendererSettings={rendererSettingsState}
+                        tenantId={tenantId}
+                        tenantSlug={tenantSlug}
+                        tenantDomain={tenantDomain}
                         readOnly={readOnly}
                         headerChrome={headerChrome}
                         footerChrome={footerChrome}

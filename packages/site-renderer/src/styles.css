@@ -85,6 +85,8 @@ svg {
   --radius-md: 0.5rem;
   --radius-sm: calc(var(--radius-md) - 0.25rem);
   --radius-lg: calc(var(--radius-md) + 0.5rem);
+  background: var(--color-bg);
+  color: var(--color-ink);
   font-family: var(--font-text);
   font-size: 17px;
   line-height: 1.6;

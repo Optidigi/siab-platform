@@ -75,6 +75,13 @@ and media objects with only a `filename` are rewritten at render time to
 request host's active published snapshot before reading from disk, so one
 tenant cannot request another tenant's media through the public renderer.
 
+If the read-only `DATA_DIR` mount is missing a file, `/siab-media` falls back to
+the CMS-owned `/api/renderer/media/<tenantId>/<filename>` endpoint using the
+same `SIAB_RENDERER_API_TOKEN` boundary as snapshot loading. The CMS endpoint
+verifies the tenant media row and streams from the authoritative CMS tenant
+media directory, so live media and favicons stay on the CMS media contract
+without manual per-tenant copying.
+
 Traefik preserves the original `Host` by default. The current compose template
 does not add an explicit `X-Forwarded-Host` middleware; production smoke must
 verify the CMS receives the staging host during renderer snapshot lookup.

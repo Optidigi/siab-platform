@@ -1,10 +1,9 @@
 ---
 import { renderToStaticMarkup } from "react-dom/server"
 import { getRendererDeployTargetByHost, isRendererProductionHost } from "@siteinabox/contracts/deploy-targets"
-import { SitePageRenderer, buildPageSeoMetadata, resolveLegacyTenant } from "@siteinabox/site-renderer"
+import { SitePageRenderer, buildPageSeoMetadata, createRendererMediaResolver, resolveLegacyTenant } from "@siteinabox/site-renderer"
 import "../styles/site.css"
 import { analyticsConfigJson, buildAnalyticsConfig } from "../lib/analytics-config.js"
-import { createRendererMediaResolver } from "../lib/media"
 import { normalizeRequestHost, resolvePublishedPage } from "../lib/snapshot"
 import * as amblastLegacy from "../lib/legacy-tenants/amblast/legacy-response.js"
 import * as amicareLegacy from "../lib/legacy-tenants/amicare/legacy-response"

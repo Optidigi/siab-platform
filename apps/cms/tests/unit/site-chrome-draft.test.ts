@@ -4,6 +4,7 @@ import {
   chromeDraftFromSettings,
   chromePatchFromDraft,
   mergeChromeSettings,
+  rendererSettingsFromChromeDraft,
   type SiteChromeDraft,
 } from "@/lib/siteChromeDraft"
 import type { FooterCompositionContract } from "@/lib/footerComposition"
@@ -114,5 +115,69 @@ describe("site chrome draft helpers", () => {
         banner: { variant: "hyperUiSimple", visible: false },
       },
     })
+  })
+
+  it("projects draft chrome into renderer-compatible site settings", () => {
+    const settings = {
+      siteName: "Site",
+      siteUrl: "https://example.test",
+      language: "nl",
+      branding: { logo: { url: "/brand.png", filename: "brand.png", alt: "Brand" } },
+      navHeader: [{ type: "page", page: 5, label: "Home" }],
+      chrome: {
+        header: { variant: "default", logo: 3, cta: { label: "Bad", href: "javascript:alert(1)" } },
+        footer: { variant: "default", logo: null, columns: [] },
+      },
+    }
+    const draft: SiteChromeDraft = {
+      header: {
+        variant: "amicareZen",
+        logo: { url: "/draft-logo.png", filename: "draft-logo.png", alt: "Draft logo" },
+        behavior: "sticky",
+        activeMode: "path",
+        mobileMenu: "drawer",
+        cta: { label: "Contact", href: "/contact" },
+      },
+      footer: {
+        variant: "amicareZen",
+        logo: 9,
+        tagline: "Draft footer",
+        copyright: "2026",
+        legalLinks: [{ label: "Privacy", href: "/privacy" }],
+        columns: [{ items: [{ type: "text", label: "About", text: "Hello" }] }],
+      },
+      banner: { variant: "default", visible: true, message: "Draft banner" },
+    }
+
+    const projected = rendererSettingsFromChromeDraft(settings, draft, {
+      publishedPages: [{ id: 5, slug: "index", title: "Home page" }],
+    })
+
+    expect(projected).toMatchObject({
+      siteName: "Site",
+      siteUrl: "https://example.test",
+      chrome: {
+        header: {
+          variant: "amicareZen",
+          logo: { url: "/draft-logo.png", filename: "draft-logo.png", alt: "Draft logo" },
+          behavior: "sticky",
+          activeMode: "path",
+          mobileMenu: "drawer",
+          cta: { label: "Contact", href: "/contact" },
+        },
+        footer: {
+          variant: "amicareZen",
+          logo: { id: 9 },
+          tagline: "Draft footer",
+          copyright: "2026",
+          legalLinks: [{ label: "Privacy", href: "/privacy" }],
+          columns: [{ id: null, items: [{ id: null, type: "text", label: "About", text: "Hello", links: [] }] }],
+        },
+        banner: { variant: "default", visible: true, message: "Draft banner" },
+      },
+      navHeader: [{ label: "Home", href: "/", external: false }],
+    })
+    expect(projected?.chrome?.header?.cta).toEqual({ label: "Contact", href: "/contact" })
+    expect(projected).not.toHaveProperty("analytics")
   })
 })

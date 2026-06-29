@@ -10,6 +10,11 @@ import { resolveLegacyTenant } from "./legacy-tenants/resolve"
 import type { MediaResolver } from "./media"
 import { PUBLIC_RENDERER_THEME_SCOPE, ThemeStyle, themeMode } from "./theme"
 
+export type SiteRenderBlocks = (args: {
+  blocks: Page["blocks"]
+  defaultRenderBlocks: React.ReactNode[]
+}) => React.ReactNode
+
 export type SitePageRendererProps = {
   page: Page
   settings: SiteSettings
@@ -19,13 +24,16 @@ export type SitePageRendererProps = {
   formAction?: string
   className?: string
   canvasClassName?: string
+  canvasAttributes?: React.HTMLAttributes<HTMLDivElement>
   nonce?: string
   tenantSlug?: string | null
   domain?: string | null
   includeThemeStyle?: boolean
+  includeBehaviorScripts?: boolean
   header?: React.ReactNode
   footer?: React.ReactNode
   renderBlock?: AmicareRenderBlock
+  renderBlocks?: SiteRenderBlocks
 }
 
 export function SitePageRenderer({
@@ -37,13 +45,16 @@ export function SitePageRenderer({
   formAction,
   className,
   canvasClassName,
+  canvasAttributes,
   nonce,
   tenantSlug,
   domain,
   includeThemeStyle = true,
+  includeBehaviorScripts = true,
   header,
   footer,
   renderBlock,
+  renderBlocks,
 }: SitePageRendererProps) {
   const legacyTenant = resolveLegacyTenant({ tenantSlug, domain, settings })
 
@@ -58,9 +69,12 @@ export function SitePageRenderer({
         formAction={formAction}
         className={className}
         canvasClassName={canvasClassName}
+        canvasAttributes={canvasAttributes}
         nonce={nonce}
         includeThemeStyle={includeThemeStyle}
+        includeBehaviorScripts={includeBehaviorScripts}
         renderBlock={renderBlock}
+        renderBlocks={renderBlocks}
       />
     )
   }
@@ -82,10 +96,21 @@ export function SitePageRenderer({
     )
   }
 
+  const defaultRenderBlocks = page.blocks.map((block, index) => (
+    <BlockRenderer
+      key={`${block.blockType}-${index}`}
+      block={block}
+      index={index}
+      registry={registry}
+      options={{ mediaResolver, formAction }}
+    />
+  ))
+
   return (
     <div className={cn("site-renderer", className)} data-siab-site-renderer>
       {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} scope={PUBLIC_RENDERER_THEME_SCOPE} />}
       <div
+        {...canvasAttributes}
         className={cn("rt-canvas w-full", canvasClassName)}
         data-rt-mode={themeMode(theme)}
         data-page-slug={page.slug}
@@ -93,15 +118,7 @@ export function SitePageRenderer({
         <div className="site-frame-root">
           {header ?? <SiteHeader settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />}
           <SiteBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
-          {page.blocks.map((block, index) => (
-            <BlockRenderer
-              key={`${block.blockType}-${index}`}
-              block={block}
-              index={index}
-              registry={registry}
-              options={{ mediaResolver, formAction }}
-            />
-          ))}
+          {renderBlocks ? renderBlocks({ blocks: page.blocks, defaultRenderBlocks }) : defaultRenderBlocks}
           {footer ?? <SiteFooter settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />}
         </div>
       </div>

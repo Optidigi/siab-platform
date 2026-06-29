@@ -1,7 +1,7 @@
 import { readFile, stat } from "node:fs/promises"
 import type { APIRoute } from "astro"
 import { loadPublishedSnapshot, normalizeRequestHost } from "../../../lib/snapshot"
-import { mediaContentType, safeTenantMediaFilePath } from "../../../lib/media"
+import { cmsRendererMediaEndpoint, mediaContentType, safeTenantMediaFilePath } from "../../../lib/media"
 
 function notFound(): Response {
   return new Response(null, {
@@ -9,6 +9,53 @@ function notFound(): Response {
     headers: {
       "cache-control": "no-store",
     },
+  })
+}
+
+async function fetchCmsMediaFallback({
+  tenantId,
+  mediaPath,
+  includeBody,
+}: {
+  tenantId: string
+  mediaPath: string
+  includeBody: boolean
+}): Promise<Response | null> {
+  const endpoint = cmsRendererMediaEndpoint(tenantId, mediaPath)
+  if (!endpoint) return null
+
+  const headers: HeadersInit = {}
+  const token = process.env.SIAB_RENDERER_API_TOKEN
+  if (token) headers.authorization = `Bearer ${token}`
+
+  const response = await fetch(endpoint, {
+    method: includeBody ? "GET" : "HEAD",
+    headers,
+    cache: "no-store",
+  })
+  if (response.status === 404) return null
+  if (!response.ok) {
+    throw new Error(`CMS media lookup failed with ${response.status}`)
+  }
+
+  const proxyHeaders = new Headers()
+  for (const header of [
+    "cache-control",
+    "content-length",
+    "content-security-policy",
+    "content-type",
+    "etag",
+    "last-modified",
+    "x-content-type-options",
+  ]) {
+    const value = response.headers.get(header)
+    if (value) proxyHeaders.set(header, value)
+  }
+  if (!proxyHeaders.has("cache-control")) proxyHeaders.set("cache-control", "public, max-age=3600")
+
+  return new Response(includeBody ? response.body : null, {
+    status: 200,
+    headers: proxyHeaders,
   })
 }
 
@@ -35,7 +82,9 @@ async function resolveMediaResponse({ params, request, includeBody }: Parameters
     if (!includeBody) return new Response(null, { status: 200, headers })
     return new Response(await readFile(filePath), { status: 200, headers })
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return notFound()
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      return (await fetchCmsMediaFallback({ tenantId, mediaPath, includeBody })) ?? notFound()
+    }
     throw error
   }
 }

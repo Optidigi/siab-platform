@@ -184,7 +184,7 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   assert.match(amicareHtml, /--font-title:Fraunces Variable, Georgia, serif/)
   assert.match(amicareHtml, /--site-style-preset:warm-care/)
   assert.match(amicareHtml, /id="siab-analytics-config"/)
-  assert.match(amicareHtml, /<link rel="icon" href="\/favicon\.svg"\/?>/)
+  assert.match(amicareHtml, /<link rel="icon" href="\/siab-media\/tenant-ami-care\/favicon\.svg"\/?>/)
   assert.match(amicareHtml, /\/siab-media\/tenant-ami-care\/bedroom\.jpg/)
   assert.match(amicareHtml, /Jeugdzorg/)
   assert.match(amicareHtml, /Begeleiding/)

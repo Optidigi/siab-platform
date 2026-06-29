@@ -814,6 +814,28 @@ async function runLegacyRendererDispatchTests() {
   assertIncludes(interceptedAmicareMarkup, "custom hero 0", "Amicare renderBlock custom content is rendered")
   assertExcludes(interceptedAmicareMarkup, "cms-block--hero", "Amicare renderBlock can replace default block output")
 
+  const blockListSlotMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: amicarePage,
+      settings: amicarePublishedSiteSnapshot.settings,
+      theme: amicarePublishedSiteSnapshot.theme,
+      tenantSlug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+      renderBlocks: ({ blocks, defaultRenderBlocks }) => React.createElement(
+        React.Fragment,
+        null,
+        React.createElement("div", { "data-cms-editable-block-list": blocks.length }),
+        defaultRenderBlocks,
+      ),
+    }),
+  )
+  assertIncludes(blockListSlotMarkup, 'data-legacy-tenant="amicare"', "Amicare renderBlocks keeps shared legacy shell")
+  assertIncludes(blockListSlotMarkup, "data-amicare-nav", "Amicare renderBlocks keeps shared nav chrome")
+  assertIncludes(blockListSlotMarkup, 'data-cms-editable-block-list="5"', "Amicare renderBlocks inserts CMS-owned block list inside shell")
+  assertIncludes(blockListSlotMarkup, "cms-block--hero", "Amicare renderBlocks can keep default block output")
+  assertOrdered(blockListSlotMarkup, "data-amicare-nav", "data-cms-editable-block-list", "Amicare renderBlocks slot renders after nav")
+  assertOrdered(blockListSlotMarkup, "data-cms-editable-block-list", "cms-block--hero", "Amicare renderBlocks slot wraps block output")
+
   const darkAmicareMarkup = renderToStaticMarkup(
     React.createElement(SitePageRenderer, {
       page: amicarePage,

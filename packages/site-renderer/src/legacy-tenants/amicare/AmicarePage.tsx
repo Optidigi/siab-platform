@@ -35,15 +35,23 @@ export type AmicarePageRendererProps = {
   formAction?: string
   className?: string
   canvasClassName?: string
+  canvasAttributes?: React.HTMLAttributes<HTMLDivElement>
   nonce?: string
   includeThemeStyle?: boolean
+  includeBehaviorScripts?: boolean
   renderBlock?: AmicareRenderBlock
+  renderBlocks?: AmicareRenderBlocks
 }
 
 export type AmicareRenderBlock = (args: {
   block: Block
   index: number
   defaultRender: React.ReactNode
+}) => React.ReactNode
+
+export type AmicareRenderBlocks = (args: {
+  blocks: Page["blocks"]
+  defaultRenderBlocks: React.ReactNode[]
 }) => React.ReactNode
 
 const DEFAULT_NAV_LINKS = [
@@ -893,10 +901,30 @@ export function AmicarePageRenderer({
   formAction,
   className,
   canvasClassName,
+  canvasAttributes,
   nonce,
   includeThemeStyle = true,
+  includeBehaviorScripts = true,
   renderBlock,
+  renderBlocks,
 }: AmicarePageRendererProps) {
+  const defaultRenderBlocks = page.blocks.map((block, index) => {
+    const defaultRender = (
+      <AmicareBlock
+        block={block}
+        index={index}
+        mediaResolver={mediaResolver}
+        formAction={formAction}
+      />
+    )
+
+    return (
+      <React.Fragment key={`${block.blockType}-${index}`}>
+        {renderBlock ? renderBlock({ block, index, defaultRender }) : defaultRender}
+      </React.Fragment>
+    )
+  })
+
   return (
     <div
       className={cn("site-renderer site-renderer--legacy site-renderer--legacy-amicare", className)}
@@ -905,6 +933,7 @@ export function AmicarePageRenderer({
     >
       {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} scope={PUBLIC_RENDERER_THEME_SCOPE} />}
       <div
+        {...canvasAttributes}
         className={cn("rt-canvas w-full [container-name:site-frame] [container-type:inline-size]", canvasClassName)}
         data-rt-mode={themeMode(theme)}
         data-page-slug={page.slug}
@@ -913,27 +942,16 @@ export function AmicarePageRenderer({
           <AmicareNav settings={settings} mediaResolver={mediaResolver} />
           <AmicareMaintenanceBanner settings={settings} />
           <main>
-            {page.blocks.map((block, index) => {
-              const defaultRender = (
-                <AmicareBlock
-                  block={block}
-                  index={index}
-                  mediaResolver={mediaResolver}
-                  formAction={formAction}
-                />
-              )
-
-              return (
-                <React.Fragment key={`${block.blockType}-${index}`}>
-                  {renderBlock ? renderBlock({ block, index, defaultRender }) : defaultRender}
-                </React.Fragment>
-              )
-            })}
+            {renderBlocks ? renderBlocks({ blocks: page.blocks, defaultRenderBlocks }) : defaultRenderBlocks}
           </main>
           <AmicareFooter settings={settings} mediaResolver={mediaResolver} />
         </div>
-        <AmicareCookieConsent enabled={Boolean(settings.analytics || page.analytics)} nonce={nonce} />
-        <AmicareNavBehavior nonce={nonce} />
+        {includeBehaviorScripts && (
+          <>
+            <AmicareCookieConsent enabled={Boolean(settings.analytics || page.analytics)} nonce={nonce} />
+            <AmicareNavBehavior nonce={nonce} />
+          </>
+        )}
       </div>
     </div>
   )

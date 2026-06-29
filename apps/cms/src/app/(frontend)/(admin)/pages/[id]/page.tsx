@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation"
+import "@/styles/site-renderer-preview.css"
 import { requireAuth } from "@/lib/authGate"
-import { getPageById } from "@/lib/queries/pages"
+import { getPageById, listPages } from "@/lib/queries/pages"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { pageNavMembership } from "@/lib/nav/membership"
 import { PageForm } from "@/components/forms/PageForm"
@@ -17,11 +18,12 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
   const readOnly = user.role === "viewer"
   const { id } = await params
   const tenantOrigin = process.env.NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE ?? `https://${ctx.tenant.domain}`
-  const [page, manifest, tenantCss, settings] = await Promise.all([
+  const [page, manifest, tenantCss, settings, rendererNavPages] = await Promise.all([
     getPageById(Number(id)).catch(() => null),
     loadTenantManifest(ctx.tenant.id),
     loadTenantCss(ctx.tenant.id),
     getOrCreateSiteSettings(ctx.tenant.id),
+    listPages(ctx.tenant.id),
   ])
   if (!page) notFound()
   if (!sameRelationshipId(page.tenant, ctx.tenant.id)) notFound()
@@ -36,6 +38,8 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
       <PageForm
         initial={page as any}
         tenantId={ctx.tenant.id}
+        tenantSlug={ctx.tenant.slug}
+        tenantDomain={ctx.tenant.domain}
         baseHref="/pages"
         tenantOrigin={tenantOrigin}
         manifest={manifest}
@@ -43,6 +47,7 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
         userEditorMode={user.editorMode ?? null}
         theme={ctx.tenant.theme as any}
         siteSettings={settings}
+        rendererNavPages={(rendererNavPages as any[]).filter((page) => page.status === "published").map((page) => ({ id: page.id, slug: page.slug, title: page.title }))}
         canManageNav={canManageNav}
         canEditSettings={canManageNav}
         autoPublishLive={isOfficialTenant(ctx.tenant)}

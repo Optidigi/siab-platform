@@ -4,6 +4,9 @@ import {
   defaultFooterColumns,
   normalizeFooterColumns,
 } from "@/lib/footerComposition"
+import { settingsToJsonWithoutAnalytics } from "@/lib/projection/settingsToJsonCore"
+import type { NavPage } from "@/lib/projection/resolveNav"
+import type { SettingsContract } from "@/lib/settingsContract"
 import { normalizeUploadId } from "@/lib/uploadValues"
 
 export type SiteChromeDraft = {
@@ -120,3 +123,18 @@ export const mergeChromeSettings = (settings: any, draft: SiteChromeDraft) => ({
     banner: draft.banner,
   },
 })
+
+export const rendererSettingsFromChromeDraft = (
+  settings: any,
+  draft: SiteChromeDraft,
+  options: {
+    publishedPages?: NavPage[]
+    settingsContract?: SettingsContract | null
+  } = {},
+) => settings
+  ? settingsToJsonWithoutAnalytics(
+      mergeChromeSettings(settings, draft),
+      options.publishedPages ?? [],
+      { settingsContract: options.settingsContract ?? null },
+    )
+  : null

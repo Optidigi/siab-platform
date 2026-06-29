@@ -1,3 +1,4 @@
+import "@/styles/site-renderer-preview.css"
 import { requireSuperAdminSelectedSite } from "@/lib/routePolicy"
 import { PageForm } from "@/components/forms/PageForm"
 import { PageHeader } from "@/components/page-header"
@@ -8,15 +9,17 @@ import { getAdminTranslations } from "@/i18n/admin"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { isOfficialTenant } from "@/lib/officialTenants"
+import { listPages } from "@/lib/queries/pages"
 
 export default async function NewPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const { user, tenant } = await requireSuperAdminSelectedSite(slug)
   const t = await getAdminTranslations(user, "pages")
-  const [manifest, tenantCss, settings] = await Promise.all([
+  const [manifest, tenantCss, settings, rendererNavPages] = await Promise.all([
     loadTenantManifest(tenant.id),
     loadTenantCss(tenant.id),
     getOrCreateSiteSettings(tenant.id),
+    listPages(tenant.id),
   ])
   return (
     <div className="flex flex-col gap-4">
@@ -26,6 +29,8 @@ export default async function NewPage({ params }: { params: Promise<{ slug: stri
       />
       <PageForm
         tenantId={tenant.id}
+        tenantSlug={tenant.slug}
+        tenantDomain={tenant.domain}
         baseHref={`/sites/${slug}/pages`}
         // FN-2026-0047 — see /pages/[id]/page.tsx for the env override note.
         tenantOrigin={
@@ -36,6 +41,7 @@ export default async function NewPage({ params }: { params: Promise<{ slug: stri
         userEditorMode={user.editorMode ?? null}
         theme={tenant.theme as ThemeTokens | null}
         siteSettings={settings}
+        rendererNavPages={(rendererNavPages as any[]).filter((page) => page.status === "published").map((page) => ({ id: page.id, slug: page.slug, title: page.title }))}
         canEditSettings
         autoPublishLive={isOfficialTenant(tenant)}
       />
