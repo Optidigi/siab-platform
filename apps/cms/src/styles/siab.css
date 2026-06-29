@@ -1,3 +1,7 @@
+@import "@fontsource-variable/fraunces/index.css";
+@import "@fontsource-variable/caveat/index.css";
+@import "@fontsource-variable/inter/index.css";
+
 /* SIAB-owned app/editor CSS. Do not point components.json at this file. */
 
 /* siab-payload site-specific: font-family is not part of the shadcn base.
