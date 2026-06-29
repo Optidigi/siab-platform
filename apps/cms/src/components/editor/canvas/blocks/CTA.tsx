@@ -16,7 +16,7 @@ import { cn } from "@siteinabox/ui/lib/utils"
  * Variant classes follow the site renderer, but every CTA field remains
  * optional and editable. If a field is present, the canvas renders it.
  */
-export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, legacyTenant }) => {
+export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId, legacyTenant }) => {
   const t = useTranslations("editor")
   const set = (field: string) => (value: any) => onUpdate({ ...block, [field]: value })
   const setPrimary = (value: any) => onUpdate({ ...block, primary: value })
@@ -27,7 +27,7 @@ export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive,
   const primaryHref: string | null | undefined = block.primary?.href?.trim()
   const isContact =
     primaryHref?.startsWith("mailto:") || primaryHref?.startsWith("tel:")
-  const sectionId = block.anchor || (isContact ? "contact" : "cta")
+  const sectionId = block.anchor || (isContact ? "contact" : isAmicareLegacy ? "wat-telt" : "cta")
   const sectionClassName = isContact
     ? "cms-block cms-block--cta cms-block--cta-contact relative isolate overflow-hidden border-t border-rule px-6 py-24 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-28 @min-[64rem]/site-frame:px-24"
     : "cms-block cms-block--cta cms-block--cta-quote relative isolate overflow-hidden bg-secondary/40 px-6 py-24 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-28"
@@ -56,6 +56,7 @@ export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive,
         changeLabel={t("changeBackgroundImage")}
         removeLabel={t("removeBackgroundImage")}
         openOnImageClick={false}
+        tenantId={tenantId ?? undefined}
         elementPath={{ blockIndex: idx, field: "backgroundImage" }}
       />
       {(!isContact || block.backgroundImage) && (

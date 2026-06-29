@@ -11,25 +11,37 @@ describe("generic CMS canvas defaults", () => {
     expect(read("src/blocks/Hero.ts")).not.toMatch(/Roermond|Limburg-Noord|Persoonlijke|Écht verschil/)
   })
 
-  it("gates the Amicare live hero badges to the Amicare hero variant", () => {
+  it("gates the Amicare live hero badges to official Amicare heroes with media", () => {
     const source = read("src/components/editor/canvas/blocks/Hero.tsx")
 
-    expect(source).toContain('block.variant === "amicareZenHero"')
-    expect(source).toContain('block.analytics?.sectionVariant === "amicare-zen-hero"')
+    expect(source).toContain('const isAmicareLegacy = legacyTenant === "amicare"')
+    expect(source).toContain("const showAmicareBadges = isAmicareLegacy && Boolean(block.image)")
     expect(source).toContain("Écht verschil maken voor jongeren en gezinnen.")
     expect(source).toContain("Roermond e.o.")
     expect(source).toContain("Limburg-Noord")
   })
 
-  it("uses generic canvas anchor fallbacks for shared block renderers", () => {
+  it("uses generic canvas anchor fallbacks except for official Amicare CTA parity", () => {
     const source =
       read("src/components/editor/canvas/blocks/CTA.tsx") +
       read("src/components/editor/canvas/blocks/FeatureList.tsx")
 
     expect(source).not.toContain('block.anchor || "werkwijze"')
-    expect(source).not.toContain('block.anchor || "wat-telt"')
     expect(source).toContain('block.anchor || "features"')
-    expect(source).toContain('block.anchor || (isContact ? "contact" : "cta")')
+    expect(source).toContain('block.anchor || (isContact ? "contact" : isAmicareLegacy ? "wat-telt" : "cta")')
+  })
+
+  it("resolves filename-only inline images through tenant media when a canvas tenant is known", () => {
+    const inlineImage = read("src/components/editor/canvas/inline/InlineImage.tsx")
+    const canvasMode = read("src/components/editor/canvas/CanvasMode.tsx")
+    const hero = read("src/components/editor/canvas/blocks/Hero.tsx")
+    const cta = read("src/components/editor/canvas/blocks/CTA.tsx")
+
+    expect(inlineImage).toContain('mediaPathFromValue, publicRendererMediaPath')
+    expect(inlineImage).toContain("publicRendererMediaPath(String(tenantId), mediaPath)")
+    expect(canvasMode).toContain("tenantId={tenantId}")
+    expect(hero).toContain("tenantId={tenantId ?? undefined}")
+    expect(cta).toContain("tenantId={tenantId ?? undefined}")
   })
 
   it("does not duplicate plus signs in icon-led add CTA controls", () => {

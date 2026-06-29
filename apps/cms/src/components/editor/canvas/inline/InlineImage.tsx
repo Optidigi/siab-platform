@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@sitei
 import { formatCssPx, formatCssUrl, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { MediaGrid } from "@/components/media/MediaGrid"
 import { MediaUploader } from "@/components/media/MediaUploader"
+import { mediaPathFromValue, publicRendererMediaPath } from "@siteinabox/site-renderer"
 import type { Media } from "@/payload-types"
 import { fetchTenantMedia, useResolvedMediaTenantId } from "@/components/media/clientMedia"
 import { useCanvasSelection } from "../CanvasSelectionContext"
@@ -48,12 +49,21 @@ export interface InlineImageProps {
   elementPath?: ElementPath
 }
 
-const resolveUrl = (v: any): string | null => {
+const resolveUrl = (v: any, tenantId?: number | string | null): string | null => {
   if (!v) return null
-  if (typeof v === "string") return v
+  const resolveTenantMediaPath = (value: string): string | null => {
+    const mediaPath = mediaPathFromValue(value)
+    if (tenantId != null && mediaPath) return publicRendererMediaPath(String(tenantId), mediaPath)
+    return null
+  }
+  if (typeof v === "string") return resolveTenantMediaPath(v) ?? v
   if (typeof v === "object") {
-    if (v.url) return v.url
-    if (v.filename) return `/media/${v.filename}`
+    if (typeof v.url === "string") return resolveTenantMediaPath(v.url) ?? v.url
+    if (typeof v.filename === "string") {
+      const mediaPath = mediaPathFromValue(v.filename)
+      if (tenantId != null && mediaPath) return publicRendererMediaPath(String(tenantId), mediaPath) ?? `/media/${v.filename}`
+      return `/media/${v.filename}`
+    }
   }
   return null
 }
@@ -166,7 +176,7 @@ export const InlineImage: React.FC<InlineImageProps> = ({
     e.stopPropagation()
     setOpen(true)
   }
-  const url = resolveUrl(value)
+  const url = resolveUrl(value, resolvedTenantId)
   const showOverlayChrome = chrome === "overlay"
   const surfaceIsEditable = openOnImageClick || isReadOnly
   const showHoverOverlayChrome = showOverlayChrome && view !== "mobile" && canvasChrome.visible

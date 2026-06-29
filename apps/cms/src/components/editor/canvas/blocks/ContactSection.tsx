@@ -32,7 +32,7 @@ export const ContactSectionCanvas: React.FC<CanvasBlockRendererProps> = ({
   return (
     <section
       id={block.anchor || undefined}
-      className="cms-block cms-block--contact px-6 py-16 @min-[816px]/site-frame:px-12 @min-[816px]/site-frame:py-20"
+      className="cms-block cms-block--contact px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20"
       data-block-index={block.__index ?? undefined}
       data-active={isActive || undefined}
       onClick={onActivate}
@@ -44,7 +44,7 @@ export const ContactSectionCanvas: React.FC<CanvasBlockRendererProps> = ({
           manifest={manifest}
           value={block.title}
           onChange={set("title")}
-          className="font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[816px]/site-frame:text-[44px] [font-family:var(--font-heading)]"
+          className="font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px] [font-family:var(--font-heading)]"
           placeholder={t("sectionTitlePlaceholder")}
           elementPath={{ blockIndex: idx, field: "title" }}
         />
@@ -55,7 +55,7 @@ export const ContactSectionCanvas: React.FC<CanvasBlockRendererProps> = ({
           manifest={manifest}
           value={block.description}
           onChange={set("description")}
-          className="mt-3 text-[17px] leading-[1.6] text-ink-muted @min-[816px]/site-frame:text-[18px] [font-family:var(--font-text)]"
+          className="mt-3 text-[17px] leading-[1.6] text-ink-muted @min-[48rem]/site-frame:text-[18px] [font-family:var(--font-text)]"
           placeholder={t("supportingDescriptionPlaceholder")}
           elementPath={{ blockIndex: idx, field: "description" }}
         />

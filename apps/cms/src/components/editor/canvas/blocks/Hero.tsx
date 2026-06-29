@@ -21,14 +21,14 @@ import { MapPin } from "lucide-react"
 
 const AMICARE_PULL_QUOTE = "Écht verschil maken voor jongeren en gezinnen."
 
-export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, legacyTenant }) => {
+export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId, legacyTenant }) => {
   const t = useTranslations("editor")
   const set = <K extends string>(field: K) => (value: any) => onUpdate({ ...block, [field]: value })
   const idx = block.__index as number
   const { view, select } = useCanvasSelection()
   const tapToSelect = isReadOnlyView(view)
   const isAmicareLegacy = legacyTenant === "amicare"
-  const showAmicareBadges = block.variant === "amicareZenHero" || block.analytics?.sectionVariant === "amicare-zen-hero"
+  const showAmicareBadges = isAmicareLegacy && Boolean(block.image)
   const [autoOpenPillIndex, setAutoOpenPillIndex] = React.useState<number | null>(null)
   // Only one pill editor is ever open at a time, so a single ref suffices.
   // Reset to false at the top of the editor factory (which re-runs each open).
@@ -242,6 +242,7 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
             onChange={set("image")}
             alt={block.imageAlt ?? null}
             className="aspect-[4/5] w-full rotate-0 transform rounded-[var(--radius-lg)] object-cover shadow-2xl @min-[48rem]/site-frame:aspect-[4/3] @min-[48rem]/site-frame:rotate-3"
+            tenantId={tenantId ?? undefined}
             elementPath={{ blockIndex: idx, field: "image" }}
           />
           {showAmicareBadges && (

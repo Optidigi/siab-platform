@@ -102,4 +102,20 @@ describe("CMS preview renderer stylesheet scope", () => {
     expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] .animate-fade-up")
     expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] .cms-block--richtext .rt-themed-eyebrow")
   })
+
+  it("covers Amicare canvas shell utilities without leaking Tailwind globals into admin", () => {
+    const canvasCss = read("packages/site-renderer/src/canvas.css")
+
+    expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] :where(.sticky)")
+    expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] :where(.flex)")
+    expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] :where(.w-full)")
+    expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] :where(.aspect-\\[4\\/5\\])")
+    expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] :where(.object-cover)")
+    expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] [class~=\"@min-[48rem]/site-frame:aspect-[4/3]\"]")
+    expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] [class~=\"@min-[48rem]/site-frame:px-12\"]")
+    expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] [class~=\"@min-[64rem]/site-frame:px-20\"]")
+    expect(canvasCss).not.toMatch(/(^|\n)\s*\.sticky\s*\{/)
+    expect(canvasCss).not.toMatch(/(^|\n)\s*\.flex\s*\{/)
+    expect(canvasCss).not.toMatch(/(^|\n)\s*\.w-full\s*\{/)
+  })
 })

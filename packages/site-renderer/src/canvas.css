@@ -20,6 +20,8 @@
 }
 
 .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-canvas {
+  container-name: site-frame;
+  container-type: inline-size;
   font-size: 17px;
   line-height: 1.6;
   scroll-behavior: smooth;
@@ -31,9 +33,654 @@
   --color-card-soft: color-mix(in oklab, var(--color-card, Canvas) 80%, transparent);
 }
 
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.sticky) {
+  position: sticky;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.relative) {
+  position: relative;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.absolute) {
+  position: absolute;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.fixed) {
+  position: fixed;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.isolate) {
+  isolation: isolate;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.block) {
+  display: block;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.inline) {
+  display: inline;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.inline-block) {
+  display: inline-block;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.inline-flex) {
+  display: inline-flex;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.flex) {
+  display: flex;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.grid) {
+  display: grid;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.hidden) {
+  display: none;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.sr-only) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip: rect(0, 0, 0, 0);
+  border-width: 0;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.pointer-events-none) {
+  pointer-events: none;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.top-0) {
+  top: 0;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.left-0) {
+  left: 0;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.right-0) {
+  right: 0;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bottom-4) {
+  bottom: 1rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.right-4) {
+  right: 1rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.top-full) {
+  top: 100%;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.inset-0) {
+  inset: 0;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.inset-x-4) {
+  left: 1rem;
+  right: 1rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.z-10) {
+  z-index: 10;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.z-50) {
+  z-index: 50;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.-z-10) {
+  z-index: -10;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.w-full) {
+  width: 100%;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.w-auto) {
+  width: auto;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.h-full) {
+  height: 100%;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.min-h-\[90vh\]) {
+  min-height: 90vh;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.max-w-md) {
+  max-width: 28rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.max-w-prose) {
+  max-width: 65ch;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.max-w-3xl) {
+  max-width: 48rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.max-w-7xl) {
+  max-width: 80rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.max-w-xl) {
+  max-width: 36rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.max-w-40) {
+  max-width: 10rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.max-w-44) {
+  max-width: 11rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mx-auto) {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.my-8) {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mt-14) {
+  margin-top: 3.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mt-2) {
+  margin-top: 0.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mt-5) {
+  margin-top: 1.25rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mt-6) {
+  margin-top: 1.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mt-7) {
+  margin-top: 1.75rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mt-10) {
+  margin-top: 2.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mb-14) {
+  margin-bottom: 3.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mb-12) {
+  margin-bottom: 3rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mb-10) {
+  margin-bottom: 2.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.px-3) {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.px-4) {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.px-6) {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.py-2) {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.py-3) {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.py-5) {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.py-12) {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.py-16) {
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.py-20) {
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.py-24) {
+  padding-top: 6rem;
+  padding-bottom: 6rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.p-2) {
+  padding: 0.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.p-3) {
+  padding: 0.75rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.p-4) {
+  padding: 1rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.p-5) {
+  padding: 1.25rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.p-6) {
+  padding: 1.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.p-7) {
+  padding: 1.75rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.pt-2) {
+  padding-top: 0.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.pt-1\.5) {
+  padding-top: 0.375rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.items-center) {
+  align-items: center;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.items-start) {
+  align-items: flex-start;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.justify-between) {
+  justify-content: space-between;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.justify-center) {
+  justify-content: center;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.flex-col) {
+  flex-direction: column;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.flex-wrap) {
+  flex-wrap: wrap;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.flex-1) {
+  flex: 1 1 0%;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.grid-cols-1) {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.gap-2) {
+  gap: 0.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.gap-2\.5) {
+  gap: 0.625rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.gap-3) {
+  gap: 0.75rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.gap-5) {
+  gap: 1.25rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.gap-6) {
+  gap: 1.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.gap-8) {
+  gap: 2rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.gap-12) {
+  gap: 3rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.space-y-1\.5 > :not([hidden]) ~ :not([hidden])) {
+  margin-top: 0.375rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.space-y-3 > :not([hidden]) ~ :not([hidden])) {
+  margin-top: 0.75rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.space-y-4 > :not([hidden]) ~ :not([hidden])) {
+  margin-top: 1rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.space-y-6 > :not([hidden]) ~ :not([hidden])) {
+  margin-top: 1.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.space-y-7 > :not([hidden]) ~ :not([hidden])) {
+  margin-top: 1.75rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.space-y-8 > :not([hidden]) ~ :not([hidden])) {
+  margin-top: 2rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.overflow-hidden) {
+  overflow: hidden;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.object-cover) {
+  object-fit: cover;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.object-contain) {
+  object-fit: contain;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.aspect-\[4\/5\]) {
+  aspect-ratio: 4 / 5;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.rotate-0) {
+  rotate: 0deg;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.-rotate-2) {
+  rotate: -2deg;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.transform) {
+  transform: translate(var(--tw-translate-x, 0), var(--tw-translate-y, 0)) rotate(var(--tw-rotate, 0)) skewX(var(--tw-skew-x, 0)) skewY(var(--tw-skew-y, 0)) scaleX(var(--tw-scale-x, 1)) scaleY(var(--tw-scale-y, 1));
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.rounded-full) {
+  border-radius: 9999px;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.rounded-md) {
+  border-radius: var(--radius-md, 0.5rem);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.rounded-lg) {
+  border-radius: var(--radius-lg, 1rem);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.rounded-2xl) {
+  border-radius: 1rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.border) {
+  border-width: 1px;
+  border-style: solid;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.border-t) {
+  border-top-width: 1px;
+  border-top-style: solid;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.border-b) {
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.border-l-2) {
+  border-left-width: 2px;
+  border-left-style: solid;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.border-rule) {
+  border-color: var(--color-rule, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.border-accent) {
+  border-color: var(--color-accent, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-bg) {
+  background-color: var(--color-bg, transparent);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-card) {
+  background-color: var(--color-card, Canvas);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-accent) {
+  background-color: var(--color-accent, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-secondary\/40) {
+  background-color: color-mix(in srgb, var(--color-secondary, transparent) 40%, transparent);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-card\/50) {
+  background-color: color-mix(in srgb, var(--color-card, Canvas) 50%, transparent);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-accent\/10) {
+  background-color: color-mix(in srgb, var(--color-accent, currentColor) 10%, transparent);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-bg\/80) {
+  background-color: color-mix(in srgb, var(--color-bg, Canvas) 80%, transparent);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-ink) {
+  color: var(--color-ink, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-ink-muted) {
+  color: var(--color-ink-muted, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-accent) {
+  color: var(--color-accent, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.font-serif) {
+  font-family: var(--font-serif, Georgia, serif);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.font-sans) {
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.font-medium) {
+  font-weight: 500;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.font-normal) {
+  font-weight: 400;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.italic) {
+  font-style: italic;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.uppercase) {
+  text-transform: uppercase;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-center) {
+  text-align: center;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.leading-none) {
+  line-height: 1;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.leading-tight) {
+  line-height: 1.25;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.leading-relaxed) {
+  line-height: 1.625;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.underline) {
+  text-decoration-line: underline;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.shadow-lg) {
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.shadow-2xl) {
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.backdrop-blur-lg) {
+  backdrop-filter: blur(16px);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.blur-3xl) {
+  filter: blur(64px);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.opacity-\[0\.12\]) {
+  opacity: 0.12;
+}
+
 @container site-frame (width >= 48rem) {
   .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root {
     font-size: 18px;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:flex"] {
+    display: flex;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:hidden"] {
+    display: none;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:flex-row"] {
+    flex-direction: row;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:w-1/2"] {
+    width: 50%;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:mt-0"] {
+    margin-top: 0;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:px-12"] {
+    padding-left: 3rem;
+    padding-right: 3rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:py-20"] {
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:py-24"] {
+    padding-top: 6rem;
+    padding-bottom: 6rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:py-28"] {
+    padding-top: 7rem;
+    padding-bottom: 7rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:p-4"] {
+    padding: 1rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:p-5"] {
+    padding: 1.25rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:aspect-[4/3]"] {
+    aspect-ratio: 4 / 3;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:rotate-3"] {
+    rotate: 3deg;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-2"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:gap-8"] {
+    gap: 2rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:text-left"] {
+    text-align: left;
+  }
+}
+
+@container site-frame (width >= 64rem) {
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[64rem]/site-frame:px-20"] {
+    padding-left: 5rem;
+    padding-right: 5rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[64rem]/site-frame:px-24"] {
+    padding-left: 6rem;
+    padding-right: 6rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[64rem]/site-frame:grid-cols-3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[64rem]/site-frame:grid-cols-4"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[64rem]/site-frame:grid-cols-5"] {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[64rem]/site-frame:grid-cols-6"] {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[64rem]/site-frame:gap-12"] {
+    gap: 3rem;
   }
 }
 
@@ -213,6 +860,232 @@
   background-color: var(--color-bg, transparent);
 }
 
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-rule, rgba(0, 0, 0, 0.12));
+  background-color: color-mix(in srgb, var(--color-bg, Canvas) 80%, transparent);
+  padding: 1.25rem 1.5rem;
+  backdrop-filter: blur(16px);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] > a {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] > a span:first-child {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--color-accent, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] > a span:last-child {
+  font-family: var(--font-text, inherit);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] input[type="checkbox"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] label[for="amicare-mobile-menu-toggle"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, var(--color-accent, currentColor) 10%, transparent);
+  color: var(--color-ink, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] [data-amicare-nav-link] {
+  color: var(--color-ink-muted, currentColor);
+  transition: color 150ms ease;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] [data-amicare-nav-link]:hover {
+  color: var(--color-ink, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] [data-amicare-nav-indicator] {
+  position: absolute;
+  right: 0;
+  bottom: -0.25rem;
+  left: 0;
+  height: 2px;
+  border-radius: 9999px;
+  background-color: var(--color-accent, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] .hidden {
+  display: none;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero {
+  position: relative;
+  display: flex;
+  min-height: 90vh;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  padding: 3rem 1.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(3),
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(4) {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(3) {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(4) {
+  margin-top: 3.5rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero h1 {
+  max-width: 14ch;
+  color: var(--color-ink, currentColor);
+  font-family: var(--font-title, var(--font-heading, inherit));
+  font-size: 2.75rem;
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero h1 em {
+  position: relative;
+  display: inline-block;
+  color: var(--color-accent, currentColor);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero p {
+  max-width: 28rem;
+  color: var(--color-ink-muted, currentColor);
+  font-family: var(--font-text, inherit);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-radius: var(--radius-lg, 1rem);
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero figure {
+  position: absolute;
+  bottom: -2rem;
+  left: -0.5rem;
+  max-width: 230px;
+  padding: 1rem;
+  border: 1px solid var(--color-rule, rgba(0, 0, 0, 0.12));
+  border-radius: var(--radius-lg, 1rem);
+  background-color: var(--color-card, Canvas);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero figure blockquote {
+  display: inline;
+  color: var(--color-ink, currentColor);
+  font-family: var(--font-heading, serif);
+  font-size: 1.0625rem;
+  font-style: italic;
+  line-height: 1.35;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero figure + div {
+  position: absolute;
+  top: -1.5rem;
+  right: -0.5rem;
+  display: flex;
+  max-width: 200px;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-rule, rgba(0, 0, 0, 0.12));
+  border-radius: var(--radius-lg, 1rem);
+  background-color: var(--color-card, Canvas);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer {
+  position: relative;
+  padding: 4rem 1.5rem;
+  border-top: 1px solid var(--color-rule, rgba(0, 0, 0, 0.12));
+  background:
+    linear-gradient(
+      to bottom right,
+      color-mix(in srgb, var(--color-secondary, transparent) 20%, transparent),
+      var(--color-bg, Canvas),
+      color-mix(in srgb, var(--color-accent, currentColor) 5%, transparent)
+    );
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer > div:first-child {
+  display: grid;
+  max-width: 80rem;
+  margin-inline: auto;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3rem;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer > div:first-child + div {
+  max-width: 80rem;
+  margin: 2rem auto;
+  border-top: 1px solid var(--color-rule, rgba(0, 0, 0, 0.12));
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer p {
+  color: var(--color-ink-muted, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer a {
+  color: var(--color-ink, currentColor);
+  text-decoration: none;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer a:hover {
+  color: var(--color-accent, currentColor);
+}
+
 .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--cta img[aria-hidden="true"] {
   opacity: 0.12;
 }
@@ -237,4 +1110,103 @@
     color-mix(in srgb, var(--color-bg, Canvas) 50%, transparent),
     color-mix(in srgb, var(--color-bg, Canvas) 70%, transparent)
   );
+}
+
+@container site-frame (width >= 48rem) {
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] {
+    padding-right: 3rem;
+    padding-left: 3rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] > div:nth-of-type(1) {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    font-size: 0.8125rem;
+    letter-spacing: 0.04em;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] label[for="amicare-mobile-menu-toggle"],
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] > div:nth-of-type(2) {
+    display: none;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero {
+    flex-direction: row;
+    padding-right: 3rem;
+    padding-left: 3rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(3),
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(4) {
+    width: 50%;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(4) {
+    margin-top: 0;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero h1 {
+    font-size: 3.75rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero p {
+    font-size: 1.125rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero img {
+    aspect-ratio: 4 / 3;
+    transform: rotate(3deg);
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero figure {
+    bottom: -2.5rem;
+    left: -2rem;
+    padding: 1.25rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero figure blockquote {
+    font-size: 1.1875rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero figure + div {
+    top: -2rem;
+    right: -2rem;
+    padding: 1rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer {
+    padding-right: 3rem;
+    padding-left: 3rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer > div:first-child {
+    gap: 2rem;
+  }
+}
+
+@container site-frame (width >= 64rem) {
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] {
+    padding-right: 5rem;
+    padding-left: 5rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero {
+    padding-right: 6rem;
+    padding-left: 6rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero h1 {
+    font-size: 4.75rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer {
+    padding-right: 6rem;
+    padding-left: 6rem;
+  }
+
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer > div:first-child {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 3rem;
+  }
 }

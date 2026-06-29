@@ -65,13 +65,13 @@ export const TestimonialsCanvas: React.FC<CanvasBlockRendererProps> = ({
   return (
     <section
       id={block.anchor || undefined}
-      className="cms-block cms-block--testimonials bg-secondary/40 px-6 py-16 @min-[816px]/site-frame:px-12 @min-[816px]/site-frame:py-20"
+      className="cms-block cms-block--testimonials bg-secondary/40 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20"
       data-block-index={block.__index ?? undefined}
       data-active={isActive || undefined}
       onClick={onActivate}
     >
       <div className="container mx-auto">
-        <h2 className="mb-12 text-center font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[816px]/site-frame:text-[44px] [font-family:var(--font-heading)]">
+        <h2 className="mb-12 text-center font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px] [font-family:var(--font-heading)]">
           <ClickToEditField
             ariaLabel={t("editTestimonialsTitle")}
             affordance="inline"
@@ -82,7 +82,7 @@ export const TestimonialsCanvas: React.FC<CanvasBlockRendererProps> = ({
                 type="text"
                 defaultValue={titleValue}
                 placeholder={t("sectionTitlePlaceholder")}
-                className="w-full rounded border border-border bg-popover px-2 py-1 text-[28px] font-serif leading-[1.1] tracking-[-0.01em] text-ink outline-none ring-1 ring-ring @min-[816px]/site-frame:text-[36px]"
+                className="w-full rounded border border-border bg-popover px-2 py-1 text-[28px] font-serif leading-[1.1] tracking-[-0.01em] text-ink outline-none ring-1 ring-ring @min-[48rem]/site-frame:text-[36px]"
                 onBlur={(e) => { set("title")(e.target.value); close() }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") { set("title")(e.currentTarget.value); close() }
@@ -96,7 +96,7 @@ export const TestimonialsCanvas: React.FC<CanvasBlockRendererProps> = ({
           </ClickToEditField>
         </h2>
 
-        <div ref={gridRef} className="grid gap-6 @min-[816px]/site-frame:grid-cols-2 @min-[1088px]/site-frame:grid-cols-3">
+        <div ref={gridRef} className="grid gap-6 @min-[48rem]/site-frame:grid-cols-2 @min-[64rem]/site-frame:grid-cols-3">
           {items.map((item: any, i: number) => {
             const quoteValue: string = typeof item.quote === "string" ? item.quote : ""
             const authorValue: string = typeof item.author === "string" ? item.author : ""

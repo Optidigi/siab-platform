@@ -31,6 +31,7 @@ export interface CanvasBlockRendererProps {
   manifest: RtManifest
   onActivate: () => void
   onUpdate: (next: any) => void
+  tenantId?: number | string | null
   legacyTenant?: "amicare" | "amblast" | null
 }
 

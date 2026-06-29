@@ -30,6 +30,7 @@ const CanvasMobileInner: React.FC<CanvasModeProps> = ({
   seoCard: _seoCard,
   theme,
   rendererSettings,
+  tenantId,
   tenantSlug,
   tenantDomain,
   reorderBlocks,
@@ -104,6 +105,7 @@ const CanvasMobileInner: React.FC<CanvasModeProps> = ({
             index={view.index}
             manifest={manifest}
             theme={theme}
+            tenantId={tenantId}
             legacyTenant={legacyTenant}
             onBack={() => { clearSelection(); goto({ kind: "overview" }) }}
             onPrev={view.index > 0 ? () => { clearSelection(); goto({ kind: "section", index: view.index - 1 }, { replace: true }) } : undefined}

@@ -481,6 +481,7 @@ interface SortableBlockItemProps {
   index: number
   isActive: boolean
   manifest: RtManifest
+  tenantId?: number | string | null
   onActivate: () => void
   onUpdate: (next: any) => void
   onDelete: () => void
@@ -494,6 +495,7 @@ const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
   index,
   isActive,
   manifest,
+  tenantId,
   onActivate,
   onUpdate,
   onDelete,
@@ -561,6 +563,7 @@ const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
             index={index}
             isActive={isActive}
             manifest={manifest}
+            tenantId={tenantId}
             onActivate={onActivate}
             onUpdate={readOnly ? () => {} : onUpdate}
           />
@@ -686,6 +689,7 @@ export const CanvasMode: React.FC<CanvasModeProps> = ({
           seoCard={seoCard}
           theme={theme}
           rendererSettings={rendererSettings}
+          tenantId={tenantId}
           tenantSlug={tenantSlug}
           tenantDomain={tenantDomain}
           reorderBlocks={reorderBlocks}
@@ -937,6 +941,7 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
                                 select(null)
                               }}
                               onUpdate={effectiveReadOnly ? () => {} : updateBlock(index)}
+                              tenantId={tenantId}
                               legacyTenant={legacyTenant}
                             />
                           </SortableRenderedBlockItem>
@@ -1003,6 +1008,7 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
                           select(null)
                         }}
                         onUpdate={updateBlock(i)}
+                        tenantId={tenantId}
                         onDelete={() => requestDeleteBlock(i)}
                         onDuplicate={() => duplicateBlockWithRemap(i)}
                         readOnly={effectiveReadOnly}

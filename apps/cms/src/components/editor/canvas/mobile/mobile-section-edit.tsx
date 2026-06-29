@@ -25,6 +25,7 @@ export interface MobileSectionEditProps {
   index: number
   manifest: RtManifest
   theme?: ThemeTokens | null
+  tenantId?: number | string | null
   legacyTenant?: "amicare" | "amblast" | null
   onBack: () => void
   onPrev?: () => void
@@ -68,6 +69,7 @@ export const MobileSectionEdit: React.FC<MobileSectionEditProps> = ({
   index,
   manifest,
   theme,
+  tenantId,
   legacyTenant,
   onBack,
   onPrev,
@@ -188,6 +190,7 @@ export const MobileSectionEdit: React.FC<MobileSectionEditProps> = ({
                 manifest={manifest}
                 onActivate={() => {}}
                 onUpdate={updateBlock(index)}
+                tenantId={tenantId}
                 legacyTenant={legacyTenant}
               />
             </div>

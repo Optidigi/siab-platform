@@ -76,7 +76,7 @@ export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, i
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-8 @min-[816px]/site-frame:grid-cols-3">
+        <div className="grid grid-cols-1 gap-8 @min-[48rem]/site-frame:grid-cols-3">
           {visibleFeatures.map((feature: any, i: number) => (
             <article
               key={features.length ? i : "empty-feature"}

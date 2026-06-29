@@ -41,7 +41,7 @@ export const FAQCanvas: React.FC<CanvasBlockRendererProps> = ({
   return (
     <section
       id={block.anchor || undefined}
-      className="cms-block cms-block--faq px-6 py-16 @min-[816px]/site-frame:px-12 @min-[816px]/site-frame:py-20 @min-[1088px]/site-frame:px-24"
+      className="cms-block cms-block--faq px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20 @min-[64rem]/site-frame:px-24"
       data-block-index={block.__index ?? undefined}
       data-active={isActive || undefined}
       onClick={onActivate}
@@ -53,7 +53,7 @@ export const FAQCanvas: React.FC<CanvasBlockRendererProps> = ({
           manifest={manifest}
           value={block.title}
           onChange={set("title")}
-          className="mb-10 text-center font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[816px]/site-frame:text-[44px] [font-family:var(--font-heading)]"
+          className="mb-10 text-center font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px] [font-family:var(--font-heading)]"
           placeholder={t("faqTitlePlaceholder")}
           elementPath={{ blockIndex: idx, field: "title" }}
         />
