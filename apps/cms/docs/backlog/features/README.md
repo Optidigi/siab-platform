@@ -35,6 +35,32 @@ depended on command-run site generation are no longer current source of truth.
   responsibilities as part of that decision.
 - Keep CMS feature work tracked in focused entries or runbooks that match the
   current codebase, not removed generation workflows.
+- Add PostHog analytics to the public `apps/landing` Site in a Box marketing
+  site. Track complete SIAB funnel and content-performance context there too,
+  not only generated tenant sites and CMS/admin usage.
+- Improve the CMS analytics UI so it is more intuitive for operators and
+  customers. The dashboard should make visitors, conversions, section behavior,
+  block performance, funnel health, and recommended actions easier to scan and
+  compare.
+- Harden generated-site analytics into a consistent product-intelligence layer:
+  reliably track section performance, block variant performance, UI block
+  combinations, palette/font/theme combinations, CTA/form outcomes, device
+  context, consent state, and page/funnel context. Use this data to learn which
+  blocks, block sequences, colors, and generated layouts perform best.
+- Confirm the generated-site block/UI catalog covers every required site
+  surface, including consent/cookie banners, legal/privacy links, forms,
+  navigation, footer, error/empty states, and any required conversion or trust
+  sections. Add missing surfaces through the same contract/catalog/schema/
+  renderer/canvas path instead of one-off code.
+- Introduce approved shadcn blocks as future site-generation source material.
+  They need provenance, license/availability review, structured CMS field
+  mappings, renderer-owned implementations, editable canvas support, and tests
+  before AI can use them.
+- Confirm and enforce that every generated site receives complete SIAB-owned
+  PostHog analytics configuration by default, with correct consent behavior,
+  public proxy/host config, tenant/site/page/block metadata, and publish-time
+  snapshot config. Site creation should also validate that required generated
+  site config is complete before publish/activation.
 - Rework desktop canvas chrome hover behavior with a simpler section-anchored
   model. Current header/footer badges can still flicker, and block badges can
   feel like they shift between sections. Defer further tuning until the canvas
