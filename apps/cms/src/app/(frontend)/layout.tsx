@@ -55,7 +55,7 @@ export default async function FrontendLayout({ children }: { children: React.Rea
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <CspNonceProvider nonce={nonce}>
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
+            <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange nonce={nonce}>
               <StatusFeedbackProvider>
                 {children}
               </StatusFeedbackProvider>

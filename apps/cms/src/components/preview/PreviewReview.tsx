@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useActionState } from "react"
 import { useTranslations } from "next-intl"
-import { CheckCircle2, Loader2, Rocket } from "lucide-react"
+import { CheckCircle2, Loader2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import { Button } from "@siteinabox/ui/components/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
@@ -28,12 +28,10 @@ const initialState: PreviewReviewActionState = {
 export function PreviewReview({
   tenantName,
   previewHref,
-  checkoutHref,
   submitReviewAction,
 }: {
   tenantName: string
   previewHref: string
-  checkoutHref: string
   submitReviewAction: PreviewReviewAction
 }) {
   const t = useTranslations("preview")
@@ -66,22 +64,14 @@ export function PreviewReview({
                 </Alert>
               )}
             </CardContent>
-            <CardFooter className="flex-col-reverse gap-2 pt-6 sm:flex-row sm:justify-between">
-              <Button asChild variant="outline" className="w-full sm:w-auto">
-                <a href={previewHref}>{t("checkoutBackToPreview")}</a>
+            <CardFooter className="grid grid-cols-2 gap-2 pt-6">
+              <Button asChild variant="outline" className="w-full">
+                <a href={previewHref}>{t("reviewClose")}</a>
               </Button>
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                <Button type="submit" variant="default" disabled={pending} className="w-full sm:w-auto">
-                  {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CheckCircle2 className="size-4" aria-hidden />}
-                  {t("reviewSend")}
-                </Button>
-                <Button asChild variant="success" className="w-full sm:w-auto">
-                  <a href={checkoutHref}>
-                    <Rocket className="size-4" />
-                    {t("launchWebsite")}
-                  </a>
-                </Button>
-              </div>
+              <Button type="submit" variant="default" disabled={pending} className="w-full">
+                {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CheckCircle2 className="size-4" aria-hidden />}
+                {t("reviewSend")}
+              </Button>
             </CardFooter>
           </form>
         </Card>

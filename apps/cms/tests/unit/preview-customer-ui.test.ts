@@ -41,6 +41,12 @@ describe("customer preview UI", () => {
     expect(action).toContain("clientApproval")
     expect(action).toContain("reviewNotes")
     expect(review).toContain("Textarea")
+    expect(review).toContain('grid grid-cols-2')
+    expect(review).toContain('t("reviewClose")')
+    expect(review).toContain('t("reviewSend")')
+    expect(review).not.toContain("Rocket")
+    expect(review).not.toContain("checkoutHref")
+    expect(page).not.toContain("checkoutHref=")
   })
 
   it("renders checkout as a branded two-step flow with domain fee states", () => {
@@ -61,6 +67,7 @@ describe("customer preview UI", () => {
     expect(checkout).toContain("bg-warning")
     expect(checkout).toContain("border-success")
     expect(checkout).toContain("ring-success")
+    expect(checkout).toContain("bg-success text-success-foreground")
     expect(checkout).toContain("bg-background/95")
     expect(checkout).toContain("md:bg-card")
     expect(checkout).toContain("setCheckedDomain(option.domain)")
@@ -82,5 +89,12 @@ describe("customer preview UI", () => {
     expect(page).toContain("deriveRegistrantDefaults")
     expect(page).toContain("registrant={registrant}")
     expect(page).toContain('domainReady={domainOrder.status === "ready_to_register"')
+  })
+
+  it("defaults the CMS frontend shell including previews to dark mode", () => {
+    const layout = read("src/app/(frontend)/layout.tsx")
+
+    expect(layout).toContain('defaultTheme="dark"')
+    expect(layout).toContain("enableSystem")
   })
 })

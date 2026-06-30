@@ -55,7 +55,6 @@ export default async function PreviewReviewPage({
       <PreviewReview
         tenantName={String(context.tenant.name)}
         previewHref={`/${context.clientSlug}`}
-        checkoutHref={`/${context.clientSlug}/checkout`}
         submitReviewAction={submitPreviewReviewAction.bind(null, context.clientSlug)}
       />
     )

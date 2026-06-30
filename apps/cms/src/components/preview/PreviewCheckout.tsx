@@ -346,7 +346,7 @@ function CheckoutStepper({ step }: { step: CheckoutStep }) {
             className={cn(
               "flex h-10 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium text-muted-foreground",
               active && "bg-primary text-primary-foreground",
-              complete && "text-primary",
+              complete && "bg-success text-success-foreground",
             )}
           >
             {complete ? <CheckCircle2 className="size-4" aria-hidden /> : <Icon className="size-4" aria-hidden />}
