@@ -67,6 +67,17 @@ depended on command-run site generation are no longer current source of truth.
   chrome model is simplified around one rule: hovering a section/header/footer
   shows only that section's badge, leaving that area hides it, and badge
   placement remains visually anchored to its owner.
+- Simplify the CMS Operations dashboard further. The current manager-facing
+  language is better than the original generation-run terminology, but the
+  screen is still too dense. Next pass should make the dashboard feel like one
+  task queue with only the next required action visible by default. Align the
+  UI to the intended product workflow: client submits intake; SIAB reviews the
+  brief and uses AI to create the draft site; SIAB sends preview; client
+  approves and pays in the preview UI while choosing/filling domain details;
+  payment triggers deployment/domain registration; deployment completion sends
+  the client the live site and CMS/admin access email. Keep technical snapshot,
+  publish, activation, provider/model, hashes, validation, and manual override
+  details behind Advanced controls.
 
 ## Implemented Foundation
 
