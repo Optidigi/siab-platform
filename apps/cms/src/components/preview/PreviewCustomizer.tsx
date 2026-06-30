@@ -4,7 +4,7 @@ import * as React from "react"
 import { useTranslations } from "next-intl"
 import { useForm } from "react-hook-form"
 import type { Page, SiteSettings } from "@siteinabox/contracts"
-import { Rocket, SquarePen } from "lucide-react"
+import { CheckCircle2, Rocket, SquarePen } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
 import { Form } from "@siteinabox/ui/components/form"
 import { BlockPresetsProvider } from "@/components/editor/canvas/BlockPresetsContext"
@@ -173,6 +173,7 @@ export function PreviewCustomizer({
 
             <PreviewCommandBar
               canCompleteOrder={canCompleteOrder}
+              paymentSatisfied={paymentSatisfied}
               checkoutHref={checkoutHref}
               reviewHref={reviewHref}
             />
@@ -185,10 +186,12 @@ export function PreviewCustomizer({
 
 function PreviewCommandBar({
   canCompleteOrder,
+  paymentSatisfied,
   checkoutHref,
   reviewHref,
 }: {
   canCompleteOrder: boolean
+  paymentSatisfied: boolean
   checkoutHref: string
   reviewHref: string
 }) {
@@ -209,6 +212,12 @@ function PreviewCommandBar({
                 <Rocket className="size-4" />
                 {t("launchWebsite")}
               </a>
+            </Button>
+          )}
+          {paymentSatisfied && (
+            <Button type="button" variant="secondary" disabled className="w-full sm:w-auto">
+              <CheckCircle2 className="size-4" />
+              {t("paymentComplete")}
             </Button>
           )}
         </div>

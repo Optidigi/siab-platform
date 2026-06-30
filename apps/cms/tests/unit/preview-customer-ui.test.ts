@@ -12,6 +12,8 @@ describe("customer preview UI", () => {
     expect(customizer).toContain('view: "preview"')
     expect(customizer).toContain('view="preview"')
     expect(customizer).toContain('variant="success"')
+    expect(customizer).toContain('variant="secondary" disabled')
+    expect(customizer).toContain('t("paymentComplete")')
     expect(customizer).toContain("reviewHref")
     expect(customizer).not.toContain("stylesReady")
     expect(customizer).not.toContain("pagesNav")
