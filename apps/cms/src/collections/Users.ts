@@ -629,7 +629,7 @@ export const Users: CollectionConfig = {
       name: "language",
       type: "select",
       required: false,
-      defaultValue: "en",
+      defaultValue: "nl",
       options: [
         { label: "English", value: "en" },
         { label: "Nederlands", value: "nl" },

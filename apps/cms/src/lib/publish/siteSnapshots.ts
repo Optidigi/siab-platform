@@ -240,7 +240,7 @@ export async function buildPublishedSiteSnapshot(
   ) as SiteSettings
   const settings: SiteSettings = {
     ...projectedSettings,
-    language: projectedSettings.language ?? settingsDoc?.language ?? "en",
+    language: projectedSettings.language ?? settingsDoc?.language ?? "nl",
   }
   const rendererTheme = snapshotThemeForTenant(tenant)
   const now = new Date().toISOString()

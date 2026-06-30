@@ -37,6 +37,7 @@ import * as migration_20260627_130000_add_marketing_catalog_cms_schema from './2
 import * as migration_20260627_140000_add_tenant_chrome_variant_enum_values from './20260627_140000_add_tenant_chrome_variant_enum_values';
 import * as migration_20260628_000000_generic_generation_fixture_defaults from './20260628_000000_generic_generation_fixture_defaults';
 import * as migration_20260630_120000_add_intake_review_fields from './20260630_120000_add_intake_review_fields';
+import * as migration_20260630_130000_default_dutch_locale from './20260630_130000_default_dutch_locale';
 
 export const migrations = [
   {
@@ -233,5 +234,10 @@ export const migrations = [
     up: migration_20260630_120000_add_intake_review_fields.up,
     down: migration_20260630_120000_add_intake_review_fields.down,
     name: '20260630_120000_add_intake_review_fields'
+  },
+  {
+    up: migration_20260630_130000_default_dutch_locale.up,
+    down: migration_20260630_130000_default_dutch_locale.down,
+    name: '20260630_130000_default_dutch_locale'
   },
 ];

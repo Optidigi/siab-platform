@@ -707,7 +707,7 @@ const normalizeSettingsData = (
   siteName: settings.siteName,
   siteUrl: settings.siteUrl,
   description: settings.description,
-  language: settings.language || "en",
+  language: settings.language || "nl",
   aliases: settings.aliases,
   contactEmail: settings.contactEmail,
   branding: settings.branding

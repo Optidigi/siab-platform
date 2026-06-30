@@ -31,6 +31,14 @@ export type SiteConfig = {
     youtube?: string;
     x?: string;
   };
+  links: {
+    intake: string;
+    beheer: string;
+    platformAdminLogin: string;
+    whatsapp: string;
+    phone: string;
+    email: string;
+  };
   nav: { label: string; href: string }[];
 };
 
@@ -44,6 +52,14 @@ export const site: SiteConfig = {
   serviceArea: ['Nederland'],
   socials: {
     instagram: 'https://www.instagram.com/siteinabox/',
+  },
+  links: {
+    intake: '/intake',
+    beheer: '/beheer',
+    platformAdminLogin: 'https://admin.siteinabox.nl/login',
+    whatsapp: 'https://wa.me/31625052591',
+    phone: 'tel:+31625052591',
+    email: 'mailto:info@siteinabox.nl',
   },
   nav: [
     // Root-absolute (/#...) so these section links work from any page, not just the homepage.

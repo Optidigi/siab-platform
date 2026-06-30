@@ -248,8 +248,8 @@ export const SiteSettings: CollectionConfig = {
       admin: { description: "Public URL of the SSR site (e.g. https://clientasite.nl)" } },
     { name: "description", type: "textarea",
       admin: { description: "One-paragraph site description (used in <meta name=\"description\"> and footers)." } },
-    { name: "language", type: "text", defaultValue: "en",
-      admin: { description: "ISO 639-1 lang code, used in <html lang>. Default 'en'." } },
+    { name: "language", type: "text", defaultValue: "nl",
+      admin: { description: "ISO 639-1 lang code, used in <html lang>. Default 'nl'." } },
     { name: "aliases", type: "array",
       admin: { description: "Alternative domains that should serve the same site (e.g. www.foo.com aliased to foo.com)." },
       fields: [

@@ -1,6 +1,7 @@
 ---
 import { site } from '../../content/site';
 const year = new Date().getFullYear();
+const whatsappDisplay = '+31 6 25052591';
 ---
 
 <footer class="footer-three dark-version siab-footer" aria-label="Sitevoettekst">
@@ -11,7 +12,7 @@ const year = new Date().getFullYear();
       <div class="row gx-xxl-5">
         <!-- 1. Email -->
         <div class="col-lg-4 d-flex">
-          <a href="mailto:info@siteinabox.nl" class="block d-flex w-100 align-items-center mt-25 siab-contact siab-contact--email">
+          <a href={site.links.email} class="block d-flex w-100 align-items-center mt-25 siab-contact siab-contact--email">
             <div class="icon d-flex align-items-center justify-content-center rounded-circle">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m3 7 9 6 9-6"/></svg>
             </div>
@@ -21,21 +22,21 @@ const year = new Date().getFullYear();
             </div>
           </a>
         </div>
-        <!-- 2. WhatsApp (number wired up when WhatsApp Business is set up) -->
+        <!-- 2. WhatsApp -->
         <div class="col-lg-4 d-flex">
-          <a href="https://wa.me/" class="block d-flex w-100 align-items-center mt-25 siab-contact siab-contact--wa">
+          <a href={site.links.whatsapp} class="block d-flex w-100 align-items-center mt-25 siab-contact siab-contact--wa">
             <div class="icon d-flex align-items-center justify-content-center rounded-circle">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9z"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></svg>
             </div>
             <div class="text">
               <div class="title">Chat via WhatsApp</div>
-              <span class="fs-20">Direct contact</span>
+              <span class="fs-20">{whatsappDisplay}</span>
             </div>
           </a>
         </div>
         <!-- 3. Dedicated generation intake -->
         <div class="col-lg-4 d-flex">
-          <a href="/intake" class="block d-flex w-100 align-items-center mt-25 siab-contact siab-contact--form">
+          <a href={site.links.intake} class="block d-flex w-100 align-items-center mt-25 siab-contact siab-contact--form">
             <div class="icon d-flex align-items-center justify-content-center rounded-circle">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20l1.3-3.9a9 9 0 1 1 3.4 2.9z"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg>
             </div>
@@ -79,7 +80,7 @@ const year = new Date().getFullYear();
               {/* Root-absolute: these sections live on the homepage. #faq stays page-local — FaqSection renders on every page. */}
               <li><a href="/#zo-werkt-het">Hoe het werkt</a></li>
               <li><a href="/#prijzen">Prijzen</a></li>
-              <li><a href="/intake">Intake</a></li>
+              <li><a href={site.links.intake}>Intake</a></li>
               <li><a href="#faq">Veelgestelde vragen</a></li>
             </ul>
           </div>
@@ -89,8 +90,8 @@ const year = new Date().getFullYear();
             <div class="fs-6 text-white mb-15">Contact</div>
             <ul class="footer-nav-link style-none">
               <li><a href="/contact">Contactformulier</a></li>
-              <li><a href="mailto:info@siteinabox.nl">info@siteinabox.nl</a></li>
-              <li><a href="https://wa.me/">WhatsApp</a></li>
+              <li><a href={site.links.email}>info@siteinabox.nl</a></li>
+              <li><a href={site.links.whatsapp}>WhatsApp</a></li>
             </ul>
           </div>
         </div>

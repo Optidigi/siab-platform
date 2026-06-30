@@ -21,7 +21,7 @@ import { NextIntlClientProvider } from "next-intl"
 import { CspNonceProvider } from "@siteinabox/ui/lib/csp-nonce"
 import { ThemeProvider } from "@/components/theme-provider"
 import { StatusFeedbackProvider } from "@/components/status-feedback"
-import { defaultLocale, localeCookieName, localeFromAcceptLanguage, resolveLocale } from "@/i18n/config"
+import { defaultLocale, localeCookieName, resolveLocale } from "@/i18n/config"
 import { loadMessages } from "@/i18n/messages"
 
 const sans = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-sans" })
@@ -47,7 +47,6 @@ export default async function FrontendLayout({ children }: { children: React.Rea
   const nonce = headerStore.get("x-csp-nonce") ?? undefined
   const locale = resolveLocale(
     cookieStore.get(localeCookieName)?.value,
-    localeFromAcceptLanguage(headerStore.get("accept-language")),
     defaultLocale,
   )
   const messages = await loadMessages(locale)

@@ -1,7 +1,7 @@
 export const locales = ["en", "nl"] as const
 export type Locale = (typeof locales)[number]
 
-export const defaultLocale: Locale = "en"
+export const defaultLocale: Locale = "nl"
 export const localeCookieName = "siab-locale"
 
 export const localeLabels: Record<Locale, string> = {

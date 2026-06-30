@@ -14,6 +14,7 @@ describe("i18n locale config", () => {
   })
 
   it("falls back to the default locale when no candidate is supported", () => {
+    expect(defaultLocale).toBe("nl")
     expect(resolveLocale("fr", null, undefined)).toBe(defaultLocale)
   })
 })
