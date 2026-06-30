@@ -1,7 +1,9 @@
 import { Suspense } from "react"
+import { headers } from "next/headers"
 import { LoginForm } from "@/components/forms/LoginForm"
 import { AuthShell } from "@/components/auth-shell"
 import { getEnabledSocialAuthProviders } from "@/lib/socialAuth/providers"
+import { isSuperAdminDomain, stripAdminPrefix } from "@/lib/hostToTenant"
 
 /**
  * Adopts the local shadcn-style auth shell: two-column card with the form on
@@ -16,6 +18,10 @@ import { getEnabledSocialAuthProviders } from "@/lib/socialAuth/providers"
  */
 export default async function LoginPage() {
   const socialProviders = getEnabledSocialAuthProviders()
+  const headerStore = await headers()
+  const host = headerStore.get("host") || ""
+  const domain = stripAdminPrefix(host)
+  const allowPasswordLogin = isSuperAdminDomain(domain, process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN)
 
   return (
     <main className="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
@@ -30,7 +36,7 @@ export default async function LoginPage() {
         >
           <div className="flex flex-col gap-6">
             <Suspense>
-              <LoginForm socialProviders={socialProviders} />
+              <LoginForm socialProviders={socialProviders} allowPasswordLogin={allowPasswordLogin} />
             </Suspense>
           </div>
         </AuthShell>

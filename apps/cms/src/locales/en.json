@@ -105,6 +105,8 @@
     "signIn": "Sign in",
     "signingIn": "Signing in...",
     "forgotPassword": "Forgot password?",
+    "passwordLogin": "Sign in with password",
+    "magicLinkLogin": "Sign in with email",
     "invalidCredentials": "Invalid email or password",
     "validEmail": "Enter a valid email",
     "validEmailAddress": "Enter a valid email address",

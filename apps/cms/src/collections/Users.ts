@@ -3,6 +3,7 @@ import type { ArrayFieldValidation, CollectionBeforeOperationHook, CollectionBef
 import { Forbidden } from "payload"
 import { canManageUsers } from "@/access/canManageUsers"
 import { isSuperAdminField } from "@/access/isSuperAdmin"
+import { CMS_SESSION_EXPIRES_IN_SECONDS } from "@/lib/auth/sessionDurations"
 import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { resetPasswordTemplate } from "@/lib/email/templates/resetPassword"
 import { changePasswordHandler } from "@/lib/auth/changePassword"
@@ -312,6 +313,7 @@ export const Users: CollectionConfig = {
   slug: "users",
   auth: {
     useAPIKey: true,
+    tokenExpiration: CMS_SESSION_EXPIRES_IN_SECONDS,
     // Audit-p1 #7 sub-fix B (T5) — Payload's built-in session-based JWT
     // invalidation. With this flag set, login signs JWTs with a per-session
     // `sid` claim AND adds an entry to user.sessions[]; verification at

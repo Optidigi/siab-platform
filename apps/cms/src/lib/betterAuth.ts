@@ -8,6 +8,7 @@ import { resolvePayloadUserForMagicLink, resolvePayloadUserForSocialSignup } fro
 import { getBetterAuthBaseURL, getTrustedSocialAuthOrigins } from "@/lib/socialAuth/hosts"
 import { sendEmail } from "@/lib/email/sendEmail"
 import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
+import { CMS_SESSION_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from "@/lib/auth/sessionDurations"
 
 const DATABASE_URI = process.env.DATABASE_URI
 if (!DATABASE_URI) {
@@ -92,6 +93,8 @@ export const auth = betterAuth({
   },
   session: {
     modelName: "better_auth_sessions",
+    expiresIn: CMS_SESSION_EXPIRES_IN_SECONDS,
+    updateAge: SESSION_UPDATE_AGE_SECONDS,
     cookieCache: { enabled: false },
   },
   account: {

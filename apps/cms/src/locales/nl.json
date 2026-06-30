@@ -105,6 +105,8 @@
     "signIn": "Inloggen",
     "signingIn": "Inloggen...",
     "forgotPassword": "Wachtwoord vergeten?",
+    "passwordLogin": "Inloggen met wachtwoord",
+    "magicLinkLogin": "Inloggen met e-mail",
     "invalidCredentials": "Ongeldig e-mailadres of wachtwoord",
     "validEmail": "Voer een geldig e-mailadres in",
     "validEmailAddress": "Voer een geldig e-mailadres in",

@@ -18,7 +18,7 @@ import { SOCIAL_AUTH_PROVIDER_LABELS, type SocialAuthProvider } from "@/lib/soci
 
 const createSchema = (t: (key: string) => string) => z.object({
   email: z.string().email(t("validEmail")),
-  password: z.string().min(1, t("passwordRequired"))
+  password: z.string().optional(),
 })
 
 // FN-2026-0043 — surface a friendly inline alert for the documented gate
@@ -68,13 +68,20 @@ const SocialProviderIcon = ({ provider }: { provider: SocialAuthProvider }) => {
   )
 }
 
-export function LoginForm({ socialProviders = [] }: { socialProviders?: SocialAuthProvider[] }) {
+export function LoginForm({
+  socialProviders = [],
+  allowPasswordLogin = false,
+}: {
+  socialProviders?: SocialAuthProvider[]
+  allowPasswordLogin?: boolean
+}) {
   const t = useTranslations("auth")
   const router = useRouter()
   const params = useSearchParams()
   const status = useStatusFeedback()
   const [pending, setPending] = useState(false)
   const [hydrated, setHydrated] = useState(false)
+  const [passwordMode, setPasswordMode] = useState(false)
   useEffect(() => setHydrated(true), [])
   const errorParam = params.get("error")
   const errorCopy = errorParam
@@ -88,7 +95,12 @@ export function LoginForm({ socialProviders = [] }: { socialProviders?: SocialAu
     defaultValues: { email: "", password: "" }
   })
 
-  const onSubmit = async (values: z.infer<typeof schema>) => {
+  const onPasswordSignIn = async (values: z.infer<typeof schema>) => {
+    if (!allowPasswordLogin) return
+    if (!values.password) {
+      form.setError("password", { message: t("passwordRequired") })
+      return
+    }
     setPending(true)
     const res = await fetch("/api/users/login", {
       method: "POST",
@@ -102,6 +114,14 @@ export function LoginForm({ socialProviders = [] }: { socialProviders?: SocialAu
     }
     const next = validateNextRedirect(params.get("next"))
     router.replace(next)
+  }
+
+  const onSubmit = async (values: z.infer<typeof schema>) => {
+    if (passwordMode && allowPasswordLogin) {
+      await onPasswordSignIn(values)
+      return
+    }
+    await onMagicLinkSignIn()
   }
 
   const onSocialSignIn = async (provider: SocialAuthProvider) => {
@@ -148,6 +168,17 @@ export function LoginForm({ socialProviders = [] }: { socialProviders?: SocialAu
     )
   }
 
+  const togglePasswordMode = () => {
+    setPasswordMode((current) => {
+      const next = !current
+      if (!next) {
+        form.clearErrors("password")
+        form.setValue("password", "")
+      }
+      return next
+    })
+  }
+
   return (
     <Form {...form}>
       <form method="post" onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
@@ -160,7 +191,19 @@ export function LoginForm({ socialProviders = [] }: { socialProviders?: SocialAu
         <h2 className="text-center text-xl font-semibold">{t("signIn")}</h2>
         <FormField name="email" control={form.control} render={({ field }) => (
           <FormItem>
-            <FormLabel>{t("email")}</FormLabel>
+            <div className="flex items-center">
+              <FormLabel>{t("email")}</FormLabel>
+              {allowPasswordLogin && (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="ml-auto h-auto p-0 text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                  onClick={togglePasswordMode}
+                >
+                  {passwordMode ? t("magicLinkLogin") : t("passwordLogin")}
+                </Button>
+              )}
+            </div>
             <FormControl>
               <Input
                 type="email"
@@ -169,7 +212,7 @@ export function LoginForm({ socialProviders = [] }: { socialProviders?: SocialAu
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-                enterKeyHint="next"
+                enterKeyHint={passwordMode ? "next" : "send"}
                 className="rounded-lg"
                 {...field}
               />
@@ -177,35 +220,48 @@ export function LoginForm({ socialProviders = [] }: { socialProviders?: SocialAu
             <FormMessage />
           </FormItem>
         )}/>
-        <FormField name="password" control={form.control} render={({ field }) => (
-          <FormItem>
-            <div className="flex items-center">
-              <FormLabel>{t("password")}</FormLabel>
-              <a className="ml-auto text-sm text-muted-foreground underline" href="/forgot-password">{t("forgotPassword")}</a>
-            </div>
-            <FormControl>
-              <Input
-                type="password"
-                autoComplete="current-password"
-                enterKeyHint="go"
-                className="rounded-lg"
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}/>
-        <Button type="submit" disabled={pending || !hydrated} className="w-full rounded-lg">{pending ? t("signingIn") : t("signIn")}</Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={pending || !hydrated}
-          className="w-full rounded-lg border-transparent ring-1 ring-foreground/25 dark:ring-foreground/30"
-          onClick={() => void onMagicLinkSignIn()}
-        >
+        {passwordMode && allowPasswordLogin && (
+          <FormField name="password" control={form.control} render={({ field }) => (
+            <FormItem>
+              <div className="flex items-center">
+                <FormLabel>{t("password")}</FormLabel>
+                <a className="ml-auto text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground" href="/forgot-password">{t("forgotPassword")}</a>
+              </div>
+              <FormControl>
+                <Input
+                  type="password"
+                  autoComplete="current-password"
+                  enterKeyHint="go"
+                  className="rounded-lg"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}/>
+        )}
+        <Button type="submit" disabled={pending || !hydrated} className="w-full rounded-lg">
+          {!passwordMode && <Mail aria-hidden />}
+          {pending
+            ? passwordMode
+              ? t("signingIn")
+              : t("sending")
+            : passwordMode
+              ? t("signIn")
+              : t("continueWithMagicLink")}
+        </Button>
+        {passwordMode && allowPasswordLogin && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={pending || !hydrated}
+            className="w-full rounded-lg border-transparent ring-1 ring-foreground/25 dark:ring-foreground/30"
+            onClick={() => void onMagicLinkSignIn()}
+          >
           <Mail aria-hidden />
           {pending ? t("sending") : t("continueWithMagicLink")}
-        </Button>
+          </Button>
+        )}
         {socialProviders.length > 0 && (
           <>
             <div className="flex items-center gap-3">

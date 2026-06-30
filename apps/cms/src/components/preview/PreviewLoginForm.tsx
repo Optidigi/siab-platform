@@ -29,7 +29,7 @@ export function PreviewLoginForm({
   )
 
   return (
-    <form action={formAction} className="grid gap-4">
+    <form action={formAction} className="space-y-4">
       <div className="grid gap-2">
         <Label htmlFor="preview-email">{t("email")}</Label>
         <Input
@@ -37,10 +37,16 @@ export function PreviewLoginForm({
           name="email"
           type="email"
           autoComplete="email"
+          inputMode="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="send"
+          className="rounded-lg"
           required
         />
       </div>
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending} className="w-full rounded-lg">
         {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Mail className="size-4" aria-hidden />}
         {t("sendMagicLink")}
       </Button>

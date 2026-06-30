@@ -255,6 +255,14 @@ const buildMalformedApiKeyResponse = (pathname: string, nonce: string): NextResp
   return applySecurityHeaders(res, pathname, nonce)
 }
 
+const isPasswordLoginRequest = (req: NextRequest): boolean =>
+  req.method === "POST" && normalizePath(req.nextUrl.pathname) === "/api/users/login"
+
+const buildPasswordLoginUnavailableResponse = (pathname: string, nonce: string): NextResponse => {
+  const res = NextResponse.json({ error: "Password login is only available on the SIAB admin host" }, { status: 403 })
+  return applySecurityHeaders(res, pathname, nonce)
+}
+
 // -----------------------------------------------------------------------------
 // Proxy entry point
 // -----------------------------------------------------------------------------
@@ -279,6 +287,10 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   const host = req.headers.get("host") || ""
   const domain = stripAdminPrefix(host)
   const superAdminDomain = process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN
+
+  if (isPasswordLoginRequest(req) && !isSuperAdminDomain(domain, superAdminDomain)) {
+    return buildPasswordLoginUnavailableResponse(req.nextUrl.pathname, nonce)
+  }
 
   // Rate-limit short-circuit: gate ONLY when the request is in scope
   // (POST + named path + anonymous caller). Authenticated callers and

@@ -6,6 +6,7 @@ import { hasActivePreviewGrant } from "@/lib/preview/previewAccess"
 import { sendEmail } from "@/lib/email/sendEmail"
 import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
 import { siteReadyPreviewTemplate } from "@/lib/email/templates/siteReadyPreview"
+import { PREVIEW_SESSION_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from "@/lib/auth/sessionDurations"
 
 const DATABASE_URI = process.env.DATABASE_URI
 if (!DATABASE_URI) {
@@ -55,6 +56,8 @@ export const previewAuth = betterAuth({
   },
   session: {
     modelName: "preview_auth_sessions",
+    expiresIn: PREVIEW_SESSION_EXPIRES_IN_SECONDS,
+    updateAge: SESSION_UPDATE_AGE_SECONDS,
     cookieCache: { enabled: false },
   },
   account: {
