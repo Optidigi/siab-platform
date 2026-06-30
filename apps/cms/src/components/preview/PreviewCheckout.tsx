@@ -5,12 +5,13 @@ import { useActionState } from "react"
 import { useTranslations } from "next-intl"
 import {
   ArrowLeft,
-  ChevronLeft,
+  Check,
   CircleAlert,
   CheckCircle2,
   CreditCard,
   Globe2,
   Loader2,
+  X,
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import { Badge } from "@siteinabox/ui/components/badge"
@@ -208,7 +209,8 @@ export function PreviewCheckout({
           <div className="flex-1" />
           <Button asChild variant="outline" className="shrink-0">
             <a href={previewHref}>
-              <ArrowLeft className="size-4" aria-hidden />
+              <X className="size-4 sm:hidden" aria-hidden />
+              <ArrowLeft className="hidden size-4 sm:block" aria-hidden />
               <span className="hidden sm:inline">{t("checkoutBackToPreview")}</span>
             </a>
           </Button>
@@ -388,14 +390,15 @@ function CheckoutActionBar({
     ? (
         <Button asChild variant="outline" className="w-11 px-0 md:w-auto md:px-4" aria-label={t("checkoutBackToPreview")}>
           <a href={previewHref}>
-            <ChevronLeft className="size-4" aria-hidden />
+            <X className="size-4 md:hidden" aria-hidden />
+            <ArrowLeft className="hidden size-4 md:block" aria-hidden />
             <span className="hidden md:inline">{t("checkoutBackToPreview")}</span>
           </a>
         </Button>
       )
     : (
         <Button type="button" variant="outline" className="w-11 px-0 md:w-auto md:px-4" aria-label={t("checkoutBack")} onClick={onBack}>
-          <ChevronLeft className="size-4" aria-hidden />
+          <ArrowLeft className="size-4" aria-hidden />
           <span className="hidden md:inline">{t("checkoutBack")}</span>
         </Button>
       )
@@ -436,6 +439,7 @@ function CheckoutActionBar({
       <Button
         form="checkout-payment-form"
         type="submit"
+        variant="success"
         className="min-w-0 flex-1 md:flex-none"
         disabled={paymentPending || !holderComplete || !selectedDomain || complete}
       >
@@ -446,7 +450,7 @@ function CheckoutActionBar({
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] shadow-lg backdrop-blur md:static md:mx-auto md:mt-2 md:w-full md:max-w-[54rem] md:rounded-md md:border md:bg-card md:shadow-none">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-foreground/15 bg-foreground p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] text-background shadow-lg md:static md:mx-auto md:mt-2 md:w-full md:max-w-[54rem] md:rounded-md md:border md:shadow-none">
       <div className="flex min-w-0 items-center justify-end gap-2">
         {secondary}
         {primary}
@@ -469,19 +473,19 @@ function DomainOptionRow({
     <>
       <span className="grid min-w-0 flex-1 gap-1">
         <span className="break-all text-sm font-medium text-foreground">{option.domain}</span>
-        <span className="text-xs text-muted-foreground">
-          {option.included || !option.extraFeeLabel
-            ? t("checkoutDomainIncluded")
-            : t("checkoutDomainExtraFeeInline", { extraFee: option.extraFeeLabel })}
-        </span>
+        {!option.included && option.extraFeeLabel && (
+          <span className="text-xs text-muted-foreground">
+            {t("checkoutDomainExtraFeeInline", { extraFee: option.extraFeeLabel })}
+          </span>
+        )}
       </span>
       <span className="flex shrink-0 items-center gap-2">
         <Badge variant={option.included ? "success" : "secondary"}>
           {option.included ? t("checkoutDomainIncludedBadge") : t("checkoutDomainExtraFeeBadge")}
         </Badge>
         {selected && (
-          <span className="flex size-7 items-center justify-center rounded-full border border-primary text-primary">
-            <CheckCircle2 className="size-4" aria-hidden />
+          <span className="text-success">
+            <Check className="size-5" aria-hidden />
             <span className="sr-only">{t("checkoutDomainSelected")}</span>
           </span>
         )}
@@ -495,7 +499,7 @@ function DomainOptionRow({
         variant="outline"
         className={cn(
           "h-auto w-full justify-between whitespace-normal p-3 text-left",
-          selected && "border-primary bg-primary/5",
+          selected && "border-success bg-success/5 ring-1 ring-success/30",
         )}
         aria-pressed={selected}
         onClick={() => onSelect(option)}
@@ -505,7 +509,7 @@ function DomainOptionRow({
     )
   }
   return (
-    <div className={cn("flex w-full items-center justify-between gap-3 rounded-md border bg-background p-3", selected && "border-primary bg-primary/5")}>
+    <div className={cn("flex w-full items-center justify-between gap-3 rounded-md border bg-background p-3", selected && "border-success bg-success/5 ring-1 ring-success/30")}>
       {content}
     </div>
   )
