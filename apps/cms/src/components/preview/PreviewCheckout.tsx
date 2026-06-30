@@ -242,7 +242,7 @@ export function PreviewCheckout({
           {step === "domain" && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl md:text-3xl">{t("checkoutDomainTitle")}</CardTitle>
+                <CardTitle className="text-xl md:text-2xl">{t("checkoutDomainTitle")}</CardTitle>
                 <CardDescription className="text-base">{t("checkoutDomainStepDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-5">
@@ -259,7 +259,7 @@ export function PreviewCheckout({
                       placeholder={t("checkoutDomainPlaceholder")}
                       aria-invalid={domainInputState === "error"}
                       className={cn(
-                        "h-13 pr-12 text-base font-medium md:h-14 md:text-lg",
+                        "h-12 pr-12 text-base font-medium md:h-13 md:text-lg",
                         domainInputState === "success" && "border-success focus-visible:border-success focus-visible:ring-success/30",
                         domainInputState === "warning" && "border-warning focus-visible:border-warning focus-visible:ring-warning/30",
                         domainInputState === "error" && "border-destructive",
@@ -298,7 +298,7 @@ export function PreviewCheckout({
           {step === "payment" && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl md:text-3xl">{t("checkoutPaymentTitle")}</CardTitle>
+                <CardTitle className="text-xl md:text-2xl">{t("checkoutPaymentTitle")}</CardTitle>
                 <CardDescription className="text-base">{t("checkoutPaymentStepDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-5">
@@ -359,8 +359,7 @@ function CheckoutStepper({ step }: { step: CheckoutStep }) {
             key={entry.id}
             className={cn(
               "flex h-10 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium text-muted-foreground",
-              active && "bg-primary text-primary-foreground",
-              complete && "bg-success text-success-foreground",
+              (active || complete) && "bg-primary text-primary-foreground",
               complete && index + 1 === activeIndex && "rounded-r-none",
               active && index > 0 && "rounded-l-none",
             )}
