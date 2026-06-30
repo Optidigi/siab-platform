@@ -155,34 +155,94 @@ export function normalizeOpenProviderAvailabilityResponse(domain: string, payloa
   return { status: "internal", domain, available: false, premium: false, price, internalReason: "unknown_provider_status" }
 }
 
-export async function checkOpenProviderDomainAvailability(
-  domainInput: string,
+const internalAvailabilityResult = (domain: string, reason: string): OpenProviderAvailabilityResult => ({
+  status: "internal",
+  domain,
+  available: false,
+  premium: false,
+  price: null,
+  internalReason: reason,
+})
+
+const availabilityResultDomain = (value: unknown): string | null => {
+  const source = readObject(value)
+  const direct = source.domain
+  if (typeof direct === "string" && direct.includes(".")) return direct
+
+  const domainObject = readObject(direct)
+  const name = typeof source.name === "string"
+    ? source.name
+    : typeof domainObject.name === "string"
+      ? domainObject.name
+      : null
+  const extension = typeof source.extension === "string"
+    ? source.extension
+    : typeof source.tld === "string"
+      ? source.tld
+      : typeof domainObject.extension === "string"
+        ? domainObject.extension
+        : null
+  if (!name || !extension) return null
+  return `${name}.${extension.replace(/^\./, "")}`
+}
+
+export async function checkOpenProviderDomainsAvailability(
+  domainInputs: string[],
   options?: OpenProviderOptions,
-): Promise<OpenProviderAvailabilityResult> {
-  const domain = splitDomain(domainInput)
+): Promise<OpenProviderAvailabilityResult[]> {
+  const domains = [...new Map(domainInputs.map((input) => {
+    const domain = splitDomain(input)
+    return [domain.domain, domain] as const
+  })).values()]
+  if (domains.length === 0) return []
+
   const env = options?.env ?? process.env
   const token = options?.token ?? await loginOpenProvider(options)
   const response = await fetcher(options)(`${apiBase(env)}/domains/check`, {
     method: "POST",
     headers: jsonHeaders(token),
     body: JSON.stringify({
-      domains: [{ name: domain.name, extension: domain.extension }],
+      domains: domains.map((domain) => ({ name: domain.name, extension: domain.extension })),
       with_price: true,
     }),
   })
 
   if (!response.ok) {
-    return {
-      status: "internal",
-      domain: domain.domain,
-      available: false,
-      premium: false,
-      price: null,
-      internalReason: `provider_http_${response.status}`,
-    }
+    return domains.map((domain) => internalAvailabilityResult(domain.domain, `provider_http_${response.status}`))
   }
 
-  return normalizeOpenProviderAvailabilityResponse(domain.domain, await json(response))
+  const payload = await json(response)
+  const data = dataObject(payload)
+  const rawResults = Array.isArray(data.results) ? data.results : []
+  const resultsByDomain = new Map<string, unknown>()
+  rawResults.forEach((result, index) => {
+    const directDomain = availabilityResultDomain(result)
+    const fallbackDomain = domains[index]?.domain ?? null
+    let key = fallbackDomain
+    if (directDomain) {
+      try {
+        key = splitDomain(directDomain).domain
+      } catch {
+        key = fallbackDomain
+      }
+    }
+    if (key) resultsByDomain.set(key, result)
+  })
+
+  return domains.map((domain) => {
+    const result = resultsByDomain.get(domain.domain)
+    if (!result) return internalAvailabilityResult(domain.domain, "unknown_provider_status")
+    return normalizeOpenProviderAvailabilityResponse(domain.domain, { data: { results: [result] } })
+  })
+}
+
+export async function checkOpenProviderDomainAvailability(
+  domainInput: string,
+  options?: OpenProviderOptions,
+): Promise<OpenProviderAvailabilityResult> {
+  const domain = splitDomain(domainInput)
+  return (await checkOpenProviderDomainsAvailability([domain.domain], options))[0]
+    ?? internalAvailabilityResult(domain.domain, "unknown_provider_status")
 }
 
 const suggestionDomainFromResult = (value: unknown): string | null => {

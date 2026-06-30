@@ -5,6 +5,7 @@ import { useActionState } from "react"
 import { useTranslations } from "next-intl"
 import {
   ArrowLeft,
+  CircleAlert,
   CheckCircle2,
   CreditCard,
   Globe2,
@@ -34,6 +35,7 @@ export type PreviewCheckoutDomainOption = {
 export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
+  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "too_expensive" | "invalid" | "service_error" | "payment_error" | "payment_complete" | "redirecting"
   checkoutUrl?: string
   domain?: string
   included?: boolean
@@ -104,6 +106,9 @@ const requiredRegistrantKeys: Array<keyof DomainRegistrantDetails> = [
   "phoneSubscriberNumber",
 ]
 
+const registrantIsComplete = (holder: DomainRegistrantDetails): boolean =>
+  requiredRegistrantKeys.every((key) => String(holder[key] ?? "").trim().length > 0)
+
 export function PreviewCheckout({
   customerEmail,
   tenantName,
@@ -131,12 +136,15 @@ export function PreviewCheckout({
   )
   const [domainValue, setDomainValue] = React.useState(currentDomain ?? "")
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(domainReady ? (currentDomain ?? null) : null)
+  const [selectedSuggestion, setSelectedSuggestion] = React.useState<PreviewCheckoutDomainOption | null>(null)
   const [holder, setHolder] = React.useState(() => emptyRegistrant(customerEmail, registrant))
+  const [detailsEditing, setDetailsEditing] = React.useState(() => !registrant || !registrantIsComplete(emptyRegistrant(customerEmail, registrant)))
 
   React.useEffect(() => {
     if (checkState.ok && checkState.domain) {
       setCheckedDomain(checkState.domain)
       setDomainValue(checkState.domain)
+      setSelectedSuggestion(null)
     }
   }, [checkState])
 
@@ -147,13 +155,32 @@ export function PreviewCheckout({
   }, [paymentState])
 
   const selectedDomain = checkedDomain && checkedDomain === domainValue ? checkedDomain : null
-  const canContinueFromDomain = Boolean(selectedDomain && (checkState.ok || (domainReady && selectedDomain === currentDomain)))
-  const holderComplete = requiredRegistrantKeys.every((key) => String(holder[key] ?? "").trim().length > 0)
-  const totalPriceLabel = checkState.totalPriceLabel || initialTotalPriceLabel || priceLabel
-  const selectedExtraFeeLabel = checkState.domain === selectedDomain
+  const holderComplete = registrantIsComplete(holder)
+  const canContinueFromDomain = Boolean(
+    selectedDomain && (checkState.ok || (domainReady && selectedDomain === currentDomain)),
+  )
+  const selectedSuggestionExtraFeeLabel = selectedSuggestion?.domain === selectedDomain ? selectedSuggestion.extraFeeLabel : null
+  const totalPriceLabel = !selectedSuggestion
+    ? checkState.totalPriceLabel || initialTotalPriceLabel || priceLabel
+    : initialTotalPriceLabel || priceLabel
+  const selectedExtraFeeLabel = selectedSuggestionExtraFeeLabel ?? (checkState.domain === selectedDomain
     ? checkState.extraFeeLabel
     : selectedDomain && domainReady
       ? initialExtraFeeLabel
+      : null)
+  const domainResultKind = checkPending
+    ? "loading"
+    : checkState.message
+      ? checkState.ok
+        ? "success"
+        : ["unavailable", "premium", "too_expensive"].includes(checkState.status ?? "")
+          ? "unavailable"
+          : "error"
+      : null
+  const domainInputState = domainResultKind === "success"
+    ? "success"
+    : domainResultKind === "unavailable" || domainResultKind === "error"
+      ? "error"
       : null
 
   const updateHolder = (key: keyof DomainRegistrantDetails, value: string) => {
@@ -162,9 +189,18 @@ export function PreviewCheckout({
 
   const updateDomain = (value: string) => {
     setDomainValue(value)
+    setSelectedSuggestion(null)
     if (value !== checkedDomain) {
       setCheckedDomain(null)
       if (step !== "domain") setStep("domain")
+    }
+  }
+
+  const selectSuggestedDomain = (option: PreviewCheckoutDomainOption) => {
+    setDomainValue(option.domain)
+    setSelectedSuggestion(option)
+    if (checkedDomain !== option.domain) {
+      setCheckedDomain(null)
     }
   }
 
@@ -205,23 +241,36 @@ export function PreviewCheckout({
               <CardHeader>
                 <CardTitle>{t("checkoutDomainTitle")}</CardTitle>
                 <CardDescription>{t("checkoutDomainStepDescription")}</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-5">
-                <form action={checkAction} className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-                  <div className="grid gap-2">
-                    <Label htmlFor="checkout-domain">{t("checkoutDomainLabel")}</Label>
-                    <Input
-                      id="checkout-domain"
-                      name="domain"
-                      type="text"
-                      inputMode="url"
-                      autoComplete="url"
-                      value={domainValue}
-                      onChange={(event) => updateDomain(event.target.value)}
-                      placeholder={t("checkoutDomainPlaceholder")}
-                      required
-                    />
-                  </div>
+                </CardHeader>
+                <CardContent className="grid gap-5">
+                  <form action={checkAction} className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+                    <div className="grid gap-2">
+                      <Label htmlFor="checkout-domain">{t("checkoutDomainLabel")}</Label>
+                      <Input
+                        id="checkout-domain"
+                        name="domain"
+                        type="text"
+                        inputMode="url"
+                        autoComplete="url"
+                        value={domainValue}
+                        onChange={(event) => updateDomain(event.target.value)}
+                        placeholder={t("checkoutDomainPlaceholder")}
+                        aria-invalid={domainInputState === "error"}
+                        className={cn(
+                          domainInputState === "success" && "border-primary",
+                          domainInputState === "error" && "border-destructive",
+                        )}
+                        required
+                      />
+                      {domainInputState && !checkPending && (
+                        <p className={cn(
+                          "text-xs",
+                          domainInputState === "success" ? "text-muted-foreground" : "text-destructive",
+                        )}>
+                          {domainInputState === "success" ? t("checkoutDomainInputAvailable") : t("checkoutDomainInputUnavailable")}
+                        </p>
+                      )}
+                    </div>
                   <Button type="submit" variant="outline" disabled={checkPending}>
                     {checkPending ? (
                       <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -232,20 +281,16 @@ export function PreviewCheckout({
                   </Button>
                 </form>
 
-                {checkPending && (
-                  <Alert>
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                    <AlertTitle>{t("checkoutDomainCheckingTitle")}</AlertTitle>
-                    <AlertDescription>{t("checkoutDomainCheckingDescription")}</AlertDescription>
-                  </Alert>
-                )}
-
-                {checkState.message && !checkPending && (
-                  <Alert variant={checkState.ok ? "default" : "destructive"}>
-                    <AlertTitle>{checkState.ok ? t("checkoutDomainCheckTitle") : t("accessUnavailable")}</AlertTitle>
+                {domainResultKind && (
+                  <Alert variant={domainResultKind === "error" ? "destructive" : "default"}>
+                    {domainResultKind === "loading" && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                    {domainResultKind === "success" && <CheckCircle2 className="size-4" aria-hidden />}
+                    {domainResultKind === "unavailable" && <CircleAlert className="size-4" aria-hidden />}
+                    {domainResultKind === "error" && <CircleAlert className="size-4" aria-hidden />}
+                    <AlertTitle>{domainAlertTitle(domainResultKind, t)}</AlertTitle>
                     <AlertDescription className="grid gap-3">
-                      <span>{checkState.message}</span>
-                      {checkState.ok && selectedDomain && (
+                      <span>{domainResultKind === "loading" ? t("checkoutDomainCheckingDescription") : checkState.message}</span>
+                      {domainResultKind === "success" && selectedDomain && (
                         <DomainOptionRow
                           option={{
                             domain: selectedDomain,
@@ -257,7 +302,11 @@ export function PreviewCheckout({
                           selected
                         />
                       )}
-                      <DomainSuggestions suggestions={checkState.suggestions} onSelect={updateDomain} />
+                      <DomainSuggestions
+                        suggestions={checkState.suggestions}
+                        selectedDomain={selectedSuggestion?.domain ?? null}
+                        onSelect={selectSuggestedDomain}
+                      />
                     </AlertDescription>
                   </Alert>
                 )}
@@ -279,8 +328,36 @@ export function PreviewCheckout({
                 <CardDescription>{t("checkoutDetailsDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-6">
-                <ReviewRow label={t("checkoutSummaryDomain")} value={selectedDomain ?? domainValue} onEdit={() => setStep("domain")} />
-                <DomainHolderFields holder={holder} onChange={updateHolder} />
+                <div className="grid gap-3 rounded-md border p-4 text-sm">
+                  <ReviewRow label={t("checkoutSummaryDomain")} value={selectedDomain ?? domainValue} onEdit={() => setStep("domain")} />
+                  <ReviewRow
+                    label={t("checkoutRegistrantTitle")}
+                    value={formatRegistrantSummary(holder, t)}
+                    onEdit={() => setDetailsEditing(true)}
+                  />
+                  <ReviewRow
+                    label={t("checkoutRegistrantAddress")}
+                    value={formatAddressSummary(holder, t)}
+                    onEdit={() => setDetailsEditing(true)}
+                  />
+                </div>
+                {detailsEditing ? (
+                  <div className="grid gap-4">
+                    <DomainHolderFields holder={holder} onChange={updateHolder} />
+                    <div className="flex justify-end">
+                      <Button type="button" variant="outline" disabled={!holderComplete} onClick={() => setDetailsEditing(false)}>
+                        <CheckCircle2 className="size-4" aria-hidden />
+                        {t("checkoutDetailsComplete")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Alert>
+                    <CheckCircle2 className="size-4" aria-hidden />
+                    <AlertTitle>{t("checkoutDetailsOverviewTitle")}</AlertTitle>
+                    <AlertDescription>{t("checkoutDetailsOverviewDescription")}</AlertDescription>
+                  </Alert>
+                )}
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
                   <Button type="button" variant="outline" onClick={() => setStep("domain")}>
                     {t("checkoutBack")}
@@ -327,8 +404,8 @@ export function PreviewCheckout({
                   </div>
                 </form>
                 {paymentState.message && (
-                  <Alert variant={paymentState.ok ? "default" : "destructive"}>
-                    <AlertTitle>{paymentState.ok ? t("checkoutPaymentStartingTitle") : t("accessUnavailable")}</AlertTitle>
+                  <Alert variant={paymentState.ok || paymentState.status === "payment_complete" ? "default" : "destructive"}>
+                    <AlertTitle>{paymentAlertTitle(paymentState, t)}</AlertTitle>
                     <AlertDescription>{paymentState.message}</AlertDescription>
                   </Alert>
                 )}
@@ -423,47 +500,85 @@ function CheckoutStepper({ step }: { step: CheckoutStep }) {
   )
 }
 
-function DomainOptionRow({ option, selected }: { option: PreviewCheckoutDomainOption; selected?: boolean }) {
+function DomainOptionRow({
+  option,
+  selected,
+  onSelect,
+}: {
+  option: PreviewCheckoutDomainOption
+  selected?: boolean
+  onSelect?: (option: PreviewCheckoutDomainOption) => void
+}) {
   const t = useTranslations("preview")
-  return (
-    <div className={cn("flex flex-col gap-2 rounded-md border bg-background p-3 sm:flex-row sm:items-center sm:justify-between", selected && "border-primary")}>
-      <div className="grid gap-1">
-        <div className="break-all text-sm font-medium text-foreground">{option.domain}</div>
-        <div className="text-xs text-muted-foreground">
+  const content = (
+    <>
+      <span className="grid min-w-0 flex-1 gap-1">
+        <span className="break-all text-sm font-medium text-foreground">{option.domain}</span>
+        <span className="text-xs text-muted-foreground">
           {option.included || !option.extraFeeLabel
             ? t("checkoutDomainIncluded")
             : t("checkoutDomainExtraFeeInline", { extraFee: option.extraFeeLabel })}
-        </div>
-      </div>
-      {selected && <Badge variant={option.included ? "success" : "secondary"}>{option.included ? t("checkoutDomainIncludedBadge") : t("checkoutDomainExtraFeeBadge")}</Badge>}
+        </span>
+      </span>
+      <span className="flex shrink-0 items-center gap-2">
+        <Badge variant={option.included ? "success" : "secondary"}>
+          {option.included ? t("checkoutDomainIncludedBadge") : t("checkoutDomainExtraFeeBadge")}
+        </Badge>
+        {selected && (
+          <span className="flex size-7 items-center justify-center rounded-full border border-primary text-primary">
+            <CheckCircle2 className="size-4" aria-hidden />
+            <span className="sr-only">{t("checkoutDomainSelected")}</span>
+          </span>
+        )}
+      </span>
+    </>
+  )
+  if (onSelect) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        className={cn(
+          "h-auto w-full justify-between whitespace-normal p-3 text-left",
+          selected && "border-primary bg-primary/5",
+        )}
+        aria-pressed={selected}
+        onClick={() => onSelect(option)}
+      >
+        {content}
+      </Button>
+    )
+  }
+  return (
+    <div className={cn("flex w-full items-center justify-between gap-3 rounded-md border bg-background p-3", selected && "border-primary bg-primary/5")}>
+      {content}
     </div>
   )
 }
 
-function DomainSuggestions({ suggestions, onSelect }: { suggestions?: PreviewCheckoutDomainOption[]; onSelect: (domain: string) => void }) {
+function DomainSuggestions({
+  suggestions,
+  selectedDomain,
+  onSelect,
+}: {
+  suggestions?: PreviewCheckoutDomainOption[]
+  selectedDomain: string | null
+  onSelect: (option: PreviewCheckoutDomainOption) => void
+}) {
   const t = useTranslations("preview")
   if (!suggestions?.length) return null
+  const visibleSuggestions = suggestions.slice(0, 5)
   return (
     <div className="grid gap-2">
       <div className="text-sm font-medium text-foreground">{t("checkoutDomainSuggestionsTitle")}</div>
       <div className="grid gap-2">
-        {suggestions.map((option) => (
-          <Button
+        {visibleSuggestions.map((option) => (
+          <DomainOptionRow
             key={option.domain}
-            type="button"
-            variant="outline"
-            className="h-auto w-full justify-start whitespace-normal p-3 text-left"
-            onClick={() => onSelect(option.domain)}
-          >
-            <span className="grid gap-1">
-              <span className="break-all text-sm font-medium text-foreground">{option.domain}</span>
-              <span className="text-xs text-muted-foreground">
-                {option.included || !option.extraFeeLabel
-                  ? t("checkoutDomainIncluded")
-                  : t("checkoutDomainExtraFeeInline", { extraFee: option.extraFeeLabel })}
-              </span>
-            </span>
-          </Button>
+            option={option}
+            selected={selectedDomain === option.domain}
+            onSelect={onSelect}
+          />
         ))}
       </div>
     </div>
@@ -486,6 +601,37 @@ function ReviewRow({ label, value, onEdit }: { label: string; value: string; onE
       )}
     </div>
   )
+}
+
+function domainAlertTitle(kind: "loading" | "success" | "unavailable" | "error", t: ReturnType<typeof useTranslations<"preview">>): string {
+  switch (kind) {
+    case "loading":
+      return t("checkoutDomainCheckingTitle")
+    case "success":
+      return t("checkoutDomainAvailableTitle")
+    case "unavailable":
+      return t("checkoutDomainUnavailableTitle")
+    case "error":
+      return t("checkoutDomainErrorTitle")
+  }
+}
+
+function paymentAlertTitle(state: PreviewCheckoutActionState, t: ReturnType<typeof useTranslations<"preview">>): string {
+  if (state.ok) return t("checkoutPaymentStartingTitle")
+  if (state.status === "payment_complete") return t("checkoutPaymentCompleteTitle")
+  return t("checkoutPaymentErrorTitle")
+}
+
+function formatRegistrantSummary(holder: DomainRegistrantDetails, t: ReturnType<typeof useTranslations<"preview">>): string {
+  const name = [holder.firstName, holder.lastName].filter(Boolean).join(" ").trim()
+  return [holder.companyName, name, holder.email].filter(Boolean).join(" / ") || t("checkoutDetailsMissing")
+}
+
+function formatAddressSummary(holder: DomainRegistrantDetails, t: ReturnType<typeof useTranslations<"preview">>): string {
+  const street = [holder.street, holder.number, holder.suffix].filter(Boolean).join(" ").trim()
+  const city = [holder.zipcode, holder.city].filter(Boolean).join(" ").trim()
+  const phone = [holder.phoneCountryCode, holder.phoneAreaCode, holder.phoneSubscriberNumber].filter(Boolean).join(" ").trim()
+  return [street, city, holder.country, phone].filter(Boolean).join(" / ") || t("checkoutDetailsMissing")
 }
 
 function DomainHolderFields({

@@ -3,6 +3,7 @@ import {
   buildOpenProviderDomainRegistrationRequest,
   buildOpenProviderCustomerRequest,
   checkOpenProviderDomainAvailability,
+  checkOpenProviderDomainsAvailability,
   createOpenProviderCustomerHandle,
   loginOpenProvider,
   normalizeOpenProviderSuggestionResponse,
@@ -91,6 +92,96 @@ describe("OpenProvider adapter", () => {
       headers: expect.objectContaining({ Authorization: "Bearer token-123" }),
       body: JSON.stringify({
         domains: [{ name: "example", extension: "nl" }],
+        with_price: true,
+      }),
+    }))
+  })
+
+  it("batch checks multiple domains with one provider request", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      data: {
+        results: [
+          {
+            domain: "example.nl",
+            status: "free",
+            price: { price: "8.50", currency: "EUR" },
+          },
+          {
+            domain: { name: "taken", extension: "nl" },
+            status: "active",
+          },
+        ],
+      },
+    }))
+
+    await expect(checkOpenProviderDomainsAvailability(["Example.nl", "taken.nl"], {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toEqual([
+      {
+        status: "available",
+        domain: "example.nl",
+        available: true,
+        premium: false,
+        price: { amount: "8.50", currency: "EUR" },
+        internalReason: null,
+      },
+      {
+        status: "unavailable",
+        domain: "taken.nl",
+        available: false,
+        premium: false,
+        price: null,
+        internalReason: "domain_unavailable",
+      },
+    ])
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledWith("https://openprovider.test/v1beta/domains/check", expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({ Authorization: "Bearer token-123" }),
+      body: JSON.stringify({
+        domains: [
+          { name: "example", extension: "nl" },
+          { name: "taken", extension: "nl" },
+        ],
+        with_price: true,
+      }),
+    }))
+  })
+
+  it("batch availability logs in once when no token is supplied", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith("/auth/login")) return Response.json({ data: { token: "token-123" } })
+      return Response.json({
+        data: {
+          results: [
+            { domain: "one.nl", status: "free", price: { price: "8.50", currency: "EUR" } },
+            { domain: "two.nl", status: "free", price: { price: "8.50", currency: "EUR" } },
+          ],
+        },
+      })
+    })
+
+    await expect(checkOpenProviderDomainsAvailability(["one.nl", "two.nl"], {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toHaveLength(2)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "https://openprovider.test/v1beta/auth/login", expect.objectContaining({
+      method: "POST",
+    }))
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "https://openprovider.test/v1beta/domains/check", expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({ Authorization: "Bearer token-123" }),
+      body: JSON.stringify({
+        domains: [
+          { name: "one", extension: "nl" },
+          { name: "two", extension: "nl" },
+        ],
         with_price: true,
       }),
     }))

@@ -23,6 +23,7 @@ export type PreviewCheckoutDomainOption = {
 export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
+  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "too_expensive" | "invalid" | "service_error" | "payment_error" | "payment_complete" | "redirecting"
   checkoutUrl?: string
   domain?: string
   included?: boolean
@@ -114,6 +115,26 @@ const safeCheckoutErrorMessage = (
   return t("checkoutDomainServiceUnavailable")
 }
 
+const domainStatusFromMessageKey = (
+  messageKey: Awaited<ReturnType<typeof checkAndRecordPreviewDomainOrder>>["messageKey"],
+): NonNullable<PreviewCheckoutActionState["status"]> => {
+  if (messageKey === "checkoutDomainAvailable") return "available"
+  if (messageKey === "checkoutDomainAvailableExtraFee") return "available_extra"
+  if (messageKey === "checkoutDomainUnavailable") return "unavailable"
+  if (messageKey === "checkoutDomainPremium") return "premium"
+  if (messageKey === "checkoutDomainTooExpensive") return "too_expensive"
+  return "service_error"
+}
+
+const domainErrorStatus = (error: unknown): NonNullable<PreviewCheckoutActionState["status"]> => {
+  if (!(error instanceof Error)) return "service_error"
+  if (error.message.startsWith("Invalid domain")) return "invalid"
+  if (error.message === "checkoutDomainUnavailable") return "unavailable"
+  if (error.message === "checkoutDomainPremium") return "premium"
+  if (error.message === "checkoutDomainTooExpensive") return "too_expensive"
+  return "service_error"
+}
+
 export async function checkPreviewCheckoutDomainAction(
   clientSlug: string,
   _previousState: PreviewCheckoutActionState,
@@ -135,6 +156,7 @@ export async function checkPreviewCheckoutDomainAction(
     const totalPrice = addMoney(fixedDomainOrderPriceFromEnv(), extraFee)
     return {
       ok: result.messageKey === "checkoutDomainAvailable" || result.messageKey === "checkoutDomainAvailableExtraFee",
+      status: domainStatusFromMessageKey(result.messageKey),
       message: t(result.messageKey, {
         domain: result.domain,
         extraFee: formatMoney(locale, extraFee) ?? "",
@@ -158,6 +180,7 @@ export async function checkPreviewCheckoutDomainAction(
   } catch (error) {
     return {
       ok: false,
+      status: domainErrorStatus(error),
       message: safeCheckoutErrorMessage(error, t, domain),
     }
   }
@@ -200,7 +223,19 @@ export async function startPreviewCheckoutPaymentAction(
       checkoutUrl: checkout.checkoutUrl,
     }
   } catch (error) {
-    const message = safeCheckoutErrorMessage(error, t, domain)
-    return { ok: false, message }
+    if (error instanceof Error && error.message === "Payment gate is already satisfied.") {
+      return { ok: false, status: "payment_complete", message: t("checkoutPaymentAlreadyComplete") }
+    }
+    if (error instanceof Error && error.message.startsWith("Invalid domain")) {
+      return { ok: false, status: "invalid", message: t("checkoutDomainInvalid") }
+    }
+    if (
+      error instanceof Error &&
+      ["checkoutDomainUnavailable", "checkoutDomainPremium", "checkoutDomainCheckFailed", "checkoutDomainTooExpensive"].includes(error.message)
+    ) {
+      return { ok: false, status: domainErrorStatus(error), message: safeCheckoutErrorMessage(error, t, domain) }
+    }
+    console.error("Preview checkout payment error", error)
+    return { ok: false, status: "payment_error", message: t("checkoutPaymentFailed") }
   }
 }
