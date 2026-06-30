@@ -4,6 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --siab-intake-asset-build: "prefix-route-20260630";
   --background: oklch(1 0 0);
   --foreground: oklch(0.17 0 0);
   --card: oklch(1 0 0);

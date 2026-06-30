@@ -53,6 +53,8 @@ import {
   type ManualCompanyDetails,
 } from "@/components/intake/model";
 
+const intakeAssetBuildMarker = "prefix-route-20260630";
+
 function IntakeShellContent() {
   const [selectedChoice, setSelectedChoice] = useState<IntakeChoice>(null);
   const [selectedCompany, setSelectedCompany] =
@@ -871,7 +873,10 @@ export function IntakeShell() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <IntakeShellContent />
+      <>
+        <span hidden data-intake-build={intakeAssetBuildMarker} />
+        <IntakeShellContent />
+      </>
     </QueryClientProvider>
   );
 }
