@@ -242,8 +242,8 @@ export function PreviewCheckout({
           {step === "domain" && (
             <Card>
               <CardHeader>
-                <CardTitle>{t("checkoutDomainTitle")}</CardTitle>
-                <CardDescription>{t("checkoutDomainStepDescription")}</CardDescription>
+                <CardTitle className="text-2xl md:text-3xl">{t("checkoutDomainTitle")}</CardTitle>
+                <CardDescription className="text-base">{t("checkoutDomainStepDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-5">
                 <form id="checkout-domain-form" ref={domainFormRef} action={checkAction} className="grid gap-3">
@@ -259,7 +259,7 @@ export function PreviewCheckout({
                       placeholder={t("checkoutDomainPlaceholder")}
                       aria-invalid={domainInputState === "error"}
                       className={cn(
-                        "h-14 pr-12 text-base font-medium md:h-16 md:text-xl",
+                        "h-13 pr-12 text-base font-medium md:h-14 md:text-lg",
                         domainInputState === "success" && "border-success focus-visible:border-success focus-visible:ring-success/30",
                         domainInputState === "warning" && "border-warning focus-visible:border-warning focus-visible:ring-warning/30",
                         domainInputState === "error" && "border-destructive",
@@ -298,11 +298,11 @@ export function PreviewCheckout({
           {step === "payment" && (
             <Card>
               <CardHeader>
-                <CardTitle>{t("checkoutPaymentTitle")}</CardTitle>
-                <CardDescription>{t("checkoutPaymentStepDescription")}</CardDescription>
+                <CardTitle className="text-2xl md:text-3xl">{t("checkoutPaymentTitle")}</CardTitle>
+                <CardDescription className="text-base">{t("checkoutPaymentStepDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-5">
-                <div className="grid gap-3 rounded-md border p-4 text-sm">
+                <div className="grid gap-3 rounded-md border p-4 text-base">
                   <ReviewRow label={t("checkoutSummaryDomain")} value={selectedDomain ?? domainValue} />
                   <ReviewRow label={t("checkoutRegistrantTitle")} value={formatDomainHolderName(holder, t)} />
                   <ReviewRow label={t("checkoutSummaryTotal")} value={totalPriceLabel} />
@@ -359,7 +359,8 @@ function CheckoutStepper({ step }: { step: CheckoutStep }) {
             key={entry.id}
             className={cn(
               "flex h-10 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium text-muted-foreground",
-              (active || complete) && "bg-primary text-primary-foreground",
+              active && "bg-primary text-primary-foreground",
+              complete && "bg-success text-success-foreground",
               complete && index + 1 === activeIndex && "rounded-r-none",
               active && index > 0 && "rounded-l-none",
             )}
@@ -518,8 +519,8 @@ function DomainOptionRow({
         type="button"
         variant="outline"
         className={cn(
-          "h-auto w-full justify-between whitespace-normal p-3 text-left",
-          selected && "border-success bg-success/5 ring-1 ring-success/30",
+          "h-auto w-full justify-between whitespace-normal border-success p-3 text-left ring-1 ring-success/20",
+          selected && "bg-success/5 ring-success/40",
         )}
         aria-pressed={selected}
         onClick={() => onSelect(option)}
@@ -568,8 +569,8 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="grid gap-1">
-        <div className="text-xs text-muted-foreground">{label}</div>
-        <div className="break-words text-sm font-medium">{value || "-"}</div>
+        <div className="text-sm text-muted-foreground">{label}</div>
+        <div className="break-words text-base font-medium">{value || "-"}</div>
       </div>
     </div>
   )
