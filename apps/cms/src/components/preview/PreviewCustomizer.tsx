@@ -4,12 +4,12 @@ import * as React from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { SitePageRenderer } from "@siteinabox/site-renderer"
 import type { Page, SiteSettings, ThemeTokenSpec } from "@siteinabox/contracts"
-import { AlertCircle, Check, CheckCircle2, Clock, CreditCard, Loader2 } from "lucide-react"
+import { AlertCircle, CheckCircle2, Clock, CreditCard, Loader2 } from "lucide-react"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { Button } from "@siteinabox/ui/components/button"
 import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
 import { ThemeBar } from "@/components/editor/theme/theme-bar"
-import { setPreviewTheme, approvePreviewSite, createPreviewMollieCheckout } from "@/lib/actions/previewCustomizer"
+import { setPreviewTheme } from "@/lib/actions/previewCustomizer"
 import type {
   PreviewApprovalState,
   PreviewCustomizerAccess,
@@ -58,12 +58,8 @@ export function PreviewCustomizer({
   const [themeState, setThemeState] = React.useState<ThemeTokens | null>(() => normalizeThemeForSave(theme))
   const [themeSaveState, setThemeSaveState] = React.useState<SaveState>("idle")
   const [themeMessage, setThemeMessage] = React.useState<string | null>(null)
-  const [approvalState, setApprovalState] = React.useState<PreviewApprovalState | null>(approval)
-  const [paymentState, setPaymentState] = React.useState<PreviewPaymentState | null>(payment)
-  const [approveState, setApproveState] = React.useState<SaveState>("idle")
-  const [approveMessage, setApproveMessage] = React.useState<string | null>(null)
-  const [checkoutState, setCheckoutState] = React.useState<SaveState>("idle")
-  const [checkoutMessage, setCheckoutMessage] = React.useState<string | null>(null)
+  const [approvalState] = React.useState<PreviewApprovalState | null>(approval)
+  const [paymentState] = React.useState<PreviewPaymentState | null>(payment)
   const initialThemeRef = React.useRef(JSON.stringify(normalizeThemeForSave(theme) ?? {}))
   const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -96,34 +92,6 @@ export function PreviewCustomizer({
     [themeState],
   )
 
-  const handleApprove = () => {
-    setApproveState("saving")
-    setApproveMessage(null)
-    approvePreviewSite(access)
-      .then((next) => {
-        setApprovalState(next.approval)
-        setPaymentState(next.payment)
-        setApproveState("saved")
-        setApproveMessage(t("approvalRecorded"))
-      })
-      .catch((error) => {
-        setApproveState("error")
-        setApproveMessage(error instanceof Error ? error.message : t("approvalFailed"))
-      })
-  }
-  const handleCheckout = () => {
-    setCheckoutState("saving")
-    setCheckoutMessage(null)
-    createPreviewMollieCheckout(access)
-      .then((next) => {
-        setPaymentState(next.payment)
-        window.location.assign(next.checkoutUrl)
-      })
-      .catch((error) => {
-        setCheckoutState("error")
-        setCheckoutMessage(error instanceof Error ? error.message : t("checkoutFailed"))
-      })
-  }
   const saveStatus =
     themeSaveState === "saving"
       ? t("savingStyles")
@@ -134,7 +102,7 @@ export function PreviewCustomizer({
           : t("stylesReady")
   const paymentStatus = formatPaymentStatus(paymentState?.status, t)
   const paymentSatisfied = paymentState?.status === "completed" || paymentState?.status === "waived"
-  const canCheckout = access.type === "grant" && approvalState?.status === "approved" && !paymentSatisfied
+  const canCompleteOrder = access.type === "grant" && !paymentSatisfied
   const pageHref = (summary: PreviewPageSummary) =>
     access.type === "grant"
       ? (summary.slug === "index" || summary.slug === "home"
@@ -209,37 +177,16 @@ export function PreviewCustomizer({
               {approvalState?.status === "approved" ? t("approved") : t("pendingApproval")}
             </Badge>
             <span>{t("paymentStatus", { status: paymentStatus })}</span>
-            {approveState === "error" && approveMessage && (
-              <span className="text-destructive">{approveMessage}</span>
-            )}
-            {approveState === "saved" && approveMessage && (
-              <span>{approveMessage}</span>
-            )}
-            {checkoutState === "error" && checkoutMessage && (
-              <span className="text-destructive">{checkoutMessage}</span>
-            )}
           </div>
           <div className="flex items-center gap-2">
-            {canCheckout && (
-              <Button type="button" variant="outline" onClick={handleCheckout} disabled={checkoutState === "saving"}>
-                {checkoutState === "saving" ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
+            {canCompleteOrder && (
+              <Button asChild>
+                <a href={`/${access.clientSlug}/checkout`}>
                   <CreditCard className="size-4" />
-                )}
-                {t("payWithMollie")}
+                  {t("completeOrder")}
+                </a>
               </Button>
             )}
-            <Button type="button" onClick={handleApprove} disabled={approveState === "saving" || approvalState?.status === "approved"}>
-              {approveState === "saving" ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : approvalState?.status === "approved" ? (
-                <Check className="size-4" />
-              ) : (
-                <CheckCircle2 className="size-4" />
-              )}
-              {approvalState?.status === "approved" ? t("approved") : t("approvePreview")}
-            </Button>
           </div>
         </div>
       </footer>
@@ -253,7 +200,7 @@ function formatPaymentStatus(status: string | null | undefined, t: ReturnType<ty
       return t("paymentCompleted")
     case "waived":
       return t("paymentWaived")
-    case "pending_provider_payment":
+    case "pending_provider":
       return t("paymentPendingProvider")
     case "not_started":
     case undefined:

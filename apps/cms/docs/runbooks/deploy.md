@@ -108,6 +108,22 @@ MOLLIE_SITE_PAYMENT_AMOUNT=19.95
 MOLLIE_SITE_PAYMENT_CURRENCY=EUR
 MOLLIE_WEBHOOK_BASE_URL=https://admin.siteinabox.nl
 MOLLIE_WEBHOOK_SIGNING_SECRET=
+OPENPROVIDER_USERNAME=
+OPENPROVIDER_PASSWORD=
+OPENPROVIDER_API_BASE_URL=
+OPENPROVIDER_OWNER_HANDLE=
+OPENPROVIDER_ADMIN_HANDLE=
+OPENPROVIDER_TECH_HANDLE=
+OPENPROVIDER_BILLING_HANDLE=
+OPENPROVIDER_NS_GROUP=
+OPENPROVIDER_NAMESERVERS=
+OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT=
+OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY=EUR
+CLOUDFLARE_API_TOKEN=
+CLOUDFLARE_ACCOUNT_ID=
+CLOUDFLARE_API_BASE_URL=
+SIAB_RENDERER_TARGET_HOST=
+SIAB_RENDERER_TARGET_IP=
 HOSTNAME=0.0.0.0
 SITE_URL=https://admin.siteinabox.nl
 SIAB_RENDERER_API_TOKEN=<openssl rand -hex 32>
@@ -153,8 +169,13 @@ Mollie checkout uses the hosted Payments API and the webhook route
 `/api/payments/mollie/webhook`. Keep `MOLLIE_API_KEY` and any optional webhook
 signing secret in deployment secrets only; `.env.example` intentionally contains
 no real values. The payment gate is satisfied by Mollie `paid` webhooks or a
-super-admin manual waiver, and payment completion never publishes or activates
-a site by itself.
+super-admin manual waiver. Paid customer checkout provisions the selected
+domain through Cloudflare and OpenProvider when the domain order is ready, but
+payment completion never publishes or activates a site by itself.
+OpenProvider registration requires all four contact handle values. Cloudflare
+DNS automation requires an account id, API token, and either
+`SIAB_RENDERER_TARGET_HOST` for proxied CNAME records or
+`SIAB_RENDERER_TARGET_IP` for proxied A records.
 `RESEND_API_KEY` is obsolete after the Cloudflare SMTP mail-path change and
 should not be carried forward into the production `.env`.
 
@@ -173,6 +194,8 @@ Current Phase 3 env readiness status:
 | Renderer token | Set `SIAB_RENDERER_API_TOKEN` now for the CMS snapshot endpoint; renderer `.env` is a later separate phase using the same token. |
 | Email | Set `CLOUDFLARE_EMAIL_SMTP_TOKEN` and `EMAIL_FROM`; remove obsolete `RESEND_API_KEY`. |
 | Mollie | Set `MOLLIE_API_KEY`, amount, currency, webhook base URL, and optional webhook signing secret. |
+| OpenProvider | Set username/password and owner/admin/tech/billing contact handles before enabling paid customer domain registration. |
+| Cloudflare DNS | Set API token, account id, and renderer target host or IP before enabling paid customer domain registration. |
 | Bootstrap/debug gates | Keep `BOOTSTRAP_TOKEN`, `ENABLE_GRAPHQL_PLAYGROUND`, and `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE` unset unless there is a temporary operator-approved reason. |
 
 **DO NOT wrap values in quotes.** Compose's dotenv parser strips them, but raw
@@ -535,23 +558,25 @@ Traefik preserves `Host` by default. The Phase 2 compose template does not add
 an explicit `X-Forwarded-Host` middleware; smoke testing must verify the CMS
 snapshot endpoint sees `amicare.optidigi.nl` during renderer requests.
 
-## Manual Domain Verification Workflow
+## Customer Domain Provisioning Workflow
 
-DNS/domain pointing remains manual outside automation.
+Paid customer checkout now owns the first automated domain path:
 
-1. Add or confirm the tenant primary domain on the tenant record and aliases in
-   the tenant's site settings.
-2. Have the customer/operator point DNS to the production edge.
-3. Confirm Traefik has router host rules for the primary domain and aliases and
-   forwards traffic to the generic renderer service on the shared `proxy`
-   network.
-4. In the CMS generation-run detail page, use the snapshot lifecycle domain
-   verification checklist to mark the tenant `verified` or `failed` with notes.
-   The action records `domainVerification.status`, `checkedAt`, `checkedBy`,
-   and `notes` on the existing tenant fields.
-5. Publish and activate snapshots only after the domain is verified. Manual
-   activation bypasses approval/payment only; it still requires a verified
-   domain and a tenant that is not suspended or archived.
+1. The customer opens the magic-link gated preview checkout.
+2. The checkout checks domain availability through OpenProvider and stores the
+   selected domain on the generation run's `domainOrder` state.
+3. Mollie checkout is created only after the selected domain is ready to
+   register.
+4. The Mollie `paid` webhook creates a Cloudflare zone, registers the domain
+   with OpenProvider using the Cloudflare nameservers, creates the renderer DNS
+   records, and marks the tenant domain verification as `verified`.
+5. Publish and activate snapshots only after the domain is verified. Payment
+   and domain provisioning do not publish or activate a site by themselves.
+
+Manual verification remains an operator fallback for domains that were handled
+outside this automated checkout path. Manual activation bypasses
+approval/payment only; it still requires a verified domain and a tenant that is
+not suspended or archived.
 
 ## Form-submission retention (GDPR)
 

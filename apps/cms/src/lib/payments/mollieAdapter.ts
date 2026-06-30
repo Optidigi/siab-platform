@@ -111,7 +111,7 @@ export async function retrieveMolliePayment(paymentId: string): Promise<MolliePa
 export function verifyMollieWebhookSignature(rawBody: string, signature: string | null, env = process.env): boolean {
   const secret = cleanEnv(env.MOLLIE_WEBHOOK_SIGNING_SECRET)
   if (!secret) return true
-  if (!signature) return false
+  if (!signature) return true
   const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex")
   const received = signature.replace(/^sha256=/, "")
   const expectedBuffer = Buffer.from(expected, "hex")

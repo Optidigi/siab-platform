@@ -26,6 +26,7 @@ export type GenerationRunPaymentState = {
   checkoutUrl: string | null
   customerEmail: string | null
   clientSlug: string | null
+  selectedDomain: string | null
   amount: string | null
   currency: string | null
   providerStatus: string | null
@@ -68,6 +69,7 @@ export function normalizeGenerationRunPaymentState(value: unknown): GenerationRu
     checkoutUrl: cleanText(source.checkoutUrl),
     customerEmail: cleanText(source.customerEmail),
     clientSlug: cleanText(source.clientSlug),
+    selectedDomain: cleanText(source.selectedDomain),
     amount: cleanText(source.amount),
     currency: cleanText(source.currency),
     providerStatus: cleanText(source.providerStatus),
@@ -88,6 +90,7 @@ export function createPendingProviderPaymentState(now = new Date().toISOString()
     checkoutUrl: null,
     customerEmail: null,
     clientSlug: null,
+    selectedDomain: null,
     amount: null,
     currency: null,
     providerStatus: null,
@@ -109,6 +112,7 @@ export function createOperationalPaymentState(input: GenerationRunPaymentInput):
     checkoutUrl: null,
     customerEmail: null,
     clientSlug: null,
+    selectedDomain: null,
     amount: null,
     currency: null,
     providerStatus: null,

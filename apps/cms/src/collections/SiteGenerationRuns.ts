@@ -99,6 +99,14 @@ export const SiteGenerationRuns: CollectionConfig = {
         description: "Provider-neutral operational payment gate with status and audit metadata.",
       },
     },
+    {
+      name: "domainOrder",
+      type: "json",
+      admin: {
+        readOnly: true,
+        description: "Customer-selected domain order and provisioning state for preview checkout.",
+      },
+    },
     { name: "errors", type: "json" },
   ],
 }

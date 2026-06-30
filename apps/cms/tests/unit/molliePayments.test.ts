@@ -30,6 +30,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     status: "preview_ready",
     clientApproval: { status: "approved" },
     payment: null,
+    domainOrder: null,
     tenant: 1,
     pages: [100],
     idempotencyKey: "run-500",
@@ -45,6 +46,8 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
   }
   const update = vi.fn(async ({ collection, data }: any) => {
     if (collection === "site-generation-runs") Object.assign(run, data)
+    if (collection === "tenants") Object.assign(tenant, data)
+    if (collection === "tenants") return { ...tenant }
     return { ...run }
   })
   const payload = {
@@ -210,6 +213,83 @@ describe("Mollie payment flow", () => {
     }))
 
     expect(result).toMatchObject({ ok: true, status: "completed", duplicate: true })
+  })
+
+  it("starts domain provisioning after a paid checkout with a selected domain", async () => {
+    vi.stubEnv("OPENPROVIDER_USERNAME", "user")
+    vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
+    vi.stubEnv("OPENPROVIDER_OWNER_HANDLE", "OWNER-NL")
+    vi.stubEnv("OPENPROVIDER_ADMIN_HANDLE", "ADMIN-NL")
+    vi.stubEnv("OPENPROVIDER_TECH_HANDLE", "TECH-NL")
+    vi.stubEnv("OPENPROVIDER_BILLING_HANDLE", "BILL-NL")
+    vi.stubEnv("CLOUDFLARE_API_TOKEN", "cf-token")
+    vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "cf-account")
+    vi.stubEnv("SIAB_RENDERER_TARGET_HOST", "renderer.siteinabox.nl")
+    const { payload, run, tenant } = createPayloadStub({
+      payment: {
+        status: "pending_provider",
+        provider: "mollie",
+        externalReference: "tr_test_123",
+        selectedDomain: "clientsite.nl",
+      },
+      domainOrder: {
+        status: "ready_to_register",
+        domain: "clientsite.nl",
+        fixedPriceAmount: "499.00",
+        fixedPriceCurrency: "EUR",
+      },
+    })
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("api.cloudflare.com/client/v4/zones") && !url.includes("dns_records")) {
+        return new Response(JSON.stringify({
+          success: true,
+          result: {
+            id: "zone_123",
+            name: "clientsite.nl",
+            name_servers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+          },
+        }), { status: 200 })
+      }
+      if (url.includes("api.openprovider.eu/v1beta/auth/login")) {
+        return new Response(JSON.stringify({ data: { token: "op-token" } }), { status: 200 })
+      }
+      if (url.includes("api.openprovider.eu/v1beta/domains")) {
+        return new Response(JSON.stringify({ code: 0, data: { id: 9001, status: "ACT" } }), { status: 200 })
+      }
+      if (url.includes("dns_records")) {
+        return new Response(JSON.stringify({
+          success: true,
+          result: { id: "record_123", name: "clientsite.nl", content: "renderer.siteinabox.nl", proxied: true },
+        }), { status: 200 })
+      }
+      throw new Error(`Unexpected fetch ${url}`)
+    }))
+
+    const result = await applyMollieWebhookPayment(payload, "tr_test_123", async () => ({
+      id: "tr_test_123",
+      status: "paid",
+      amount: { currency: "EUR", value: "499.00" },
+      metadata: {
+        generationRunId: 500,
+        tenantId: 1,
+        customerEmail: "client@example.com",
+        clientSlug: "acme",
+        selectedDomain: "clientsite.nl",
+      },
+    }))
+
+    expect(result.status).toBe("completed")
+    expect(run.payment).toMatchObject({ status: "completed", selectedDomain: "clientsite.nl" })
+    expect(run.domainOrder).toMatchObject({
+      status: "registered",
+      domain: "clientsite.nl",
+      providerReference: "9001",
+      cloudflareZoneId: "zone_123",
+    })
+    expect(tenant).toMatchObject({
+      domain: "clientsite.nl",
+      domainVerification: expect.objectContaining({ status: "verified" }),
+    })
   })
 
   it("rejects invalid webhook payloads and invalid optional signatures", async () => {

@@ -1,0 +1,131 @@
+import "server-only"
+import type { Payload } from "payload"
+import type { SiteGenerationRun, Tenant } from "@/payload-types"
+import { createCloudflareZone, createCloudflareZoneDnsRecords } from "@/lib/domains/cloudflare"
+import { createDomainOrderState, fixedDomainOrderPriceFromEnv, normalizeDomainOrderState } from "@/lib/domains/orderState"
+import { registerOpenProviderDomain } from "@/lib/domains/openprovider"
+import { normalizeDomain } from "@/lib/domains/normalize"
+import { relationshipId } from "@/lib/relationshipId"
+
+export type ProvisionPaidDomainResult = {
+  status: "registered" | "already_registered"
+  domain: string
+  run: SiteGenerationRun
+}
+
+export async function provisionPaidDomainOrder(
+  payload: Payload,
+  run: SiteGenerationRun,
+  input?: { selectedDomain?: string | null; now?: string },
+): Promise<ProvisionPaidDomainResult> {
+  const current = normalizeDomainOrderState(run.domainOrder)
+  const domain = input?.selectedDomain ?? current.domain
+  const normalized = normalizeDomain(domain)
+  if (!normalized.ok) throw new Error(`Cannot provision paid domain: ${normalized.reason}.`)
+  if (current.status === "registered" && current.domain === normalized.domain) {
+    return { status: "already_registered", domain: normalized.domain, run }
+  }
+
+  const tenantId = relationshipId(run.tenant)
+  if (!tenantId) throw new Error("Cannot provision paid domain without a linked tenant.")
+  const tenant = await payload.findByID({
+    collection: "tenants",
+    id: tenantId as any,
+    depth: 0,
+    overrideAccess: true,
+  }) as Tenant
+  if (!tenant || tenant.status === "archived" || tenant.status === "suspended") {
+    throw new Error("Cannot provision paid domain for an unavailable tenant.")
+  }
+
+  const now = input?.now ?? new Date().toISOString()
+  const requested = {
+    ...createDomainOrderState({
+      status: "registration_requested",
+      domain: normalized.domain,
+      fixedPrice: current.fixedPriceAmount && current.fixedPriceCurrency
+        ? { amount: current.fixedPriceAmount, currency: current.fixedPriceCurrency }
+        : fixedDomainOrderPriceFromEnv(),
+      providerPrice: current.providerPriceAmount && current.providerPriceCurrency
+        ? { amount: current.providerPriceAmount, currency: current.providerPriceCurrency }
+        : null,
+      now,
+    }),
+    reason: "payment_completed",
+  }
+  await payload.update({
+    collection: "site-generation-runs",
+    id: run.id,
+    data: { domainOrder: requested } as any,
+    depth: 0,
+    overrideAccess: true,
+  })
+
+  try {
+    const zone = await createCloudflareZone(normalized.domain)
+    const registration = await registerOpenProviderDomain(normalized.domain, {
+      nameServers: zone.nameServers.map((name) => ({ name })),
+      nsGroup: null,
+    })
+    const dnsRecords = await createCloudflareZoneDnsRecords(zone.id, normalized.domain)
+    const registered = {
+      ...createDomainOrderState({
+        status: "registered",
+        domain: normalized.domain,
+        fixedPrice: requested.fixedPriceAmount && requested.fixedPriceCurrency
+          ? { amount: requested.fixedPriceAmount, currency: requested.fixedPriceCurrency }
+          : null,
+        providerPrice: requested.providerPriceAmount && requested.providerPriceCurrency
+          ? { amount: requested.providerPriceAmount, currency: requested.providerPriceCurrency }
+          : null,
+        providerReference: registration.id == null ? null : String(registration.id),
+        reason: "domain_registered",
+        now: new Date().toISOString(),
+      }),
+      cloudflareZoneId: zone.id,
+      cloudflareNameservers: zone.nameServers,
+      cloudflareDnsRecordIds: dnsRecords.map((record) => record.id).filter(Boolean),
+    }
+    const [updatedRun] = await Promise.all([
+      payload.update({
+        collection: "site-generation-runs",
+        id: run.id,
+        data: { domainOrder: registered } as any,
+        depth: 0,
+        overrideAccess: true,
+      }) as Promise<SiteGenerationRun>,
+      payload.update({
+        collection: "tenants",
+        id: tenantId as any,
+        data: {
+          domain: normalized.domain,
+          domainVerification: {
+            status: "verified",
+            checkedAt: new Date().toISOString(),
+            notes: "Domain registered with OpenProvider and Cloudflare DNS records created by checkout automation.",
+          },
+        } as any,
+        depth: 0,
+        overrideAccess: true,
+      }),
+    ])
+    return { status: "registered", domain: normalized.domain, run: updatedRun }
+  } catch (error) {
+    const failed = {
+      ...requested,
+      status: "failed" as const,
+      reason: error instanceof Error ? error.message : "domain_provisioning_failed",
+      updatedAt: new Date().toISOString(),
+    }
+    const updatedRun = await payload.update({
+      collection: "site-generation-runs",
+      id: run.id,
+      data: { domainOrder: failed } as any,
+      depth: 0,
+      overrideAccess: true,
+    }) as SiteGenerationRun
+    throw Object.assign(error instanceof Error ? error : new Error("Domain provisioning failed."), {
+      run: updatedRun,
+    })
+  }
+}

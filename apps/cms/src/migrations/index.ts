@@ -38,6 +38,7 @@ import * as migration_20260627_140000_add_tenant_chrome_variant_enum_values from
 import * as migration_20260628_000000_generic_generation_fixture_defaults from './20260628_000000_generic_generation_fixture_defaults';
 import * as migration_20260630_120000_add_intake_review_fields from './20260630_120000_add_intake_review_fields';
 import * as migration_20260630_130000_default_dutch_locale from './20260630_130000_default_dutch_locale';
+import * as migration_20260630_150000_add_generation_run_domain_order from './20260630_150000_add_generation_run_domain_order';
 
 export const migrations = [
   {
@@ -239,5 +240,10 @@ export const migrations = [
     up: migration_20260630_130000_default_dutch_locale.up,
     down: migration_20260630_130000_default_dutch_locale.down,
     name: '20260630_130000_default_dutch_locale'
+  },
+  {
+    up: migration_20260630_150000_add_generation_run_domain_order.up,
+    down: migration_20260630_150000_add_generation_run_domain_order.down,
+    name: '20260630_150000_add_generation_run_domain_order'
   },
 ];

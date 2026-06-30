@@ -45,6 +45,7 @@ describe("generation run payment abstraction", () => {
       currency: null,
       providerStatus: null,
       webhookProcessedAt: null,
+      selectedDomain: null,
     })
   })
 
@@ -72,6 +73,7 @@ describe("generation run payment abstraction", () => {
       currency: null,
       providerStatus: null,
       webhookProcessedAt: null,
+      selectedDomain: null,
     })
 
     expect(createOperationalPaymentState({

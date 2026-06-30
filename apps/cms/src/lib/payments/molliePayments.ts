@@ -2,6 +2,7 @@ import "server-only"
 import type { Payload } from "payload"
 import type { SiteGenerationRun, Tenant } from "@/payload-types"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+import { provisionPaidDomainOrder } from "@/lib/domains/provisioning"
 import {
   normalizeGenerationRunPaymentState,
   type GenerationRunPaymentState,
@@ -22,6 +23,7 @@ type CreateCheckoutInput = {
   runId: string | number
   customerEmail: string
   clientSlug?: string | null
+  selectedDomain?: string | null
   actor?: string | number | null
 }
 
@@ -43,6 +45,23 @@ export const isIgnorableMollieWebhookError = (error: unknown): boolean =>
   (error instanceof MollieApiError && error.status === 404)
 
 const normalizeEmail = (value: string): string => value.trim().toLowerCase()
+
+const cleanDomain = (value: unknown): string | null => {
+  if (typeof value !== "string") return null
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .replace(/^www\./, "")
+  return normalized && normalized.includes(".") ? normalized : null
+}
+
+const selectedDomainFromOrder = (value: unknown): string | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const source = value as Record<string, unknown>
+  return cleanDomain(source.selectedDomain ?? source.domain)
+}
 
 const isApproved = (run: SiteGenerationRun): boolean =>
   (run.clientApproval as { status?: unknown } | null | undefined)?.status === "approved"
@@ -78,6 +97,7 @@ const molliePaymentState = (input: {
   checkoutUrl?: string | null
   customerEmail?: string | null
   clientSlug?: string | null
+  selectedDomain?: string | null
   amount?: string | null
   currency?: string | null
   actor?: string | number | null
@@ -99,6 +119,7 @@ const molliePaymentState = (input: {
     checkoutUrl: input.checkoutUrl ?? current.checkoutUrl,
     customerEmail: input.customerEmail ?? current.customerEmail,
     clientSlug: input.clientSlug ?? current.clientSlug,
+    selectedDomain: input.selectedDomain ?? current.selectedDomain,
     amount: input.amount ?? current.amount,
     currency: input.currency ?? current.currency,
     providerStatus: input.providerStatus,
@@ -118,6 +139,8 @@ export async function createMollieCheckoutForGenerationRun(
 
   const clientSlug = input.clientSlug || previewClientSlugFromDomain(tenant.domain, String(tenant.slug ?? tenant.name ?? ""))
   if (!clientSlug) throw new Error("Client preview slug is required for Mollie checkout.")
+  const selectedDomain = cleanDomain(input.selectedDomain) ?? selectedDomainFromOrder(run.domainOrder) ?? cleanDomain(tenant.domain)
+  if (!selectedDomain) throw new Error("Selected domain is required for checkout.")
 
   const current = normalizeGenerationRunPaymentState(run.payment)
   if (current.status === "completed" || current.status === "waived") {
@@ -129,7 +152,8 @@ export async function createMollieCheckoutForGenerationRun(
     current.checkoutUrl &&
     current.status === "pending_provider" &&
     current.customerEmail === email &&
-    current.clientSlug === clientSlug
+    current.clientSlug === clientSlug &&
+    (current.selectedDomain ?? selectedDomain) === selectedDomain
   ) {
     return { payment: current, checkoutUrl: current.checkoutUrl, reused: true }
   }
@@ -141,7 +165,7 @@ export async function createMollieCheckoutForGenerationRun(
   const idempotencyKey = `siab-run-${run.id}-customer-${email}`
   const molliePayment = await createMolliePayment({
     amount,
-    description: `Site in a Box website ${clientSlug}`,
+    description: `Site in a Box website ${selectedDomain}`,
     redirectUrl,
     webhookUrl,
     idempotencyKey,
@@ -150,6 +174,7 @@ export async function createMollieCheckoutForGenerationRun(
       tenantId: tenant.id,
       customerEmail: email,
       clientSlug,
+      selectedDomain,
       idempotencyKey,
     },
   })
@@ -164,6 +189,7 @@ export async function createMollieCheckoutForGenerationRun(
     checkoutUrl,
     customerEmail: email,
     clientSlug,
+    selectedDomain,
     amount: amount.value,
     currency: amount.currency,
     actor: input.actor ?? email,
@@ -232,6 +258,7 @@ export async function applyMollieWebhookPayment(
     checkoutUrl: current.checkoutUrl,
     customerEmail: typeof metadata.customerEmail === "string" ? normalizeEmail(metadata.customerEmail) : current.customerEmail,
     clientSlug: typeof metadata.clientSlug === "string" ? metadata.clientSlug : current.clientSlug,
+    selectedDomain: typeof metadata.selectedDomain === "string" ? cleanDomain(metadata.selectedDomain) : current.selectedDomain,
     amount: molliePayment.amount?.value ?? current.amount,
     currency: molliePayment.amount?.currency ?? current.currency,
     note: nextStatus === "completed" ? "Mollie payment completed." : `Mollie payment status: ${molliePayment.status}.`,
@@ -242,12 +269,15 @@ export async function applyMollieWebhookPayment(
     current.providerStatus === next.providerStatus &&
     current.externalReference === next.externalReference
 
-  await payload.update({
+  const updatedRun = await payload.update({
     collection: "site-generation-runs",
     id: run.id,
     data: { payment: next } as any,
     depth: 0,
     overrideAccess: true,
-  })
+  }) as SiteGenerationRun
+  if (next.status === "completed" && next.selectedDomain) {
+    await provisionPaidDomainOrder(payload, updatedRun, { selectedDomain: next.selectedDomain })
+  }
   return { ok: true, runId: run.id, status: next.status, duplicate }
 }
