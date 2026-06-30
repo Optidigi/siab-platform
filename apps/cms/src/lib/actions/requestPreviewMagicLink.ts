@@ -1,6 +1,7 @@
 "use server"
 
 import { headers } from "next/headers"
+import { getTranslations } from "next-intl/server"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import { normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
 
@@ -15,12 +16,13 @@ export async function requestPreviewMagicLinkAction(
   _state: RequestPreviewMagicLinkState,
   formData: FormData,
 ): Promise<RequestPreviewMagicLinkState> {
-  const genericSuccess = "Als dit e-mailadres toegang heeft tot de preview, ontvang je een inloglink."
+  const t = await getTranslations("preview")
+  const genericSuccess = t("magicLinkGenericSuccess")
   try {
     const normalizedClientSlug = normalizePreviewClientSlug(clientSlug)
     const email = String(formData.get("email") ?? "").trim().toLowerCase()
     if (!normalizedClientSlug || !email) {
-      return { ok: false, message: "E-mailadres is verplicht." }
+      return { ok: false, message: t("emailRequired") }
     }
 
     await (previewAuth.api as any).signInMagicLink({

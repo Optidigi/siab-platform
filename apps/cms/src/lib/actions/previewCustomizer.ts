@@ -1,6 +1,7 @@
 "use server"
 
 import { headers } from "next/headers"
+import { getTranslations } from "next-intl/server"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import {
   approvePreview,
@@ -15,21 +16,22 @@ import { loadPreviewGrantContext } from "@/lib/preview/previewAccess"
 import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayments"
 import type { ThemeTokens } from "@/lib/theme/schema"
 
-const previewSessionEmail = async (): Promise<string> => {
+const previewSessionEmail = async (loginRequiredMessage: string): Promise<string> => {
   const session = await previewAuth.api.getSession({
     headers: await headers(),
     query: { disableCookieCache: true },
   })
   const email = session?.user?.email
-  if (!email) throw new Error("Preview-login vereist")
+  if (!email) throw new Error(loginRequiredMessage)
   return email
 }
 
 export async function setPreviewTheme(access: PreviewCustomizerAccess, theme: ThemeTokens) {
   if (access.type === "legacy-token") return persistPreviewTheme(access.token, theme)
+  const t = await getTranslations("preview")
   return persistPreviewThemeForGrant({
     clientSlug: access.clientSlug,
-    customerEmail: await previewSessionEmail(),
+    customerEmail: await previewSessionEmail(t("previewLoginRequired")),
     theme,
   })
 }
@@ -39,9 +41,10 @@ export async function approvePreviewSite(access: PreviewCustomizerAccess): Promi
   payment: PreviewPaymentState
 }> {
   if (access.type === "legacy-token") return approvePreview(access.token)
+  const t = await getTranslations("preview")
   return approvePreviewForGrant({
     clientSlug: access.clientSlug,
-    customerEmail: await previewSessionEmail(),
+    customerEmail: await previewSessionEmail(t("previewLoginRequired")),
   })
 }
 
@@ -50,10 +53,11 @@ export async function createPreviewMollieCheckout(access: PreviewCustomizerAcces
   payment: PreviewPaymentState
   reused: boolean
 }> {
+  const t = await getTranslations("preview")
   if (access.type === "legacy-token") {
-    throw new Error("Afrekenen vereist preview-toegang via Better Auth.")
+    throw new Error(t("checkoutRequiresPreviewAccess"))
   }
-  const customerEmail = await previewSessionEmail()
+  const customerEmail = await previewSessionEmail(t("previewLoginRequired"))
   const context = await loadPreviewGrantContext({
     clientSlug: access.clientSlug,
     email: customerEmail,

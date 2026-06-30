@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useActionState } from "react"
+import { useTranslations } from "next-intl"
 import { Mail, Loader2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import { Button } from "@siteinabox/ui/components/button"
@@ -21,6 +22,7 @@ export function PreviewLoginForm({
   clientSlug: string
   callbackPath: string
 }) {
+  const t = useTranslations("preview")
   const [state, formAction, pending] = useActionState(
     requestPreviewMagicLinkAction.bind(null, clientSlug, callbackPath),
     initialState,
@@ -29,7 +31,7 @@ export function PreviewLoginForm({
   return (
     <form action={formAction} className="grid gap-4">
       <div className="grid gap-2">
-        <Label htmlFor="preview-email">E-mailadres</Label>
+        <Label htmlFor="preview-email">{t("email")}</Label>
         <Input
           id="preview-email"
           name="email"
@@ -40,11 +42,11 @@ export function PreviewLoginForm({
       </div>
       <Button type="submit" disabled={pending}>
         {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Mail className="size-4" aria-hidden />}
-        Verstuur inloglink
+        {t("sendMagicLink")}
       </Button>
       {state.message && (
         <Alert variant={state.ok ? "default" : "destructive"}>
-          <AlertTitle>{state.ok ? "E-mail verstuurd" : "Toegang niet beschikbaar"}</AlertTitle>
+          <AlertTitle>{state.ok ? t("emailSent") : t("accessUnavailable")}</AlertTitle>
           <AlertDescription>{state.message}</AlertDescription>
         </Alert>
       )}

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useLocale, useTranslations } from "next-intl"
 import { SitePageRenderer } from "@siteinabox/site-renderer"
 import type { Page, SiteSettings, ThemeTokenSpec } from "@siteinabox/contracts"
 import { AlertCircle, Check, CheckCircle2, Clock, CreditCard, Loader2 } from "lucide-react"
@@ -23,9 +24,9 @@ import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 
 type SaveState = "idle" | "saving" | "saved" | "error"
 
-const formatExpiry = (exp: number) => {
+const formatExpiry = (exp: number, locale: string, fallback: string) => {
   const date = new Date(exp * 1000)
-  return Number.isNaN(date.getTime()) ? "Onbekende verloopdatum" : date.toLocaleString("nl-NL")
+  return Number.isNaN(date.getTime()) ? fallback : date.toLocaleString(locale)
 }
 
 export function PreviewCustomizer({
@@ -51,6 +52,8 @@ export function PreviewCustomizer({
   tenantSlug?: string | null
   domain?: string | null
 }) {
+  const locale = useLocale()
+  const t = useTranslations("preview")
   const nonce = useCspNonce()
   const [themeState, setThemeState] = React.useState<ThemeTokens | null>(() => normalizeThemeForSave(theme))
   const [themeSaveState, setThemeSaveState] = React.useState<SaveState>("idle")
@@ -76,11 +79,11 @@ export function PreviewCustomizer({
           initialThemeRef.current = JSON.stringify(saved ?? {})
           setThemeState(saved)
           setThemeSaveState("saved")
-          setThemeMessage("Stijlaanpassingen opgeslagen.")
+          setThemeMessage(t("themeSaved"))
         })
         .catch((error) => {
           setThemeSaveState("error")
-          setThemeMessage(error instanceof Error ? error.message : "Stijlaanpassingen konden niet worden opgeslagen.")
+          setThemeMessage(error instanceof Error ? error.message : t("themeSaveFailed"))
         })
     }, 500)
     return () => {
@@ -101,11 +104,11 @@ export function PreviewCustomizer({
         setApprovalState(next.approval)
         setPaymentState(next.payment)
         setApproveState("saved")
-        setApproveMessage("Akkoord opgeslagen. Ga verder met afrekenen wanneer je klaar bent.")
+        setApproveMessage(t("approvalRecorded"))
       })
       .catch((error) => {
         setApproveState("error")
-        setApproveMessage(error instanceof Error ? error.message : "Akkoord kon niet worden opgeslagen.")
+        setApproveMessage(error instanceof Error ? error.message : t("approvalFailed"))
       })
   }
   const handleCheckout = () => {
@@ -118,18 +121,18 @@ export function PreviewCustomizer({
       })
       .catch((error) => {
         setCheckoutState("error")
-        setCheckoutMessage(error instanceof Error ? error.message : "Afrekenen kon niet worden gestart.")
+        setCheckoutMessage(error instanceof Error ? error.message : t("checkoutFailed"))
       })
   }
   const saveStatus =
     themeSaveState === "saving"
-      ? "Stijlen opslaan"
+      ? t("savingStyles")
       : themeSaveState === "saved"
         ? themeMessage
         : themeSaveState === "error"
           ? themeMessage
-          : "Stijlen gereed"
-  const paymentStatus = formatPaymentStatus(paymentState?.status)
+          : t("stylesReady")
+  const paymentStatus = formatPaymentStatus(paymentState?.status, t)
   const paymentSatisfied = paymentState?.status === "completed" || paymentState?.status === "waived"
   const canCheckout = access.type === "grant" && approvalState?.status === "approved" && !paymentSatisfied
   const pageHref = (summary: PreviewPageSummary) =>
@@ -143,7 +146,7 @@ export function PreviewCustomizer({
     <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
       <div className="sticky top-0 z-20 flex shrink-0 flex-col border-b bg-background/95 backdrop-blur">
         <div className="flex flex-col gap-2 px-3 py-2 lg:flex-row lg:items-center lg:justify-between">
-          <nav className="flex min-w-0 flex-wrap items-center gap-1" aria-label="Previewpagina's">
+          <nav className="flex min-w-0 flex-wrap items-center gap-1" aria-label={t("pagesNav")}>
             {pages.map((summary) => {
               const active = String(summary.slug) === String(page.slug) || String(summary.id) === String(page.id)
               return (
@@ -169,7 +172,7 @@ export function PreviewCustomizer({
             {access.type === "legacy-token" && (
               <Badge variant="outline">
                 <Clock className="size-3" aria-hidden />
-                Verloopt {formatExpiry(access.exp)}
+                {t("expires", { date: formatExpiry(access.exp, locale, t("unknownExpiry")) })}
               </Badge>
             )}
           </div>
@@ -203,9 +206,9 @@ export function PreviewCustomizer({
         <div className="mx-auto flex max-w-7xl flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <Badge variant={approvalState?.status === "approved" ? "success" : "secondary"}>
-              {approvalState?.status === "approved" ? "Goedgekeurd" : "Wacht op akkoord"}
+              {approvalState?.status === "approved" ? t("approved") : t("pendingApproval")}
             </Badge>
-            <span>Betaalstatus: {paymentStatus}</span>
+            <span>{t("paymentStatus", { status: paymentStatus })}</span>
             {approveState === "error" && approveMessage && (
               <span className="text-destructive">{approveMessage}</span>
             )}
@@ -224,7 +227,7 @@ export function PreviewCustomizer({
                 ) : (
                   <CreditCard className="size-4" />
                 )}
-                Betaal met Mollie
+                {t("payWithMollie")}
               </Button>
             )}
             <Button type="button" onClick={handleApprove} disabled={approveState === "saving" || approvalState?.status === "approved"}>
@@ -235,7 +238,7 @@ export function PreviewCustomizer({
               ) : (
                 <CheckCircle2 className="size-4" />
               )}
-              {approvalState?.status === "approved" ? "Goedgekeurd" : "Preview goedkeuren"}
+              {approvalState?.status === "approved" ? t("approved") : t("approvePreview")}
             </Button>
           </div>
         </div>
@@ -244,18 +247,18 @@ export function PreviewCustomizer({
   )
 }
 
-function formatPaymentStatus(status: string | null | undefined): string {
+function formatPaymentStatus(status: string | null | undefined, t: ReturnType<typeof useTranslations<"preview">>): string {
   switch (status) {
     case "completed":
-      return "betaald"
+      return t("paymentCompleted")
     case "waived":
-      return "vrijgesteld"
+      return t("paymentWaived")
     case "pending_provider_payment":
-      return "wacht op betaling"
+      return t("paymentPendingProvider")
     case "not_started":
     case undefined:
     case null:
-      return "nog niet gestart"
+      return t("paymentNotStarted")
     default:
       return status.replace(/_/g, " ")
   }

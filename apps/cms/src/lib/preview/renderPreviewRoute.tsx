@@ -1,4 +1,5 @@
 import { headers } from "next/headers"
+import { getTranslations } from "next-intl/server"
 import { notFound } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { PreviewCustomizer } from "@/components/preview/PreviewCustomizer"
@@ -16,6 +17,7 @@ export async function renderPreviewRoute({
   pageSlug?: string | null
 }) {
   if (!(await isPreviewHost())) notFound()
+  const t = await getTranslations("preview")
   const normalizedClientSlug = normalizePreviewClientSlug(clientSlug)
   if (!normalizedClientSlug) notFound()
 
@@ -31,7 +33,14 @@ export async function renderPreviewRoute({
   const customerEmail = session?.user?.email
 
   if (!customerEmail) {
-    return <PreviewAccessScreen clientSlug={normalizedClientSlug} callbackPath={callbackPath} />
+    return (
+      <PreviewAccessScreen
+        clientSlug={normalizedClientSlug}
+        callbackPath={callbackPath}
+        title={t("loginTitle")}
+        description={t("loginDescription")}
+      />
+    )
   }
 
   try {
@@ -65,31 +74,36 @@ export async function renderPreviewRoute({
       </>
     )
   } catch {
-    return <PreviewAccessScreen clientSlug={normalizedClientSlug} callbackPath={callbackPath} denied />
+    return (
+      <PreviewAccessScreen
+        clientSlug={normalizedClientSlug}
+        callbackPath={callbackPath}
+        title={t("accessUnavailableTitle")}
+        description={t("accessUnavailableDescription")}
+      />
+    )
   }
 }
 
 function PreviewAccessScreen({
   clientSlug,
   callbackPath,
-  denied = false,
+  title,
+  description,
 }: {
   clientSlug: string
   callbackPath: string
-  denied?: boolean
+  title: string
+  description: string
 }) {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10 text-foreground">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>{denied ? "Preview-toegang niet beschikbaar" : "Preview-login"}</CardTitle>
+          <CardTitle>{title}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <p className="text-sm text-muted-foreground">
-            {denied
-              ? "Gebruik het e-mailadres dat de preview-uitnodiging heeft ontvangen, of vraag een nieuwe inloglink aan."
-              : "Vul het e-mailadres uit je preview-uitnodiging in."}
-          </p>
+          <p className="text-sm text-muted-foreground">{description}</p>
           <PreviewLoginForm clientSlug={clientSlug} callbackPath={callbackPath} />
         </CardContent>
       </Card>

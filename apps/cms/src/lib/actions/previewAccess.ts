@@ -1,6 +1,7 @@
 "use server"
 
 import { headers } from "next/headers"
+import { getTranslations } from "next-intl/server"
 import { getPayload } from "payload"
 import config from "@/payload.config"
 import { previewAuth } from "@/lib/preview/betterAuth"
@@ -13,11 +14,11 @@ export type PreviewAccessActionState = {
   message: string
 }
 
-const requireSuperAdmin = async () => {
+const requireSuperAdmin = async (forbiddenMessage: string) => {
   const payload = await getPayload({ config })
   const authResult = await payload.auth({ headers: await headers() })
   if (authResult.user?.role !== "super-admin") {
-    throw new Error("Alleen superbeheerders kunnen klanttoegang tot previews beheren.")
+    throw new Error(forbiddenMessage)
   }
 }
 
@@ -35,10 +36,11 @@ export async function sendPreviewAccessAction(
   _state: PreviewAccessActionState,
   formData: FormData,
 ): Promise<PreviewAccessActionState> {
+  const t = await getTranslations("preview")
   try {
-    await requireSuperAdmin()
+    await requireSuperAdmin(t("superAdminRequired"))
     const email = String(formData.get("email") ?? "").trim().toLowerCase()
-    if (!email) return { ok: false, message: "E-mailadres van de klant is verplicht." }
+    if (!email) return { ok: false, message: t("customerEmailRequired") }
 
     const grant = await createOrRefreshPreviewGrant({
       generationRunId,
@@ -59,11 +61,11 @@ export async function sendPreviewAccessAction(
       headers: await previewAuthHeaders(),
     })
 
-    return { ok: true, previewUrl, message: "Preview-inloglink verstuurd." }
+    return { ok: true, previewUrl, message: t("previewMagicLinkSent") }
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Preview-toegang kon niet worden verstuurd.",
+      message: error instanceof Error ? error.message : t("previewAccessSendFailed"),
     }
   }
 }

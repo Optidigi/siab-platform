@@ -1,12 +1,14 @@
 import type { Metadata } from "next"
 import { headers } from "next/headers"
 import { notFound } from "next/navigation"
+import { getTranslations } from "next-intl/server"
 import { PreviewCustomizer } from "@/components/preview/PreviewCustomizer"
 import { getPreviewCustomizerData } from "@/lib/preview/customizer"
 import { legacyPreviewTokensEnabled } from "@/lib/preview/legacyPreview"
 
-export const metadata: Metadata = {
-  title: "Voorbeeld",
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("preview")
+  return { title: t("metadataTitle") }
 }
 
 export default async function PreviewPage({
