@@ -186,7 +186,7 @@ export function LoginForm({
             <AlertDescription>{errorCopy}</AlertDescription>
           </Alert>
         )}
-        <h2 className="text-center text-xl font-semibold">{t("signIn")}</h2>
+        <h2 className="text-left text-xl font-semibold">{t("signIn")}</h2>
         <FormField name="email" control={form.control} render={({ field }) => (
           <FormItem>
             <div className="flex items-center">

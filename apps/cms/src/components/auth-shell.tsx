@@ -28,7 +28,7 @@ export function AuthShell({ media, children, className, ...props }: Props) {
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0">
         <CardContent className="grid p-0 md:grid-cols-2">
-          <div className="p-6 md:p-8">{children}</div>
+          <div className="px-6 py-8 md:px-8 md:py-12">{children}</div>
           <div className="relative hidden bg-muted md:block">{media}</div>
         </CardContent>
       </Card>

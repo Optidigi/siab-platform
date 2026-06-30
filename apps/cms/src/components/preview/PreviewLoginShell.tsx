@@ -24,7 +24,7 @@ export function PreviewLoginShell({
           }
         >
           <div className="flex flex-col gap-6">
-            <div className="grid gap-2 text-center">
+            <div className="grid gap-2 text-left">
               <h1 className="text-xl font-semibold tracking-normal text-foreground">{title}</h1>
               <p className="text-sm text-muted-foreground">{description}</p>
             </div>
