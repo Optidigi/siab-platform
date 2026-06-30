@@ -69,25 +69,29 @@ export function PreviewCheckout({
   }, [paymentState])
 
   return (
-    <main className="min-h-dvh bg-background px-4 py-8 text-foreground">
-      <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <section className="grid gap-6">
-          <div className="flex flex-col gap-3 border-b pb-5 md:flex-row md:items-start md:justify-between">
-            <div className="grid gap-2">
-              <Badge variant="outline" className="w-fit">
+    <main className="min-h-dvh bg-background text-foreground pb-[max(env(safe-area-inset-bottom),1.5rem)]">
+      <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 border-b bg-background">
+        <div className="flex min-h-14 flex-col gap-2 px-3 py-2 md:min-h-12 md:flex-row md:items-center md:px-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <h1 className="truncate text-sm font-medium text-foreground">{t("checkoutTitle")}</h1>
+              <Badge variant="outline" className="hidden shrink-0 sm:inline-flex">
                 <ShieldCheck className="size-3" aria-hidden />
                 {t("checkoutSecureBadge")}
               </Badge>
-              <h1 className="text-3xl font-semibold tracking-normal">{t("checkoutTitle")}</h1>
-              <p className="max-w-2xl text-sm text-muted-foreground">
-                {t("checkoutDescription", { site: tenantName })}
-              </p>
             </div>
-            <Button asChild variant="outline">
-              <a href={previewHref}>{t("checkoutBackToPreview")}</a>
-            </Button>
+            <p className="truncate text-xs text-muted-foreground">
+              {t("checkoutDescription", { site: tenantName })}
+            </p>
           </div>
+          <Button asChild variant="outline" size="sm" className="w-fit">
+            <a href={previewHref}>{t("checkoutBackToPreview")}</a>
+          </Button>
+        </div>
+      </header>
 
+      <div className="mx-auto grid w-full max-w-7xl gap-4 p-3 md:p-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <section className="grid gap-4">
           <Card>
             <CardHeader>
               <CardTitle>{t("checkoutDomainTitle")}</CardTitle>
@@ -178,7 +182,7 @@ export function PreviewCheckout({
               </div>
               <div className="grid gap-1">
                 <div className="text-muted-foreground">{t("checkoutSummaryDomain")}</div>
-                <div className="break-all font-medium">{currentDomain || t("checkoutDomainUnset")}</div>
+                <div className="break-all font-medium">{domainValue || currentDomain || t("checkoutDomainUnset")}</div>
               </div>
               <div className="grid grid-cols-2 gap-3 border-t pt-4">
                 <div className="text-muted-foreground">{t("checkoutSummaryApproval")}</div>

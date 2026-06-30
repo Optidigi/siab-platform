@@ -2,9 +2,8 @@ import type { Metadata } from "next"
 import { headers } from "next/headers"
 import { getLocale, getTranslations } from "next-intl/server"
 import { notFound } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { PreviewCheckout } from "@/components/preview/PreviewCheckout"
-import { PreviewLoginForm } from "@/components/preview/PreviewLoginForm"
+import { PreviewLoginShell } from "@/components/preview/PreviewLoginShell"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import { isPreviewHost } from "@/lib/preview/previewHost"
 import { loadPreviewGrantContext, normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
@@ -115,16 +114,11 @@ function PreviewCheckoutAccessScreen({
   description: string
 }) {
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10 text-foreground">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <p className="text-sm text-muted-foreground">{description}</p>
-          <PreviewLoginForm clientSlug={clientSlug} callbackPath={callbackPath} />
-        </CardContent>
-      </Card>
-    </main>
+    <PreviewLoginShell
+      clientSlug={clientSlug}
+      callbackPath={callbackPath}
+      title={title}
+      description={description}
+    />
   )
 }

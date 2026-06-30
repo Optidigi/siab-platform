@@ -14,16 +14,16 @@ type Props = React.ComponentProps<"div"> & {
 
 /**
  * Two-column auth shell: form on the left, media (logo / image / branding)
- * on the right. Mirrors shadcn's `login-04` block but is content-agnostic —
+ * on the right. Based on shadcn's two-column login block, but content-agnostic:
  * pass your own auth form as `children` and your own logo or image as
  * `media`. Stacks to a single column on phone widths.
  *
  * Usage:
- *   <Login04 media={<img src="/branding/admin.svg" alt="" className="…" />}>
+ *   <AuthShell media={<img src="/branding/admin.svg" alt="" className="..." />}>
  *     <LoginForm />
- *   </Login04>
+ *   </AuthShell>
  */
-export function Login04({ media, children, className, ...props }: Props) {
+export function AuthShell({ media, children, className, ...props }: Props) {
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0">

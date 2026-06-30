@@ -376,7 +376,7 @@ describe("renderer block catalog", () => {
     const cmsFrontendLayout = readFileSync(fromRepoRoot("apps/cms/src/app/(frontend)/layout.tsx"), "utf8")
     const cmsPreviewLayout = readFileSync(fromRepoRoot("apps/cms/src/app/(frontend)/(site-preview)/layout.tsx"), "utf8")
     const cmsAdminLayout = readFileSync(fromRepoRoot("apps/cms/src/app/(frontend)/(admin)/layout.tsx"), "utf8")
-    const cmsPreviewCss = readFileSync(fromRepoRoot("apps/cms/src/styles/site-renderer-preview.css"), "utf8")
+    const cmsPreviewCanvasCss = readFileSync(fromRepoRoot("apps/cms/src/styles/site-renderer-canvas.css"), "utf8")
     const rendererPackage = readPackageManifest("apps/renderer/package.json")
     const cmsPackage = readPackageManifest("apps/cms/package.json")
 
@@ -389,12 +389,10 @@ describe("renderer block catalog", () => {
     expect(rendererCss).not.toContain("packages/contracts/block-sources")
     expect(cmsFrontendLayout).not.toContain("site-renderer-preview.css")
     expect(cmsAdminLayout).not.toContain("site-renderer-preview.css")
-    expect(cmsPreviewLayout).toContain('import "@/styles/site-renderer-preview.css"')
-    expect(cmsPreviewCss).toContain('@import "tailwindcss" source(none);')
-    expect(cmsPreviewCss).toContain('@import "../../node_modules/preline/css/themes/theme.css";')
-    expect(cmsPreviewCss).toContain('@import "../../node_modules/preline/variants.css";')
-    expect(cmsPreviewCss).toContain('@source "../../../../packages/site-renderer/src";')
-    expect(cmsPreviewCss).not.toContain("packages/contracts/block-sources")
+    expect(cmsPreviewLayout).toContain('import "@/styles/site-renderer-canvas.css"')
+    expect(cmsPreviewCanvasCss).toContain('@import "@siteinabox/site-renderer/canvas.css";')
+    expect(cmsPreviewCanvasCss).not.toContain("preline")
+    expect(cmsPreviewCanvasCss).not.toContain("packages/contracts/block-sources")
     expect(hasPackageDependency(rendererPackage, "@tailwindcss/vite")).toBe(true)
 
     for (const variant of SITE_SOURCE_BACKED_BLOCK_VARIANTS) {

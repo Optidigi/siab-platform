@@ -1,9 +1,8 @@
 import { headers } from "next/headers"
 import { getTranslations } from "next-intl/server"
 import { notFound } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { PreviewCustomizer } from "@/components/preview/PreviewCustomizer"
-import { PreviewLoginForm } from "@/components/preview/PreviewLoginForm"
+import { PreviewLoginShell } from "@/components/preview/PreviewLoginShell"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import { getPreviewCustomizerDataForGrant } from "@/lib/preview/customizer"
 import { isPreviewHost } from "@/lib/preview/previewHost"
@@ -68,6 +67,7 @@ export async function renderPreviewRoute({
           theme={data.theme}
           approval={data.approval}
           payment={data.payment}
+          tenantId={data.tenant.id}
           tenantSlug={data.tenant.slug}
           domain={data.tenant.domain}
         />
@@ -97,16 +97,11 @@ function PreviewAccessScreen({
   description: string
 }) {
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10 text-foreground">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <p className="text-sm text-muted-foreground">{description}</p>
-          <PreviewLoginForm clientSlug={clientSlug} callbackPath={callbackPath} />
-        </CardContent>
-      </Card>
-    </main>
+    <PreviewLoginShell
+      clientSlug={clientSlug}
+      callbackPath={callbackPath}
+      title={title}
+      description={description}
+    />
   )
 }

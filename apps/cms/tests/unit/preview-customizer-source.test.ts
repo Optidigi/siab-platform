@@ -3,7 +3,7 @@ import path from "node:path"
 import { describe, expect, it } from "vitest"
 
 describe("preview customizer source contract", () => {
-  it("uses the shared site renderer directly and does not render an iframe", () => {
+  it("uses the shared editor canvas directly and does not render an iframe", () => {
     const componentSource = fs.readFileSync(
       path.resolve(process.cwd(), "src/components/preview/PreviewCustomizer.tsx"),
       "utf8",
@@ -13,8 +13,9 @@ describe("preview customizer source contract", () => {
       "utf8",
     )
 
-    expect(componentSource).toContain('@siteinabox/site-renderer')
-    expect(componentSource).toContain("<SitePageRenderer")
+    expect(componentSource).toContain("@/components/editor/canvas/CanvasMode")
+    expect(componentSource).toContain("<CanvasMode")
+    expect(componentSource).toContain("readOnly")
     expect(componentSource).toContain("radiusLevels={RADIUS_PRESETS}")
     expect(componentSource).not.toContain("densityLevels={DENSITY_PRESETS}")
     expect(componentSource).not.toContain("stylePresetLevels={STYLE_PRESETS}")
@@ -22,7 +23,8 @@ describe("preview customizer source contract", () => {
     expect(componentSource).toContain('access.type === "grant"')
     expect(componentSource).toContain('t("expires", { date: formatExpiry(access.exp')
     expect(componentSource).toContain('t("completeOrder")')
-    expect(componentSource).toContain('href={`/${access.clientSlug}/checkout`}')
+    expect(componentSource).toContain('const checkoutHref = access.type === "grant" ? `/${access.clientSlug}/checkout` : "#"')
+    expect(componentSource).toContain("checkoutHref={checkoutHref}")
     expect(componentSource).toContain('t("paymentStatus", { status: paymentStatus })')
     expect(componentSource).toContain("paymentState?.status")
     expect(componentSource).not.toContain("Approve & Pay")

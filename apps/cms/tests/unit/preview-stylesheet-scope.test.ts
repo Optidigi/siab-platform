@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest"
 const repoRoot = path.resolve(process.cwd(), process.cwd().endsWith(`${path.sep}apps${path.sep}cms`) ? "../.." : ".")
 const frontendRoot = path.join(repoRoot, "apps/cms/src/app/(frontend)")
 const payloadRoot = path.join(repoRoot, "apps/cms/src/app/(payload)")
-const previewImport = 'import "@/styles/site-renderer-preview.css"'
 const canvasStylesheetImport = 'import "@/styles/site-renderer-canvas.css"'
 const canvasCssImport = '@import "@siteinabox/site-renderer/canvas.css";'
 const canvasScope = ".site-renderer[data-siab-site-renderer]"
@@ -30,15 +29,12 @@ describe("CMS preview renderer stylesheet scope", () => {
     expect(read("apps/cms/src/app/(payload)/layout.tsx")).not.toContain("site-renderer-preview.css")
   })
 
-  it("imports renderer/provider preview CSS only from the isolated customer preview layout", () => {
+  it("does not import renderer/provider preview CSS from CMS route layouts", () => {
     const importingFiles = [frontendRoot, payloadRoot].flatMap((root) => collectSourceFiles(root))
       .filter((file) => readFileSync(file, "utf8").includes("site-renderer-preview.css"))
       .map((file) => path.relative(repoRoot, file).split(path.sep).join("/"))
 
-    expect(importingFiles.sort()).toEqual([
-      "apps/cms/src/app/(frontend)/(site-preview)/layout.tsx",
-    ])
-    expect(read("apps/cms/src/app/(frontend)/(site-preview)/layout.tsx")).toContain(previewImport)
+    expect(importingFiles.sort()).toEqual([])
   })
 
   it("keeps shared renderer CSS out of the CMS frontend shell", () => {
@@ -75,6 +71,7 @@ describe("CMS preview renderer stylesheet scope", () => {
       "apps/cms/src/app/(frontend)/(admin)/pages/new/layout.tsx",
       "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/[id]/layout.tsx",
       "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/new/layout.tsx",
+      "apps/cms/src/app/(frontend)/(site-preview)/layout.tsx",
     ])
     for (const file of importingFiles) expect(read(file)).toContain(canvasStylesheetImport)
   })
