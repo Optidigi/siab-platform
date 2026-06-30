@@ -153,7 +153,7 @@ export function PreviewCheckout({
   const selectedDomain = checkedDomain && checkedDomain === domainValue ? checkedDomain : null
   const holderComplete = registrantIsComplete(holder)
   const canContinueFromDomain = Boolean(
-    selectedDomain && (checkState.ok || (domainReady && selectedDomain === currentDomain)),
+    selectedDomain && (checkState.ok || selectedSuggestion || (domainReady && selectedDomain === currentDomain)),
   )
   const totalPriceLabel = !selectedSuggestion
     ? checkState.totalPriceLabel || initialTotalPriceLabel || priceLabel
@@ -187,9 +187,7 @@ export function PreviewCheckout({
   const selectSuggestedDomain = (option: PreviewCheckoutDomainOption) => {
     setDomainValue(option.domain)
     setSelectedSuggestion(option)
-    if (checkedDomain !== option.domain) {
-      setCheckedDomain(null)
-    }
+    setCheckedDomain(option.domain)
   }
 
   const goBack = () => {
@@ -319,6 +317,7 @@ export function PreviewCheckout({
         paymentPending={paymentPending}
         domainResultKind={domainResultKind}
         paymentStatus={paymentStatus}
+        totalPriceLabel={totalPriceLabel}
         previewHref={previewHref}
         onBack={goBack}
         onNext={() => setStep("payment")}
@@ -368,6 +367,7 @@ function CheckoutActionBar({
   paymentPending,
   domainResultKind,
   paymentStatus,
+  totalPriceLabel,
   previewHref,
   onBack,
   onNext,
@@ -381,6 +381,7 @@ function CheckoutActionBar({
   paymentPending: boolean
   domainResultKind: "loading" | "success" | "unavailable" | "error" | null
   paymentStatus: string
+  totalPriceLabel: string
   previewHref: string
   onBack: () => void
   onNext: () => void
@@ -444,13 +445,13 @@ function CheckoutActionBar({
         disabled={paymentPending || !holderComplete || !selectedDomain || complete}
       >
         {paymentPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CreditCard className="size-4" aria-hidden />}
-        {complete ? t("paymentCompleted") : t("checkoutStartPayment")}
+        {complete ? t("paymentCompleted") : `${t("checkoutStartPayment")} - ${totalPriceLabel}`}
       </Button>
     )
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-foreground/15 bg-foreground p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] text-background shadow-lg md:static md:mx-auto md:mt-2 md:w-full md:max-w-[54rem] md:rounded-md md:border md:shadow-none">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] shadow-lg backdrop-blur md:static md:mx-auto md:mt-2 md:w-full md:max-w-[54rem] md:rounded-md md:border md:bg-card md:shadow-none">
       <div className="flex min-w-0 items-center justify-end gap-2">
         {secondary}
         {primary}
@@ -480,10 +481,14 @@ function DomainOptionRow({
         )}
       </span>
       <span className="flex shrink-0 items-center gap-2">
-        <Badge variant={option.included ? "success" : "secondary"}>
-          {option.included ? t("checkoutDomainIncludedBadge") : t("checkoutDomainExtraFeeBadge")}
-        </Badge>
-        {selected && (
+        {option.included ? (
+          <span className="text-success" aria-label={t("checkoutDomainIncludedBadge")}>
+            <Check className="size-5" aria-hidden />
+          </span>
+        ) : (
+          <Badge variant="secondary">{t("checkoutDomainExtraFeeBadge")}</Badge>
+        )}
+        {selected && !option.included && (
           <span className="text-success">
             <Check className="size-5" aria-hidden />
             <span className="sr-only">{t("checkoutDomainSelected")}</span>
