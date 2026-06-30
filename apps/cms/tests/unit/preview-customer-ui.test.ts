@@ -14,6 +14,8 @@ describe("customer preview UI", () => {
     expect(customizer).toContain('variant="success"')
     expect(customizer).toContain('variant="secondary" disabled')
     expect(customizer).toContain('t("paymentComplete")')
+    expect(customizer).toContain("grid w-full grid-cols-2")
+    expect(customizer).toContain("sm:flex sm:w-auto")
     expect(customizer).toContain("reviewHref")
     expect(customizer).not.toContain("stylesReady")
     expect(customizer).not.toContain("pagesNav")

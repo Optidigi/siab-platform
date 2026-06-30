@@ -198,8 +198,8 @@ function PreviewCommandBar({
   const t = useTranslations("preview")
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background px-3 py-3 shadow-lg">
-      <div className="mx-auto flex max-w-7xl justify-end">
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+      <div className="flex w-full justify-end">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:justify-end">
           <Button asChild variant="default" className="w-full sm:w-auto">
             <a href={reviewHref}>
               <SquarePen className="size-4" />
