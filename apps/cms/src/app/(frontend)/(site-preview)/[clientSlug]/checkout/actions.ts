@@ -1,18 +1,36 @@
 "use server"
 
 import { headers } from "next/headers"
-import { getTranslations } from "next-intl/server"
+import { getLocale, getTranslations } from "next-intl/server"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import { loadPreviewGrantContext, normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
 import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder } from "@/lib/domains/previewDomainOrder"
-import { normalizeDomainRegistrantDetails } from "@/lib/domains/orderState"
+import {
+  fixedDomainOrderPriceFromEnv,
+  normalizeDomainRegistrantDetails,
+  type FixedDomainOrderPrice,
+} from "@/lib/domains/orderState"
 import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayments"
+
+export type PreviewCheckoutDomainOption = {
+  domain: string
+  included: boolean
+  extraFeeAmount: string | null
+  extraFeeCurrency: string | null
+  extraFeeLabel?: string | null
+}
 
 export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
   checkoutUrl?: string
-  suggestions?: string[]
+  domain?: string
+  included?: boolean
+  extraFeeAmount?: string | null
+  extraFeeCurrency?: string | null
+  extraFeeLabel?: string | null
+  totalPriceLabel?: string | null
+  suggestions?: PreviewCheckoutDomainOption[]
 }
 
 const requirePreviewCheckoutContext = async (clientSlug: string) => {
@@ -54,6 +72,48 @@ const registrantFromFormData = (formData: FormData) =>
     locale: "nl_NL",
   })
 
+const formatMoney = (locale: string, price: FixedDomainOrderPrice | null): string | null => {
+  if (!price) return null
+  const amount = Number(price.amount)
+  if (!Number.isFinite(amount)) return `${price.currency} ${price.amount}`
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: price.currency,
+  }).format(amount)
+}
+
+const addMoney = (base: FixedDomainOrderPrice, extra: FixedDomainOrderPrice | null): FixedDomainOrderPrice => {
+  if (!extra || extra.currency !== base.currency) return base
+  const baseCents = Math.round(Number(base.amount) * 100)
+  const extraCents = Math.round(Number(extra.amount) * 100)
+  if (!Number.isFinite(baseCents) || !Number.isFinite(extraCents)) return base
+  const totalCents = baseCents + extraCents
+  return {
+    amount: `${Math.floor(totalCents / 100)}.${String(totalCents % 100).padStart(2, "0")}`,
+    currency: base.currency,
+  }
+}
+
+const safeCheckoutErrorMessage = (
+  error: unknown,
+  t: Awaited<ReturnType<typeof getTranslations>>,
+  domain: string,
+): string => {
+  if (!(error instanceof Error)) return t("checkoutDomainCheckFailed", { domain })
+  if (error.message.startsWith("Invalid domain")) return t("checkoutDomainInvalid")
+  const checkoutErrorKeys = new Set([
+    "checkoutDomainUnavailable",
+    "checkoutDomainPremium",
+    "checkoutDomainCheckFailed",
+    "checkoutDomainTooExpensive",
+  ])
+  if (checkoutErrorKeys.has(error.message)) {
+    return t(error.message as "checkoutDomainUnavailable" | "checkoutDomainPremium" | "checkoutDomainCheckFailed" | "checkoutDomainTooExpensive", { domain })
+  }
+  console.error("Preview checkout domain error", error)
+  return t("checkoutDomainServiceUnavailable")
+}
+
 export async function checkPreviewCheckoutDomainAction(
   clientSlug: string,
   _previousState: PreviewCheckoutActionState,
@@ -67,16 +127,38 @@ export async function checkPreviewCheckoutDomainAction(
   const registrant = registrantFromFormData(formData)
 
   try {
+    const locale = await getLocale()
     const result = await checkAndRecordPreviewDomainOrder(context.payload, context.run, domain, registrant)
+    const extraFee = result.extraFeeAmount && result.extraFeeCurrency
+      ? { amount: result.extraFeeAmount, currency: result.extraFeeCurrency }
+      : null
+    const totalPrice = addMoney(fixedDomainOrderPriceFromEnv(), extraFee)
     return {
-      ok: result.messageKey === "checkoutDomainAvailable",
-      message: t(result.messageKey, { domain: result.domain }),
-      suggestions: result.suggestions,
+      ok: result.messageKey === "checkoutDomainAvailable" || result.messageKey === "checkoutDomainAvailableExtraFee",
+      message: t(result.messageKey, {
+        domain: result.domain,
+        extraFee: formatMoney(locale, extraFee) ?? "",
+      }),
+      domain: result.domain,
+      included: result.included,
+      extraFeeAmount: result.extraFeeAmount,
+      extraFeeCurrency: result.extraFeeCurrency,
+      extraFeeLabel: formatMoney(locale, extraFee),
+      totalPriceLabel: formatMoney(locale, totalPrice),
+      suggestions: result.suggestions.map((suggestion) => {
+        const suggestionExtraFee = suggestion.extraFeeAmount && suggestion.extraFeeCurrency
+          ? { amount: suggestion.extraFeeAmount, currency: suggestion.extraFeeCurrency }
+          : null
+        return {
+          ...suggestion,
+          extraFeeLabel: formatMoney(locale, suggestionExtraFee),
+        }
+      }),
     }
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : t("checkoutDomainCheckFailed", { domain }),
+      message: safeCheckoutErrorMessage(error, t, domain),
     }
   }
 }
@@ -118,12 +200,7 @@ export async function startPreviewCheckoutPaymentAction(
       checkoutUrl: checkout.checkoutUrl,
     }
   } catch (error) {
-    const checkoutErrorKeys = new Set(["checkoutDomainUnavailable", "checkoutDomainPremium", "checkoutDomainCheckFailed", "checkoutDomainTooExpensive"])
-    const message = error instanceof Error && checkoutErrorKeys.has(error.message)
-      ? t(error.message as "checkoutDomainUnavailable" | "checkoutDomainPremium" | "checkoutDomainCheckFailed" | "checkoutDomainTooExpensive", { domain })
-      : error instanceof Error
-        ? error.message
-        : t("checkoutFailed")
+    const message = safeCheckoutErrorMessage(error, t, domain)
     return { ok: false, message }
   }
 }

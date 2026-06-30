@@ -32,6 +32,8 @@ export type DomainOrderState = {
   adminHandle: string | null
   maxProviderPriceAmount: string | null
   maxProviderPriceCurrency: string | null
+  maxOfferPriceAmount: string | null
+  maxOfferPriceCurrency: string | null
 }
 
 export type FixedDomainOrderPrice = {
@@ -73,12 +75,27 @@ const readObject = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null
 
 export function maxDomainProviderPriceFromEnv(env: NodeJS.ProcessEnv = process.env): FixedDomainOrderPrice {
-  const amount = cleanText(env.OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT) ?? "7.00"
+  const amount = cleanText(env.OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT) ?? "10.00"
   const currency = cleanText(env.OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY) ?? "EUR"
   if (!/^\d+\.\d{2}$/.test(amount)) {
-    throw new Error("OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT must use decimal format, for example 7.00.")
+    throw new Error("OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT must use decimal format, for example 10.00.")
   }
   return { amount, currency }
+}
+
+export function maxDomainOfferPriceFromEnv(env: NodeJS.ProcessEnv = process.env): FixedDomainOrderPrice {
+  const amount = cleanText(env.OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT) ?? "25.00"
+  const currency = cleanText(env.OPENPROVIDER_DOMAIN_MAX_OFFER_CURRENCY) ?? cleanText(env.OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY) ?? "EUR"
+  if (!/^\d+\.\d{2}$/.test(amount)) {
+    throw new Error("OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT must use decimal format, for example 25.00.")
+  }
+  return { amount, currency }
+}
+
+const moneyToCents = (value: FixedDomainOrderPrice): number | null => {
+  if (!/^\d+\.\d{2}$/.test(value.amount)) return null
+  const cents = Math.round(Number(value.amount) * 100)
+  return Number.isFinite(cents) ? cents : null
 }
 
 export function compareMoney(a: FixedDomainOrderPrice, b: FixedDomainOrderPrice): number | null {
@@ -93,6 +110,39 @@ export function providerPriceWithinCap(providerPrice: FixedDomainOrderPrice | nu
   if (!providerPrice) return false
   const comparison = compareMoney(providerPrice, maxPrice)
   return comparison !== null && comparison <= 0
+}
+
+export function domainExtraFeeForProviderPrice(
+  providerPrice: FixedDomainOrderPrice | null,
+  includedPrice: FixedDomainOrderPrice,
+): FixedDomainOrderPrice | null {
+  if (!providerPrice || providerPrice.currency !== includedPrice.currency) return null
+  const providerCents = moneyToCents(providerPrice)
+  const includedCents = moneyToCents(includedPrice)
+  if (providerCents === null || includedCents === null || providerCents <= includedCents) return null
+  const extraCents = providerCents - includedCents
+  return {
+    amount: `${Math.floor(extraCents / 100)}.${String(extraCents % 100).padStart(2, "0")}`,
+    currency: providerPrice.currency,
+  }
+}
+
+export function domainCheckoutPrice(input: {
+  basePrice: FixedDomainOrderPrice
+  providerPrice: FixedDomainOrderPrice | null
+  includedProviderPrice: FixedDomainOrderPrice
+}): FixedDomainOrderPrice {
+  const extra = domainExtraFeeForProviderPrice(input.providerPrice, input.includedProviderPrice)
+  if (!extra) return input.basePrice
+  if (extra.currency !== input.basePrice.currency) return input.basePrice
+  const baseCents = moneyToCents(input.basePrice)
+  const extraCents = moneyToCents(extra)
+  if (baseCents === null || extraCents === null) return input.basePrice
+  const totalCents = baseCents + extraCents
+  return {
+    amount: `${Math.floor(totalCents / 100)}.${String(totalCents % 100).padStart(2, "0")}`,
+    currency: input.basePrice.currency,
+  }
 }
 
 export function normalizeDomainRegistrantDetails(value: unknown): DomainRegistrantDetails | null {
@@ -165,6 +215,8 @@ export function normalizeDomainOrderState(value: unknown): DomainOrderState {
     adminHandle: cleanText(source.adminHandle),
     maxProviderPriceAmount: cleanText(source.maxProviderPriceAmount),
     maxProviderPriceCurrency: cleanText(source.maxProviderPriceCurrency),
+    maxOfferPriceAmount: cleanText(source.maxOfferPriceAmount),
+    maxOfferPriceCurrency: cleanText(source.maxOfferPriceCurrency),
   }
 }
 
@@ -180,6 +232,7 @@ export function createDomainOrderState(input: {
   ownerHandle?: string | null
   adminHandle?: string | null
   maxProviderPrice?: FixedDomainOrderPrice | null
+  maxOfferPrice?: FixedDomainOrderPrice | null
 }): DomainOrderState {
   const now = input.now ?? new Date().toISOString()
   return {
@@ -201,5 +254,7 @@ export function createDomainOrderState(input: {
     adminHandle: cleanText(input.adminHandle),
     maxProviderPriceAmount: input.maxProviderPrice?.amount ?? null,
     maxProviderPriceCurrency: input.maxProviderPrice?.currency ?? null,
+    maxOfferPriceAmount: input.maxOfferPrice?.amount ?? null,
+    maxOfferPriceCurrency: input.maxOfferPrice?.currency ?? null,
   }
 }

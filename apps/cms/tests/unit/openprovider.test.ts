@@ -5,7 +5,9 @@ import {
   checkOpenProviderDomainAvailability,
   createOpenProviderCustomerHandle,
   loginOpenProvider,
+  normalizeOpenProviderSuggestionResponse,
   registerOpenProviderDomain,
+  suggestOpenProviderDomains,
 } from "@/lib/domains/openprovider"
 
 const ORIGINAL_FETCH = globalThis.fetch
@@ -94,6 +96,83 @@ describe("OpenProvider adapter", () => {
     }))
   })
 
+  it("parses nested OpenProvider product price details", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      data: {
+        results: [{
+          domain: "example.nl",
+          status: "free",
+          price: {
+            product: {
+              price: 8.06,
+              currency: "EUR",
+            },
+          },
+        }],
+      },
+    }))
+
+    await expect(checkOpenProviderDomainAvailability("example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      status: "available",
+      price: { amount: "8.06", currency: "EUR" },
+    })
+  })
+
+  it("requests provider-backed domain suggestions for the same extension", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      data: {
+        results: [
+          { name: "level-web.nl", domain: "level-web", tld: "nl" },
+          { domain: { name: "levelonline", extension: "nl" } },
+          "broken suggestion",
+        ],
+      },
+    }))
+
+    await expect(suggestOpenProviderDomains("levelweb.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+      limit: 4,
+    })).resolves.toEqual([
+      { domain: "level-web.nl", name: "level-web", extension: "nl" },
+      { domain: "levelonline.nl", name: "levelonline", extension: "nl" },
+    ])
+
+    expect(fetchMock).toHaveBeenCalledWith("https://openprovider.test/v1beta/domains/suggest-name", expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({ Authorization: "Bearer token-123" }),
+      body: JSON.stringify({
+        language: "dut",
+        limit: 4,
+        name: "levelweb",
+        provider: "namestudio",
+        sensitive: true,
+        tlds: ["nl"],
+      }),
+    }))
+  })
+
+  it("normalizes suggestion responses from multiple provider shapes", () => {
+    expect(normalizeOpenProviderSuggestionResponse({
+      data: {
+        suggestions: [
+          { name: "acme-shop", extension: ".com" },
+          { domain: "acme-online.com" },
+          "acme-studio.com",
+        ],
+      },
+    })).toEqual([
+      { domain: "acme-shop.com", name: "acme-shop", extension: "com" },
+      { domain: "acme-online.com", name: "acme-online", extension: "com" },
+      { domain: "acme-studio.com", name: "acme-studio", extension: "com" },
+    ])
+  })
+
   it("maps unavailable, premium, and provider errors into integration-safe results", async () => {
     const unavailable = vi.fn(async () => Response.json({ data: { results: [{ status: "active" }] } }))
     await expect(checkOpenProviderDomainAvailability("taken.nl", {
@@ -107,7 +186,7 @@ describe("OpenProvider adapter", () => {
     })
 
     const premium = vi.fn(async () => Response.json({
-      data: { results: [{ status: "premium", price: { amount: "250.00", currency: "EUR" } }] },
+      data: { results: [{ status: "premium", premium: { currency: "EUR", price: { create: "250.00" } } }] },
     }))
     await expect(checkOpenProviderDomainAvailability("premium.nl", {
       env,

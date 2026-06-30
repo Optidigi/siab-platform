@@ -3,6 +3,7 @@ import type { Payload } from "payload"
 import type { SiteGenerationRun, Tenant } from "@/payload-types"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { provisionPaidDomainOrder } from "@/lib/domains/provisioning"
+import { domainCheckoutPrice, maxDomainProviderPriceFromEnv, normalizeDomainOrderState } from "@/lib/domains/orderState"
 import {
   normalizeGenerationRunPaymentState,
   type GenerationRunPaymentState,
@@ -178,7 +179,20 @@ export async function createMollieCheckoutForGenerationRun(
     return { payment: current, checkoutUrl: current.checkoutUrl, reused: true }
   }
 
-  const amount = mollieAmountFromEnv()
+  const domainOrder = normalizeDomainOrderState(run.domainOrder)
+  const providerPrice = domainOrder.domain === selectedDomain && domainOrder.providerPriceAmount && domainOrder.providerPriceCurrency
+    ? { amount: domainOrder.providerPriceAmount, currency: domainOrder.providerPriceCurrency }
+    : null
+  const includedProviderPrice = domainOrder.maxProviderPriceAmount && domainOrder.maxProviderPriceCurrency
+    ? { amount: domainOrder.maxProviderPriceAmount, currency: domainOrder.maxProviderPriceCurrency }
+    : maxDomainProviderPriceFromEnv()
+  const basePaymentAmount = mollieAmountFromEnv()
+  const checkoutAmount = domainCheckoutPrice({
+    basePrice: { amount: basePaymentAmount.value, currency: basePaymentAmount.currency },
+    providerPrice,
+    includedProviderPrice,
+  })
+  const amount = { value: checkoutAmount.amount, currency: checkoutAmount.currency }
   const origin = publicCmsOrigin()
   const redirectUrl = `https://${PREVIEW_HOST}/${clientSlug}?payment=return`
   const webhookUrl = `${origin}/api/payments/mollie/webhook`

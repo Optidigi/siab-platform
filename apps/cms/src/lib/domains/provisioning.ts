@@ -57,6 +57,9 @@ export async function provisionPaidDomainOrder(
       maxProviderPrice: current.maxProviderPriceAmount && current.maxProviderPriceCurrency
         ? { amount: current.maxProviderPriceAmount, currency: current.maxProviderPriceCurrency }
         : null,
+      maxOfferPrice: current.maxOfferPriceAmount && current.maxOfferPriceCurrency
+        ? { amount: current.maxOfferPriceAmount, currency: current.maxOfferPriceCurrency }
+        : null,
       now,
     }),
     reason: "payment_completed",
@@ -104,6 +107,9 @@ export async function provisionPaidDomainOrder(
         adminHandle,
         maxProviderPrice: requested.maxProviderPriceAmount && requested.maxProviderPriceCurrency
           ? { amount: requested.maxProviderPriceAmount, currency: requested.maxProviderPriceCurrency }
+          : null,
+        maxOfferPrice: requested.maxOfferPriceAmount && requested.maxOfferPriceCurrency
+          ? { amount: requested.maxOfferPriceAmount, currency: requested.maxOfferPriceCurrency }
           : null,
         now: new Date().toISOString(),
       }),

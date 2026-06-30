@@ -169,6 +169,31 @@ describe("Mollie payment flow", () => {
     }))
   })
 
+  it("adds the selected domain extra fee to the first Mollie payment amount", async () => {
+    const { payload } = createPayloadStub({
+      domainOrder: {
+        status: "ready_to_register",
+        domain: "acme.nl",
+        providerPriceAmount: "12.50",
+        providerPriceCurrency: "EUR",
+        maxProviderPriceAmount: "10.00",
+        maxProviderPriceCurrency: "EUR",
+      },
+    })
+
+    await createMollieCheckoutForGenerationRun(payload, {
+      runId: 500,
+      customerEmail: "client@example.com",
+      clientSlug: "acme",
+      selectedDomain: "acme.nl",
+    })
+
+    const request = vi.mocked(fetch).mock.calls[1]?.[1] as RequestInit
+    expect(JSON.parse(String(request.body))).toMatchObject({
+      amount: { currency: "EUR", value: "501.50" },
+    })
+  })
+
   it("reuses an existing matching pending Mollie checkout", async () => {
     const { payload, update } = createPayloadStub({
       payment: {

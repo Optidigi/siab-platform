@@ -7,7 +7,7 @@ import { PreviewLoginShell } from "@/components/preview/PreviewLoginShell"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import { isPreviewHost } from "@/lib/preview/previewHost"
 import { loadPreviewGrantContext, normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
-import { normalizeDomainOrderState } from "@/lib/domains/orderState"
+import { domainCheckoutPrice, domainExtraFeeForProviderPrice, normalizeDomainOrderState } from "@/lib/domains/orderState"
 import {
   checkPreviewCheckoutDomainAction,
   startPreviewCheckoutPaymentAction,
@@ -62,13 +62,18 @@ export default async function PreviewCheckoutPage({
       ? context.run.clientApproval as { status?: string | null }
       : null
     const domainOrder = normalizeDomainOrderState(context.run.domainOrder)
+    const initialPrice = domainPriceLabels(locale, domainOrder)
 
     return (
       <PreviewCheckout
         customerEmail={context.customerEmail}
         tenantName={String(context.tenant.name)}
         currentDomain={domainOrder.domain ?? context.tenant.domain}
+        domainReady={domainOrder.status === "ready_to_register" && Boolean(domainOrder.domain)}
+        registrant={domainOrder.registrant}
         priceLabel={formatCheckoutPrice(locale)}
+        initialExtraFeeLabel={initialPrice.extraFeeLabel}
+        initialTotalPriceLabel={initialPrice.totalPriceLabel}
         paymentStatus={payment?.status ?? "not_started"}
         approvalStatus={approval?.status ?? "pending"}
         previewHref={`/${context.clientSlug}`}
@@ -88,10 +93,8 @@ export default async function PreviewCheckoutPage({
   }
 }
 
-function formatCheckoutPrice(locale: string): string {
-  const amount = process.env.MOLLIE_SITE_PAYMENT_AMOUNT?.trim()
-  const currency = process.env.MOLLIE_SITE_PAYMENT_CURRENCY?.trim() || "EUR"
-  if (!amount) return "EUR --"
+function formatMoney(locale: string, amount: string | null | undefined, currency = "EUR"): string | null {
+  if (!amount) return null
 
   const numericAmount = Number(amount)
   if (!Number.isFinite(numericAmount)) return `${currency} ${amount}`
@@ -100,6 +103,36 @@ function formatCheckoutPrice(locale: string): string {
     style: "currency",
     currency,
   }).format(numericAmount)
+}
+
+function formatCheckoutPrice(locale: string): string {
+  return formatMoney(
+    locale,
+    process.env.MOLLIE_SITE_PAYMENT_AMOUNT?.trim(),
+    process.env.MOLLIE_SITE_PAYMENT_CURRENCY?.trim() || "EUR",
+  ) ?? "EUR --"
+}
+
+function domainPriceLabels(locale: string, domainOrder: ReturnType<typeof normalizeDomainOrderState>) {
+  const baseAmount = process.env.MOLLIE_SITE_PAYMENT_AMOUNT?.trim()
+  const baseCurrency = process.env.MOLLIE_SITE_PAYMENT_CURRENCY?.trim() || "EUR"
+  const providerPrice = domainOrder.providerPriceAmount && domainOrder.providerPriceCurrency
+    ? { amount: domainOrder.providerPriceAmount, currency: domainOrder.providerPriceCurrency }
+    : null
+  const includedProviderPrice = domainOrder.maxProviderPriceAmount && domainOrder.maxProviderPriceCurrency
+    ? { amount: domainOrder.maxProviderPriceAmount, currency: domainOrder.maxProviderPriceCurrency }
+    : null
+  if (!baseAmount || !includedProviderPrice) return { extraFeeLabel: null, totalPriceLabel: null }
+  const extraFee = domainExtraFeeForProviderPrice(providerPrice, includedProviderPrice)
+  const totalPrice = domainCheckoutPrice({
+    basePrice: { amount: baseAmount, currency: baseCurrency },
+    providerPrice,
+    includedProviderPrice,
+  })
+  return {
+    extraFeeLabel: formatMoney(locale, extraFee?.amount, extraFee?.currency ?? baseCurrency),
+    totalPriceLabel: formatMoney(locale, totalPrice.amount, totalPrice.currency),
+  }
 }
 
 function PreviewCheckoutAccessScreen({

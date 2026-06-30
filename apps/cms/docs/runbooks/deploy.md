@@ -118,8 +118,10 @@ OPENPROVIDER_TECH_HANDLE=
 OPENPROVIDER_BILLING_HANDLE=
 OPENPROVIDER_NS_GROUP=
 OPENPROVIDER_NAMESERVERS=
-OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT=7.00
+OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT=10.00
 OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY=EUR
+OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT=25.00
+OPENPROVIDER_DOMAIN_MAX_OFFER_CURRENCY=EUR
 OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT=
 OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY=EUR
 CLOUDFLARE_API_TOKEN=
@@ -569,8 +571,11 @@ Paid customer checkout now owns the first automated domain path:
 
 1. The customer opens the magic-link gated preview checkout.
 2. The checkout collects domain holder details, checks availability through
-   OpenProvider, rejects premium/above-cap domains, and stores the selected
-   domain on the generation run's `domainOrder` state.
+   OpenProvider, includes normal domains up to
+   `OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT`, shows a one-time customer surcharge up
+   to `OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT`, rejects premium or over-offer-cap
+   domains, and stores the selected domain on the generation run's `domainOrder`
+   state.
 3. Mollie checkout is created only after the selected domain is ready to
    register. The first payment charges the first year upfront and creates a
    recurring mandate for monthly renewal after that year.

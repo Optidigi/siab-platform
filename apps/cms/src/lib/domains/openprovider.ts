@@ -13,6 +13,12 @@ export type OpenProviderAvailabilityResult = {
   internalReason: string | null
 }
 
+export type OpenProviderDomainSuggestion = {
+  domain: string
+  name: string
+  extension: string
+}
+
 export type OpenProviderRegistrationRequest = {
   domain: { name: string; extension: string }
   period: number
@@ -113,11 +119,17 @@ export async function loginOpenProvider(options?: OpenProviderOptions): Promise<
 }
 
 const normalizeMoney = (source: unknown): { amount: string; currency: string } | null => {
+  if (!source || typeof source !== "object" || Array.isArray(source)) return null
   const value = readObject(source)
-  const amount = value.price ?? value.amount ?? value.product_price
+  const nestedPrice = readObject(value.price)
+  const amount = nestedPrice.create ?? value.price ?? value.amount ?? value.product_price
   const currency = value.currency ?? value.product_currency
   if ((typeof amount === "string" || typeof amount === "number") && typeof currency === "string") {
     return { amount: String(amount), currency }
+  }
+  for (const key of ["product", "reseller", "premium", "price"]) {
+    const nested = normalizeMoney(value[key])
+    if (nested) return nested
   }
   return null
 }
@@ -171,6 +183,76 @@ export async function checkOpenProviderDomainAvailability(
   }
 
   return normalizeOpenProviderAvailabilityResponse(domain.domain, await json(response))
+}
+
+const suggestionDomainFromResult = (value: unknown): string | null => {
+  if (typeof value === "string") return value
+  const source = readObject(value)
+  const direct = source.name ?? source.domain
+  if (typeof direct === "string" && direct.includes(".")) return direct
+  const name = typeof source.name === "string"
+    ? source.name
+    : typeof readObject(source.domain).name === "string"
+      ? readObject(source.domain).name
+      : null
+  const domainObject = readObject(source.domain)
+  let extension: string | null = null
+  if (typeof source.tld === "string") {
+    extension = source.tld
+  } else if (typeof source.extension === "string") {
+    extension = source.extension
+  } else if (typeof domainObject.extension === "string") {
+    extension = domainObject.extension
+  }
+  if (!name || !extension) return null
+  return `${name}.${extension.replace(/^\./, "")}`
+}
+
+export function normalizeOpenProviderSuggestionResponse(payload: unknown): OpenProviderDomainSuggestion[] {
+  const root = readObject(payload)
+  const data = dataObject(payload)
+  const rawResults = Array.isArray(data.results)
+    ? data.results
+    : Array.isArray(data.suggestions)
+      ? data.suggestions
+      : Array.isArray(root.results)
+        ? root.results
+        : []
+  const suggestions = new Map<string, OpenProviderDomainSuggestion>()
+  for (const result of rawResults) {
+    const candidate = suggestionDomainFromResult(result)
+    if (!candidate) continue
+    try {
+      const domain = splitDomain(candidate)
+      suggestions.set(domain.domain, domain)
+    } catch {
+      // Provider suggestions are optional candidates; invalid entries are ignored.
+    }
+  }
+  return [...suggestions.values()]
+}
+
+export async function suggestOpenProviderDomains(
+  domainInput: string,
+  options?: OpenProviderOptions & { limit?: number; language?: string },
+): Promise<OpenProviderDomainSuggestion[]> {
+  const domain = splitDomain(domainInput)
+  const env = options?.env ?? process.env
+  const token = options?.token ?? await loginOpenProvider(options)
+  const response = await fetcher(options)(`${apiBase(env)}/domains/suggest-name`, {
+    method: "POST",
+    headers: jsonHeaders(token),
+    body: JSON.stringify({
+      language: options?.language ?? "dut",
+      limit: options?.limit ?? 8,
+      name: domain.name,
+      provider: "namestudio",
+      sensitive: true,
+      tlds: [domain.extension],
+    }),
+  })
+  if (!response.ok) throw new OpenProviderApiError("OpenProvider domain suggestions", response.status)
+  return normalizeOpenProviderSuggestionResponse(await json(response))
 }
 
 const requiredHandle = (env: NodeJS.ProcessEnv, key: string): string => {

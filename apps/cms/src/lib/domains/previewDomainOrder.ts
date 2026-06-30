@@ -3,14 +3,24 @@ import type { Payload } from "payload"
 import type { SiteGenerationRun } from "@/payload-types"
 import {
   createDomainOrderState,
+  domainExtraFeeForProviderPrice,
   fixedDomainOrderPriceFromEnv,
+  maxDomainOfferPriceFromEnv,
   maxDomainProviderPriceFromEnv,
   normalizeDomainOrderState,
   providerPriceWithinCap,
+  type FixedDomainOrderPrice,
   type DomainRegistrantDetails,
 } from "@/lib/domains/orderState"
-import { checkOpenProviderDomainAvailability } from "@/lib/domains/openprovider"
+import { checkOpenProviderDomainAvailability, suggestOpenProviderDomains } from "@/lib/domains/openprovider"
 import { normalizeDomain } from "@/lib/domains/normalize"
+
+export type PreviewDomainSuggestion = {
+  domain: string
+  included: boolean
+  extraFeeAmount: string | null
+  extraFeeCurrency: string | null
+}
 
 export type PreviewDomainOrderResult = {
   run: SiteGenerationRun
@@ -20,8 +30,12 @@ export type PreviewDomainOrderResult = {
     | "checkoutDomainPremium"
     | "checkoutDomainCheckFailed"
     | "checkoutDomainTooExpensive"
+    | "checkoutDomainAvailableExtraFee"
   domain: string
-  suggestions: string[]
+  included: boolean
+  extraFeeAmount: string | null
+  extraFeeCurrency: string | null
+  suggestions: PreviewDomainSuggestion[]
 }
 
 export function selectedDomainForCheckout(run: Pick<SiteGenerationRun, "domainOrder">): string | null {
@@ -30,6 +44,7 @@ export function selectedDomainForCheckout(run: Pick<SiteGenerationRun, "domainOr
 }
 
 const suggestionSuffixes = ["site", "online", "web", "studio", "hq", "groep"]
+const splitSuffixes = ["web", "site", "online", "studio", "zorg", "care", "groep", "hq"]
 
 const suggestionCandidates = (domain: string): string[] => {
   const normalized = normalizeDomain(domain)
@@ -39,24 +54,57 @@ const suggestionCandidates = (domain: string): string[] => {
   if (!compactName) return []
 
   const candidates = new Set<string>()
-  if (extension !== "nl") candidates.add(`${compactName}.nl`)
+  for (const suffix of splitSuffixes) {
+    if (compactName.endsWith(suffix) && compactName.length > suffix.length + 2) {
+      candidates.add(`${compactName.slice(0, -suffix.length)}-${suffix}.${extension}`)
+    }
+  }
   for (const suffix of suggestionSuffixes) {
-    candidates.add(`${compactName}${suffix}.nl`)
-    candidates.add(`${compactName}-${suffix}.nl`)
+    candidates.add(`${compactName}${suffix}.${extension}`)
+    candidates.add(`${compactName}-${suffix}.${extension}`)
   }
   return [...candidates].filter((candidate) => candidate !== normalized.domain).slice(0, 8)
 }
 
-async function suggestAvailableDomains(domain: string, maxProviderPrice: ReturnType<typeof maxDomainProviderPriceFromEnv>): Promise<string[]> {
-  const suggestions: string[] = []
-  for (const candidate of suggestionCandidates(domain)) {
+const suggestionForAvailability = (
+  domain: string,
+  providerPrice: FixedDomainOrderPrice | null,
+  includedProviderPrice: FixedDomainOrderPrice,
+): PreviewDomainSuggestion => {
+  const extraFee = domainExtraFeeForProviderPrice(providerPrice, includedProviderPrice)
+  return {
+    domain,
+    included: !extraFee,
+    extraFeeAmount: extraFee?.amount ?? null,
+    extraFeeCurrency: extraFee?.currency ?? null,
+  }
+}
+
+async function suggestAvailableDomains(
+  domain: string,
+  includedProviderPrice: ReturnType<typeof maxDomainProviderPriceFromEnv>,
+  maxOfferPrice: ReturnType<typeof maxDomainOfferPriceFromEnv>,
+): Promise<PreviewDomainSuggestion[]> {
+  const normalized = normalizeDomain(domain)
+  const providerCandidates = await suggestOpenProviderDomains(domain)
+    .then((suggestions) => suggestions.map((suggestion) => suggestion.domain))
+    .catch(() => [])
+  const candidates = new Set<string>([
+    ...providerCandidates.filter((candidate) => {
+      const candidateDomain = normalizeDomain(candidate)
+      return candidateDomain.ok && normalized.ok && candidateDomain.extension === normalized.extension
+    }),
+    ...suggestionCandidates(domain),
+  ])
+  const suggestions: PreviewDomainSuggestion[] = []
+  for (const candidate of candidates) {
     try {
       const availability = await checkOpenProviderDomainAvailability(candidate)
       const providerPrice = availability.price
         ? { amount: availability.price.amount, currency: availability.price.currency }
         : null
-      if (availability.status === "available" && providerPriceWithinCap(providerPrice, maxProviderPrice)) {
-        suggestions.push(candidate)
+      if (availability.status === "available" && providerPriceWithinCap(providerPrice, maxOfferPrice)) {
+        suggestions.push(suggestionForAvailability(candidate, providerPrice, includedProviderPrice))
       }
     } catch {
       // Suggestions are optional; the primary domain check result remains authoritative.
@@ -78,14 +126,17 @@ export async function checkAndRecordPreviewDomainOrder(
   }
 
   const fixedPrice = fixedDomainOrderPriceFromEnv()
-  const maxProviderPrice = maxDomainProviderPriceFromEnv()
+  const includedProviderPrice = maxDomainProviderPriceFromEnv()
+  const maxOfferPrice = maxDomainOfferPriceFromEnv()
   const availability = await checkOpenProviderDomainAvailability(normalized.domain)
   const now = new Date().toISOString()
   const providerPrice = availability.price
     ? { amount: availability.price.amount, currency: availability.price.currency }
     : null
-  const allowedPrice = availability.status === "available" && providerPriceWithinCap(providerPrice, maxProviderPrice)
-  const status = allowedPrice
+  const includedPrice = availability.status === "available" && providerPriceWithinCap(providerPrice, includedProviderPrice)
+  const allowedOfferPrice = availability.status === "available" && providerPriceWithinCap(providerPrice, maxOfferPrice)
+  const extraFee = domainExtraFeeForProviderPrice(providerPrice, includedProviderPrice)
+  const status = allowedOfferPrice
     ? "ready_to_register"
     : availability.status === "premium"
       ? "premium"
@@ -97,9 +148,10 @@ export async function checkAndRecordPreviewDomainOrder(
     domain: normalized.domain,
     fixedPrice,
     providerPrice,
-    maxProviderPrice,
+    maxProviderPrice: includedProviderPrice,
+    maxOfferPrice,
     registrant: registrant ?? normalizeDomainOrderState(run.domainOrder).registrant,
-    reason: availability.internalReason ?? (availability.status === "available" && !allowedPrice ? "domain_cost_above_limit" : null),
+    reason: availability.internalReason ?? (availability.status === "available" && !includedPrice ? "domain_cost_above_limit" : null),
     now,
   })
 
@@ -114,9 +166,14 @@ export async function checkAndRecordPreviewDomainOrder(
   return {
     run: updated,
     domain: normalized.domain,
-    suggestions: allowedPrice ? [] : await suggestAvailableDomains(normalized.domain, maxProviderPrice),
-    messageKey: allowedPrice
+    included: includedPrice,
+    extraFeeAmount: extraFee?.amount ?? null,
+    extraFeeCurrency: extraFee?.currency ?? null,
+    suggestions: allowedOfferPrice ? [] : await suggestAvailableDomains(normalized.domain, includedProviderPrice, maxOfferPrice),
+    messageKey: includedPrice
       ? "checkoutDomainAvailable"
+      : allowedOfferPrice
+        ? "checkoutDomainAvailableExtraFee"
       : availability.status === "premium"
         ? "checkoutDomainPremium"
         : availability.status === "unavailable"
@@ -138,7 +195,7 @@ export async function requireReadyPreviewDomainOrder(
   const state = normalizeDomainOrderState(run.domainOrder)
   if (state.status !== "ready_to_register" || state.domain !== normalized.domain) {
     const result = await checkAndRecordPreviewDomainOrder(payload, run, normalized.domain, registrant)
-    if (result.messageKey !== "checkoutDomainAvailable") {
+    if (result.messageKey !== "checkoutDomainAvailable" && result.messageKey !== "checkoutDomainAvailableExtraFee") {
       throw new Error(result.messageKey)
     }
     return { run: result.run, domain: result.domain }

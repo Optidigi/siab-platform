@@ -42,4 +42,19 @@ describe("customer preview UI", () => {
     expect(action).toContain("reviewNotes")
     expect(review).toContain("Textarea")
   })
+
+  it("renders checkout as a branded three-step wizard with domain fee states", () => {
+    const checkout = read("src/components/preview/PreviewCheckout.tsx")
+    const page = read("src/app/(frontend)/(site-preview)/[clientSlug]/checkout/page.tsx")
+
+    expect(checkout).toContain('type CheckoutStep = "domain" | "details" | "payment"')
+    expect(checkout).toContain("CheckoutStepper")
+    expect(checkout).toContain('src="/logos/logo-light.svg"')
+    expect(checkout).toContain('src="/logos/logo-dark.svg"')
+    expect(checkout).toContain("checkoutDomainExtraFeeInline")
+    expect(checkout).toContain("checkoutRenewalTitle")
+    expect(checkout).toContain("domainReady")
+    expect(page).toContain("registrant={domainOrder.registrant}")
+    expect(page).toContain('domainReady={domainOrder.status === "ready_to_register"')
+  })
 })
