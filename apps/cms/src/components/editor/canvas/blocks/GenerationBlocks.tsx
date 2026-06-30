@@ -119,7 +119,7 @@ export const StatsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActiv
   )
 }
 
-export const LogoCloudCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate }) => {
+export const LogoCloudCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const logos: any[] = block.logos ?? []
@@ -131,7 +131,7 @@ export const LogoCloudCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isA
       <ul className="cms-block__logoCloudList">
         {logos.map((logo, i) => (
           <li key={logo.id ?? i} className="cms-block__logoCloudItem">
-            <InlineImage value={logo.image} onChange={setArrayItemField(block, onUpdate, "logos", i, "image")} chrome="overlay" elementPath={{ blockIndex: idx, field: "logos", itemIndex: i, subField: "image" }} />
+            <InlineImage value={logo.image} onChange={setArrayItemField(block, onUpdate, "logos", i, "image")} tenantId={tenantId ?? undefined} chrome="overlay" elementPath={{ blockIndex: idx, field: "logos", itemIndex: i, subField: "image" }} />
             <span>{logo.name}</span>
           </li>
         ))}
@@ -140,7 +140,7 @@ export const LogoCloudCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isA
   )
 }
 
-export const GalleryCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate }) => {
+export const GalleryCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const images: any[] = block.images ?? []
@@ -152,7 +152,7 @@ export const GalleryCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isAct
       <div className="cms-block__galleryGrid">
         {images.map((item, i) => (
           <figure key={item.id ?? i} className="cms-block__galleryItem">
-            <InlineImage value={item.image} onChange={setArrayItemField(block, onUpdate, "images", i, "image")} chrome="overlay" elementPath={{ blockIndex: idx, field: "images", itemIndex: i, subField: "image" }} />
+            <InlineImage value={item.image} onChange={setArrayItemField(block, onUpdate, "images", i, "image")} tenantId={tenantId ?? undefined} chrome="overlay" elementPath={{ blockIndex: idx, field: "images", itemIndex: i, subField: "image" }} />
             <RtSlot as="figcaption" variant="block" manifest={manifest} value={item.caption} onChange={setArrayItemField(block, onUpdate, "images", i, "caption")} className="cms-block__galleryCaption" placeholder="Caption" elementPath={{ blockIndex: idx, field: "images", itemIndex: i, subField: "caption" }} />
           </figure>
         ))}
@@ -162,7 +162,7 @@ export const GalleryCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isAct
   )
 }
 
-export const TeamCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate }) => {
+export const TeamCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const members: any[] = block.members ?? []
@@ -174,7 +174,7 @@ export const TeamCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
       <div className="cms-block__teamGrid">
         {members.map((member, i) => (
           <article key={member.id ?? i} className="cms-block__teamMember">
-            <InlineImage value={member.image} onChange={setArrayItemField(block, onUpdate, "members", i, "image")} chrome="overlay" elementPath={{ blockIndex: idx, field: "members", itemIndex: i, subField: "image" }} />
+            <InlineImage value={member.image} onChange={setArrayItemField(block, onUpdate, "members", i, "image")} tenantId={tenantId ?? undefined} chrome="overlay" elementPath={{ blockIndex: idx, field: "members", itemIndex: i, subField: "image" }} />
             <h3>{member.name}</h3>
             {member.role ? <p className="cms-block__teamRole">{member.role}</p> : null}
             <RtSlot as="div" variant="block" manifest={manifest} value={member.bio} onChange={setArrayItemField(block, onUpdate, "members", i, "bio")} className="cms-block__teamBio" placeholder="Bio" elementPath={{ blockIndex: idx, field: "members", itemIndex: i, subField: "bio" }} />
@@ -185,7 +185,7 @@ export const TeamCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
   )
 }
 
-export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate }) => {
+export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const posts: any[] = block.posts ?? []
@@ -197,7 +197,7 @@ export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isA
       <div className="cms-block__blogGrid">
         {posts.map((post, i) => (
           <article key={post.id ?? i} className="cms-block__blogCard">
-            <InlineImage value={post.image} onChange={setArrayItemField(block, onUpdate, "posts", i, "image")} chrome="overlay" elementPath={{ blockIndex: idx, field: "posts", itemIndex: i, subField: "image" }} />
+            <InlineImage value={post.image} onChange={setArrayItemField(block, onUpdate, "posts", i, "image")} tenantId={tenantId ?? undefined} chrome="overlay" elementPath={{ blockIndex: idx, field: "posts", itemIndex: i, subField: "image" }} />
             <RtSlot as="h3" variant="inline" manifest={manifest} value={post.title} onChange={setArrayItemField(block, onUpdate, "posts", i, "title")} className="cms-block__blogTitle" placeholder="Post title" elementPath={{ blockIndex: idx, field: "posts", itemIndex: i, subField: "title" }} />
             <RtSlot as="div" variant="block" manifest={manifest} value={post.excerpt} onChange={setArrayItemField(block, onUpdate, "posts", i, "excerpt")} className="cms-block__blogExcerpt" placeholder="Excerpt" elementPath={{ blockIndex: idx, field: "posts", itemIndex: i, subField: "excerpt" }} />
             <InlineCtaButton value={post.cta ?? { label: "Read more", href: post.href }} onChange={setArrayItemField(block, onUpdate, "posts", i, "cta")} className="cms-block__blogCta" emptyLabel="Post action" elementPath={{ blockIndex: idx, field: "posts", itemIndex: i, subField: "cta" }} />
@@ -208,7 +208,7 @@ export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isA
   )
 }
 
-export const ProcessStepsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate }) => {
+export const ProcessStepsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const steps: any[] = block.steps ?? []
@@ -220,7 +220,7 @@ export const ProcessStepsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, 
       <ol className="cms-block__steps">
         {steps.map((step, i) => (
           <li key={step.id ?? i} className="cms-block__step">
-            {step.image ? <InlineImage value={step.image} onChange={setArrayItemField(block, onUpdate, "steps", i, "image")} chrome="overlay" elementPath={{ blockIndex: idx, field: "steps", itemIndex: i, subField: "image" }} /> : <InlineIcon value={step.icon} onChange={setArrayItemField(block, onUpdate, "steps", i, "icon")} elementPath={{ blockIndex: idx, field: "steps", itemIndex: i, subField: "icon" }} />}
+            {step.image ? <InlineImage value={step.image} onChange={setArrayItemField(block, onUpdate, "steps", i, "image")} tenantId={tenantId ?? undefined} chrome="overlay" elementPath={{ blockIndex: idx, field: "steps", itemIndex: i, subField: "image" }} /> : <InlineIcon value={step.icon} onChange={setArrayItemField(block, onUpdate, "steps", i, "icon")} elementPath={{ blockIndex: idx, field: "steps", itemIndex: i, subField: "icon" }} />}
             <RtSlot as="h3" variant="inline" manifest={manifest} value={step.title} onChange={setArrayItemField(block, onUpdate, "steps", i, "title")} className="cms-block__stepTitle" placeholder="Step title" elementPath={{ blockIndex: idx, field: "steps", itemIndex: i, subField: "title" }} />
             <RtSlot as="div" variant="block" manifest={manifest} value={step.description} onChange={setArrayItemField(block, onUpdate, "steps", i, "description")} className="cms-block__stepDescription" placeholder="Step description" elementPath={{ blockIndex: idx, field: "steps", itemIndex: i, subField: "description" }} />
           </li>

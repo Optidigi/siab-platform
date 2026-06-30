@@ -26,6 +26,8 @@ const buttonVariants = cva(
       // keeps its existing /75 + shadow combo unchanged.
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/75",
+        success:
+          "bg-success text-success-foreground hover:bg-success/90 focus-visible:ring-success/30",
         destructive:
           "bg-destructive text-white hover:bg-destructive/75 hover:shadow-md focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:hover:bg-destructive dark:focus-visible:ring-destructive/40",
         outline:
@@ -97,4 +99,3 @@ function Button({
 }
 
 export { Button, buttonVariants }
-

@@ -4,6 +4,8 @@ import { ClickToEditField } from "../inline/ClickToEditField"
 import { InlineImage } from "../inline/InlineImage"
 import type { CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { isCoarsePointer } from "@siteinabox/ui/lib/utils"
+import { isReadOnlyView } from "@/components/editor/canvas/canvasView"
+import { useCanvasSelection } from "@/components/editor/canvas/CanvasSelectionContext"
 import { useTranslations } from "next-intl"
 
 /**
@@ -35,8 +37,11 @@ export const TestimonialsCanvas: React.FC<CanvasBlockRendererProps> = ({
   manifest: _manifest,
   onActivate,
   onUpdate,
+  tenantId,
 }) => {
   const t = useTranslations("editor")
+  const { view } = useCanvasSelection()
+  const isReadOnly = isReadOnlyView(view)
   const set = (field: string) => (value: any) => onUpdate({ ...block, [field]: value })
   const idx = block.__index as number
 
@@ -139,6 +144,7 @@ export const TestimonialsCanvas: React.FC<CanvasBlockRendererProps> = ({
                     onChange={setItem(i)("avatar")}
                     alt={authorValue || undefined}
                     className="h-10 w-10 rounded-full object-cover"
+                    tenantId={tenantId ?? undefined}
                     elementPath={{ blockIndex: idx, field: "items", itemIndex: i, subField: "avatar" }}
                   />
                   <div>
@@ -195,25 +201,27 @@ export const TestimonialsCanvas: React.FC<CanvasBlockRendererProps> = ({
               </figure>
             )
           })}
-          {/* FE-52: inline "+ Add testimonial" — mirrors Hero's "+ Add pill"
+          {!isReadOnly && (
+          /* FE-52: inline "+ Add testimonial" — mirrors Hero's "+ Add pill"
               affordance pattern, sized as a grid card so it lines up with
-              the existing testimonials. */}
-          <button
-            type="button"
-            aria-label={t("addTestimonial")}
-            onClick={(e) => {
-              e.stopPropagation()
-              const next = [
-                ...(block.items ?? []),
-                { quote: "", author: "", role: "", avatar: null },
-              ]
-              justAddedRef.current = true
-              set("items")(next)
-            }}
-            className="flex min-h-[180px] items-center justify-center rounded-lg border border-dashed border-rule bg-transparent p-6 text-[14px] font-medium text-ink-muted opacity-60 transition-opacity hover:opacity-100 focus:opacity-100 [font-family:var(--font-text)]"
-          >
-            + {t("addTestimonial")}
-          </button>
+              the existing testimonials. */
+            <button
+              type="button"
+              aria-label={t("addTestimonial")}
+              onClick={(e) => {
+                e.stopPropagation()
+                const next = [
+                  ...(block.items ?? []),
+                  { quote: "", author: "", role: "", avatar: null },
+                ]
+                justAddedRef.current = true
+                set("items")(next)
+              }}
+              className="flex min-h-[180px] items-center justify-center rounded-lg border border-dashed border-rule bg-transparent p-6 text-[14px] font-medium text-ink-muted opacity-60 transition-opacity hover:opacity-100 focus:opacity-100 [font-family:var(--font-text)]"
+            >
+              + {t("addTestimonial")}
+            </button>
+          )}
         </div>
       </div>
     </section>

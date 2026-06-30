@@ -239,7 +239,7 @@ export function SiteChromePreview({
             <nav
               {...chromeTargetProps}
               aria-label="Hoofdnavigatie"
-              className="sticky top-0 z-50 flex w-full items-center justify-between border-b border-rule bg-bg/80 px-6 py-5 backdrop-blur-lg @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-20"
+              className="sticky top-0 z-50 flex w-full items-center justify-between border-b border-rule bg-bg px-6 py-5 @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-20"
               data-site-chrome={zone}
             >
               <a href="#top" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">

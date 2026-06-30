@@ -3,7 +3,7 @@ import * as React from "react"
 import { useCanvasSelection } from "../CanvasSelectionContext"
 import { elementPathEq } from "../elementPath"
 import type { ElementPath } from "../elementPath"
-import { isReadOnlyView } from "../canvasView"
+import { isCustomerPreviewView, isReadOnlyView } from "../canvasView"
 
 /**
  * Generic click→edit wrapper. Renders `children` normally; in canvas view
@@ -37,11 +37,16 @@ export const ClickToEditField: React.FC<ClickToEditFieldProps> = ({
   children, editor, ariaLabel, className, elementPath, autoOpen,
 }) => {
   const { view, selected, select } = useCanvasSelection()
+  const isCustomerPreview = isCustomerPreviewView(view)
   const isReadOnly = isReadOnlyView(view)
-  const isSelected = isReadOnly && elementPath != null && elementPathEq(selected, elementPath)
+  const isSelected = !isCustomerPreview && isReadOnly && elementPath != null && elementPathEq(selected, elementPath)
 
   const [editing, setEditing] = React.useState(autoOpen === true && !isReadOnly)
   const close = React.useCallback(() => setEditing(false), [])
+
+  if (isCustomerPreview) {
+    return <>{children}</>
+  }
 
   if (isReadOnly) {
     return (

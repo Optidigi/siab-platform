@@ -91,11 +91,23 @@ describe("CMS siab-media route", () => {
     expect(await fsExists(join(ROUTE_DATA_DIR, "tenants", TENANT_ID, "media", "favicon.svg"))).toBe(true)
   })
 
-  it("rejects nested paths under the current flat CMS media contract", async () => {
+  it("serves nested authenticated media paths after authorizing the media row by filename", async () => {
+    await mkdir(join(ROUTE_DATA_DIR, "tenants", TENANT_ID, "media", "nested"), { recursive: true })
+    await writeFile(join(ROUTE_DATA_DIR, "tenants", TENANT_ID, "media", "nested", "favicon.svg"), "<svg/>")
+
     const nested = await GET(request(`https://cms.test/siab-media/${TENANT_ID}/nested/favicon.svg`), ctx(TENANT_ID, ["nested", "favicon.svg"]))
 
-    expect(nested.status).toBe(400)
-    expect(mocks.payload.find).not.toHaveBeenCalled()
+    expect(nested.status).toBe(200)
+    expect(await nested.text()).toBe("<svg/>")
+    expect(mocks.payload.find).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "media",
+      where: {
+        and: [
+          { tenant: { equals: TENANT_ID } },
+          { filename: { equals: "favicon.svg" } },
+        ],
+      },
+    }))
   })
 })
 

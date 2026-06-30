@@ -89,6 +89,28 @@ export async function hasAnyActivePreviewGrant(email: string, payloadArg?: Paylo
   return (result.docs as PreviewAccessGrant[]).some((grant) => grantIsActive(grant, now))
 }
 
+export async function hasActivePreviewGrantForTenant(
+  email: string,
+  tenantId: string | number,
+  payloadArg?: Payload,
+): Promise<boolean> {
+  const payload = payloadArg ?? await getPayload({ config })
+  const result = await payload.find({
+    collection: "preview-access-grants",
+    where: {
+      and: [
+        { customerEmail: { equals: normalizeEmail(email) } },
+        { tenant: { equals: tenantId } },
+      ],
+    },
+    limit: 10,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const now = new Date()
+  return (result.docs as PreviewAccessGrant[]).some((grant) => grantIsActive(grant, now))
+}
+
 export async function loadPreviewGrantContext(request: PreviewAccessRequest): Promise<PreviewGrantContext> {
   const payload = await getPayload({ config })
   const customerEmail = normalizeEmail(request.email)

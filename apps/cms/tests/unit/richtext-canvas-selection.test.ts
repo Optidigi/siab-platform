@@ -25,7 +25,8 @@ describe("RichText canvas selection", () => {
     const featureList = read("src/components/editor/canvas/blocks/FeatureList.tsx")
     const faq = read("src/components/editor/canvas/blocks/FAQ.tsx")
 
-    expect(rtSlot).toContain("const shouldRenderEmptySlot = !!placeholder || elementPath != null || !isReadOnly")
+    expect(rtSlot).toContain("const isCustomerPreview = isCustomerPreviewView(view)")
+    expect(rtSlot).toContain("const shouldRenderEmptySlot = !isCustomerPreview && (!!placeholder || elementPath != null || !isReadOnly)")
     expect(rtSlot).toContain('data-rt-empty-placeholder="true"')
     expect(featureList).toContain("const next = [...(block.features ?? [])]")
     expect(featureList).toContain("next[i] = { ...(next[i] ?? {}), [key]: value }")

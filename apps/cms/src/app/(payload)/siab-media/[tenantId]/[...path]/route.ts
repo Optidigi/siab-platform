@@ -1,9 +1,12 @@
 import { createReadStream, promises as fs } from "node:fs"
-import { resolve } from "node:path"
+import { dirname, resolve } from "node:path"
 import { Readable } from "node:stream"
 import { NextRequest, NextResponse } from "next/server"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import { previewAuth } from "@/lib/preview/betterAuth"
+import { PREVIEW_HOST } from "@/lib/preview/previewHost"
+import { hasActivePreviewGrantForTenant } from "@/lib/preview/previewAccess"
 
 const DATA_DIR = process.env.DATA_DIR ?? resolve(process.cwd(), ".data-out")
 
@@ -34,6 +37,18 @@ const hasUnsafeSegment = (segments: string[]): boolean =>
     segment.includes("\0")
   )
 
+const normalizeHost = (value: string | null): string => {
+  const host = (value ?? "").split(",")[0]?.trim().toLowerCase() ?? ""
+  if (host.startsWith("[")) return host
+  return host.split(":")[0] ?? host
+}
+
+const isPreviewMediaHost = (req: NextRequest): boolean => {
+  const host = normalizeHost(req.headers.get("x-forwarded-host") || req.headers.get("host"))
+  if (host === PREVIEW_HOST) return true
+  return process.env.NODE_ENV === "development" && (host === "localhost" || host === "127.0.0.1")
+}
+
 const contentTypeFor = (filename: string, mimeType?: string | null): string => {
   if (mimeType) return mimeType
   const ext = filename.split(".").pop()?.toLowerCase()
@@ -60,19 +75,30 @@ async function mediaResponse(
   includeBody: boolean,
 ) {
   const { tenantId, path } = await ctx.params
-  if (!tenantId || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(tenantId) || hasUnsafeSegment(path) || path.length !== 1) {
+  if (!tenantId || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(tenantId) || hasUnsafeSegment(path)) {
     return new NextResponse("invalid media path", { status: 400 })
   }
 
-  const filename = path[0]
+  const filename = path.at(-1)
   if (!filename) return new NextResponse("invalid media path", { status: 400 })
 
   const payload = await getPayload({ config })
   const auth = await payload.auth({ headers: req.headers }).catch(() => ({ user: null }))
   const user = auth.user as AuthUser | null
-  if (!user) return new NextResponse("unauthorized", { status: 401 })
-  if (user.role !== "super-admin" && !userTenantIds(user).has(String(tenantId))) {
-    return new NextResponse("forbidden", { status: 403 })
+  if (user) {
+    if (user.role !== "super-admin" && !userTenantIds(user).has(String(tenantId))) {
+      return new NextResponse("forbidden", { status: 403 })
+    }
+  } else {
+    if (!isPreviewMediaHost(req)) return new NextResponse("unauthorized", { status: 401 })
+    const session = await previewAuth.api.getSession({
+      headers: req.headers,
+      query: { disableCookieCache: true },
+    }).catch(() => null)
+    const email = session?.user?.email
+    if (!email) return new NextResponse("unauthorized", { status: 401 })
+    const allowed = await hasActivePreviewGrantForTenant(email, tenantId, payload)
+    if (!allowed) return new NextResponse("forbidden", { status: 403 })
   }
 
   const media = await payload.find({
@@ -92,7 +118,7 @@ async function mediaResponse(
   if (!doc) return new NextResponse("not found", { status: 404 })
 
   const mediaRoot = resolve(DATA_DIR, "tenants", tenantId, "media")
-  const filePath = resolve(mediaRoot, filename)
+  const filePath = resolve(mediaRoot, ...path)
   if (!filePath.startsWith(`${mediaRoot}/`)) {
     return new NextResponse("forbidden", { status: 403 })
   }
@@ -104,7 +130,7 @@ async function mediaResponse(
     if (err?.code === "ENOENT") {
       const stagingPath = resolve(DATA_DIR, "_uploads-tmp", filename)
       try {
-        await fs.mkdir(mediaRoot, { recursive: true })
+        await fs.mkdir(dirname(filePath), { recursive: true })
         await fs.copyFile(stagingPath, filePath)
         stats = await fs.stat(filePath)
       } catch (copyErr: any) {

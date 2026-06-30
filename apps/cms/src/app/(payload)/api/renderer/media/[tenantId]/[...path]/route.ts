@@ -1,5 +1,5 @@
 import { createReadStream, promises as fs } from "node:fs"
-import { resolve } from "node:path"
+import { dirname, resolve } from "node:path"
 import { Readable } from "node:stream"
 import { NextResponse, type NextRequest } from "next/server"
 import { getPayload } from "payload"
@@ -50,7 +50,7 @@ async function mediaResponse(
   }
 
   const { tenantId, path } = await ctx.params
-  if (!tenantId || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(tenantId) || hasUnsafeSegment(path) || path.length !== 1) {
+  if (!tenantId || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(tenantId) || hasUnsafeSegment(path)) {
     return new NextResponse("invalid media path", { status: 400 })
   }
 
@@ -87,7 +87,7 @@ async function mediaResponse(
     if (err?.code === "ENOENT") {
       const stagingPath = resolve(DATA_DIR, "_uploads-tmp", filename)
       try {
-        await fs.mkdir(mediaRoot, { recursive: true })
+        await fs.mkdir(dirname(filePath), { recursive: true })
         await fs.copyFile(stagingPath, filePath)
         stats = await fs.stat(filePath)
       } catch (copyErr: any) {

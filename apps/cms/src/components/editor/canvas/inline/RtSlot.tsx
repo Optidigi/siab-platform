@@ -7,7 +7,7 @@ import type { RtManifest } from "@/lib/richText/manifest"
 import { useCanvasSelection } from "../CanvasSelectionContext"
 import { elementPathEq } from "../elementPath"
 import type { ElementPath } from "../elementPath"
-import { isReadOnlyView } from "../canvasView"
+import { isCustomerPreviewView, isReadOnlyView } from "../canvasView"
 
 /**
  * Rich-text edit slot — the editable element a canvas block renders in place
@@ -54,8 +54,9 @@ export const RtSlot: React.FC<RtSlotProps> = ({
   value, onChange, manifest, variant, as, className, placeholder, elementPath, allowFontFamily = false,
 }) => {
   const { view, selected, select } = useCanvasSelection()
+  const isCustomerPreview = isCustomerPreviewView(view)
   const isReadOnly = isReadOnlyView(view)
-  const isSelected = isReadOnly && elementPath != null && elementPathEq(selected, elementPath)
+  const isSelected = !isCustomerPreview && isReadOnly && elementPath != null && elementPathEq(selected, elementPath)
   const [editing, setEditing] = React.useState(false)
   const slotRef = React.useRef<HTMLElement | null>(null)
 
@@ -68,9 +69,9 @@ export const RtSlot: React.FC<RtSlotProps> = ({
     : INLINE_CONTENT_TAGS.has(requested) ? "inline"
     : "normal"
   const hasStaticValue = !!value?.children?.length
-  const shouldRenderEmptySlot = !!placeholder || elementPath != null || !isReadOnly
+  const shouldRenderEmptySlot = !isCustomerPreview && (!!placeholder || elementPath != null || !isReadOnly)
 
-  const handleClick = isReadOnly && elementPath != null
+  const handleClick = !isCustomerPreview && isReadOnly && elementPath != null
     ? (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); select(elementPath) }
     : !isReadOnly
       ? (e: React.MouseEvent) => { e.stopPropagation(); setEditing(true) }
@@ -92,7 +93,7 @@ export const RtSlot: React.FC<RtSlotProps> = ({
   return (
     <Tag
       ref={slotRef}
-      className={["rt-slot", isReadOnly ? "cursor-pointer" : undefined, className].filter(Boolean).join(" ")}
+      className={[isCustomerPreview ? undefined : "rt-slot", isReadOnly && !isCustomerPreview ? "cursor-pointer" : undefined, className].filter(Boolean).join(" ")}
       data-rt-variant={variant}
       data-rt-selected={isSelected ? "true" : undefined}
       onClick={handleClick}

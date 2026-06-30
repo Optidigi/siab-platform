@@ -52,7 +52,7 @@ import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 import { toCssVars } from "@/lib/theme/toCssVars"
-import { isReadOnlyView, type CanvasView } from "@/components/editor/canvas/canvasView"
+import { isCustomerPreviewView, isReadOnlyView, type CanvasView } from "@/components/editor/canvas/canvasView"
 import type { MobileSectionListSlotContext } from "@/components/editor/canvas/mobile/mobile-section-list"
 import type { MobileSectionEditSlotContext } from "@/components/editor/canvas/mobile/mobile-section-edit"
 import type { MobileInspectorBarSlotContext } from "@/components/editor/canvas/mobile/mobile-inspector-bar"
@@ -905,6 +905,7 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
   const deleteTargetLabel = deleteTargetBlock
     ? (deleteTargetConfig?.label ?? deleteTargetBlock.blockType)
     : ""
+  const suppressCanvasNavigation = !isCustomerPreviewView(view)
 
   const onDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
@@ -932,7 +933,7 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
           <div
             onContextMenuCapture={onCanvasContextMenu}
             onClickCapture={(event) => {
-              if (shouldSuppressCanvasNavigation(event.target as HTMLElement | null)) {
+              if (suppressCanvasNavigation && shouldSuppressCanvasNavigation(event.target as HTMLElement | null)) {
                 event.preventDefault()
               }
             }}
@@ -965,7 +966,7 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
                     ? ({ defaultChrome }) => renderFooterChrome(defaultChrome)
                     : undefined}
                   canvasAttributes={{ "data-rt-view": view } as React.HTMLAttributes<HTMLDivElement>}
-                  canvasClassName="[&_a[href]:not(.rt-click-edit)]:pointer-events-none"
+                  canvasClassName={suppressCanvasNavigation ? "[&_a[href]:not(.rt-click-edit)]:pointer-events-none" : undefined}
                   formAction="#"
                   renderBlocks={() => (
                     <>
@@ -984,8 +985,9 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
                           <SortableRenderedBlockItem
                             id={String(index)}
                             index={index}
-                            isActive={activeIndex === index}
+                            isActive={!isCustomerPreviewView(view) && activeIndex === index}
                             onActivate={() => {
+                              if (isCustomerPreviewView(view)) return
                               setActiveIndex(index)
                               select(null)
                             }}
@@ -1001,6 +1003,7 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
                               isActive={activeIndex === index}
                               manifest={manifest}
                               onActivate={() => {
+                                if (isCustomerPreviewView(view)) return
                                 setActiveIndex(index)
                                 select(null)
                               }}
@@ -1024,12 +1027,12 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
           </div>
         ) : (
           <div
-            className="rt-canvas w-full [&_a[href]:not(.rt-click-edit)]:pointer-events-none"
+            className={cn("rt-canvas w-full", suppressCanvasNavigation && "[&_a[href]:not(.rt-click-edit)]:pointer-events-none")}
             data-rt-view={view}
             data-rt-mode={theme?.mode === "dark" ? "dark" : "light"}
             onContextMenuCapture={onCanvasContextMenu}
             onClickCapture={(event) => {
-              if (shouldSuppressCanvasNavigation(event.target as HTMLElement | null)) {
+              if (suppressCanvasNavigation && shouldSuppressCanvasNavigation(event.target as HTMLElement | null)) {
                 event.preventDefault()
               }
             }}
@@ -1071,9 +1074,10 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
                         id={String(i)}
                         block={block}
                         index={i}
-                        isActive={activeIndex === i}
+                        isActive={!isCustomerPreviewView(view) && activeIndex === i}
                         manifest={manifest}
                         onActivate={() => {
+                          if (isCustomerPreviewView(view)) return
                           setActiveIndex(i)
                           select(null)
                         }}

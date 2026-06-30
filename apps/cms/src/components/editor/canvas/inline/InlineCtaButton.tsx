@@ -8,7 +8,7 @@ import { Plus } from "lucide-react"
 import { useCanvasSelection } from "../CanvasSelectionContext"
 import { elementPathEq } from "../elementPath"
 import type { ElementPath } from "../elementPath"
-import { isReadOnlyView } from "../canvasView"
+import { isCustomerPreviewView, isReadOnlyView } from "../canvasView"
 import { isSafeHref } from "@/lib/security/safeHref"
 import { useTranslations } from "next-intl"
 
@@ -28,8 +28,9 @@ export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChang
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
   const { view, selected, select } = useCanvasSelection()
+  const isCustomerPreview = isCustomerPreviewView(view)
   const isReadOnly = isReadOnlyView(view)
-  const isSelected = isReadOnly && elementPath != null && elementPathEq(selected, elementPath)
+  const isSelected = !isCustomerPreview && isReadOnly && elementPath != null && elementPathEq(selected, elementPath)
 
   const [open, setOpen] = React.useState(false)
   const [label, setLabel] = React.useState(value?.label ?? "")
@@ -54,6 +55,14 @@ export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChang
 
   const hasValue = Boolean(value?.label && value?.href)
   const emptyText = emptyLabel ?? t("addCta")
+
+  if (isCustomerPreview) {
+    return hasValue ? (
+      <a href={value!.href!} className={className}>
+        {value!.label}
+      </a>
+    ) : null
+  }
 
   if (isReadOnly) {
     const handleClick = (e: React.MouseEvent) => {

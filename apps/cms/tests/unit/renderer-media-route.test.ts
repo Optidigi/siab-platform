@@ -106,7 +106,7 @@ describe("renderer media route", () => {
     expect(await fsExists(join(ROUTE_DATA_DIR, "tenants", TENANT_ID, "media", "favicon.svg"))).toBe(true)
   })
 
-  it("rejects nested paths until relative media paths are part of the CMS media contract", async () => {
+  it("serves nested tenant media paths after authorizing the media row by filename", async () => {
     await mkdir(join(ROUTE_DATA_DIR, "tenants", TENANT_ID, "media", "nested"), { recursive: true })
     await writeFile(join(ROUTE_DATA_DIR, "tenants", TENANT_ID, "media", "nested", "favicon.svg"), "<svg/>")
 
@@ -114,8 +114,17 @@ describe("renderer media route", () => {
       authorization: "Bearer media-secret",
     }), ctx(TENANT_ID, ["nested", "favicon.svg"]))
 
-    expect(nested.status).toBe(400)
-    expect(mocks.payload.find).not.toHaveBeenCalled()
+    expect(nested.status).toBe(200)
+    expect(await nested.text()).toBe("<svg/>")
+    expect(mocks.payload.find).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "media",
+      where: {
+        and: [
+          { tenant: { equals: TENANT_ID } },
+          { filename: { equals: "favicon.svg" } },
+        ],
+      },
+    }))
   })
 
   it("returns 404 when the CMS media row is missing", async () => {

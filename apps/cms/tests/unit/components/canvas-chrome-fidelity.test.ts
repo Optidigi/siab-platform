@@ -105,7 +105,8 @@ describe("canvas chrome fidelity", () => {
 
     expect(canvasMode).toContain("<CanvasChromeVisibilityProvider value={{ visible: gutterVisible, setVisible: setGutterVisible }}>")
     expect(inlineImage).toContain("const canvasChrome = useCanvasChromeVisibility()")
-    expect(inlineImage).toContain('const showHoverOverlayChrome = showOverlayChrome && view !== "mobile" && canvasChrome.visible')
+    expect(inlineImage).toContain('const showHoverOverlayChrome = !isCustomerPreview && showOverlayChrome && view !== "mobile" && canvasChrome.visible')
+    expect(inlineImage).toContain("const surfaceIsEditable = !isCustomerPreview && (openOnImageClick || isReadOnly)")
     expect(inlineImage).toContain("onMouseEnter={() => canvasChrome.setVisible(true)}")
     expect(inlineImage).toContain("onMouseLeave={() => canvasChrome.setVisible(false)}")
   })

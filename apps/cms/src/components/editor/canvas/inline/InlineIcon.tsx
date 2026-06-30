@@ -5,7 +5,7 @@ import { Image as ImageIcon } from "lucide-react"
 import { useCanvasSelection } from "../CanvasSelectionContext"
 import { elementPathEq } from "../elementPath"
 import type { ElementPath } from "../elementPath"
-import { isReadOnlyView } from "../canvasView"
+import { isCustomerPreviewView, isReadOnlyView } from "../canvasView"
 import { useTranslations } from "next-intl"
 
 export interface InlineIconProps {
@@ -25,8 +25,9 @@ export interface InlineIconProps {
 export const InlineIcon: React.FC<InlineIconProps> = ({ value, onChange, className, size = 44, strokeWidth = 1.5, elementPath }) => {
   const t = useTranslations("editor")
   const { view, selected, select } = useCanvasSelection()
+  const isCustomerPreview = isCustomerPreviewView(view)
   const isReadOnly = isReadOnlyView(view)
-  const isSelected = isReadOnly && elementPath != null && elementPathEq(selected, elementPath)
+  const isSelected = !isCustomerPreview && isReadOnly && elementPath != null && elementPathEq(selected, elementPath)
   const Icon = resolveLucideIcon(value)
   const iconName = value ?? ""
   const placeholderClassName = [
@@ -34,6 +35,12 @@ export const InlineIcon: React.FC<InlineIconProps> = ({ value, onChange, classNa
     "size-11",
     className,
   ].filter(Boolean).join(" ")
+
+  if (isCustomerPreview) {
+    return Icon ? (
+      <Icon size={size} strokeWidth={strokeWidth} className={className} aria-label={t("iconLabel", { name: iconName })} />
+    ) : null
+  }
 
   if (isReadOnly) {
     const handleClick = (e: React.MouseEvent) => {

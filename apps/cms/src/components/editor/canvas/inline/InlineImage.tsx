@@ -15,7 +15,7 @@ import { useCanvasSelection } from "../CanvasSelectionContext"
 import { useCanvasChromeVisibility } from "../CanvasChromeVisibilityContext"
 import { elementPathEq } from "../elementPath"
 import type { ElementPath } from "../elementPath"
-import { isReadOnlyView } from "../canvasView"
+import { isCustomerPreviewView, isReadOnlyView } from "../canvasView"
 import { useTranslations } from "next-intl"
 import { cn } from "@siteinabox/ui/lib/utils"
 
@@ -136,8 +136,9 @@ export const InlineImage: React.FC<InlineImageProps> = ({
   const t = useTranslations("editor")
   const { view, selected, select } = useCanvasSelection()
   const canvasChrome = useCanvasChromeVisibility()
+  const isCustomerPreview = isCustomerPreviewView(view)
   const isReadOnly = isReadOnlyView(view)
-  const isSelected = isReadOnly && elementPath != null && elementPathEq(selected, elementPath)
+  const isSelected = !isCustomerPreview && isReadOnly && elementPath != null && elementPathEq(selected, elementPath)
   const [chromeAnchorNode, setChromeAnchorNode] = React.useState<HTMLElement | null>(null)
   const setChromeAnchorRef = React.useCallback((node: HTMLElement | null) => {
     setChromeAnchorNode(node)
@@ -178,8 +179,8 @@ export const InlineImage: React.FC<InlineImageProps> = ({
   }
   const url = resolveUrl(value, resolvedTenantId)
   const showOverlayChrome = chrome === "overlay"
-  const surfaceIsEditable = openOnImageClick || isReadOnly
-  const showHoverOverlayChrome = showOverlayChrome && view !== "mobile" && canvasChrome.visible
+  const surfaceIsEditable = !isCustomerPreview && (openOnImageClick || isReadOnly)
+  const showHoverOverlayChrome = !isCustomerPreview && showOverlayChrome && view !== "mobile" && canvasChrome.visible
   const showDefaultChrome = !showOverlayChrome && className == null
   const chromeRect = useFixedAnchorRect(chromeAnchorNode, showHoverOverlayChrome)
   const actionLabel = url ? (changeLabel ?? t("replace")) : (emptyLabel ?? t("chooseImage"))
