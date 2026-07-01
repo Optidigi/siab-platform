@@ -17,6 +17,27 @@ The full audit cycle's working artifacts (threat model, batch reports, adversari
 
 ## Active
 
+### OBS-124 — Auth completion leaked internal redirect origins
+
+**Status:** Closed 2026-07-02.
+**Discovered in:** production magic-link login verification
+**File:** `src/app/api/siab-auth/complete/route.ts`
+
+#### Description
+The Better Auth magic-link route normalized incoming requests to the trusted
+public admin host, but the SIAB completion bridge still built redirect targets
+from `req.url`. Behind Traefik/Next this could expose container-local origins
+such as `0.0.0.0:3000` or loopback hosts in the final browser redirect after a
+magic-link click.
+
+#### Resolution — 2026-07-02
+Closed. The completion bridge now uses the same Payload-backed host gate and
+public request normalization as `/api/auth/[...all]` before reading the Better
+Auth session, minting the Payload session cookie, or redirecting. Regression
+coverage verifies platform admin, current tenant admin, future
+`admin.{tenantdomain}` hosts, internal-origin forwarded requests, and unknown
+host rejection before session lookup.
+
 ### OBS-33 — CSP `style-src 'unsafe-inline'` removed
 
 **Status:** Closed 2026-06-03.

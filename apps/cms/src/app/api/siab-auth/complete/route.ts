@@ -2,11 +2,17 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/betterAuth"
 import { issuePayloadSessionCookie } from "@/lib/socialAuth/payloadSession"
 import { validateNextRedirect } from "@/lib/auth/validateNextRedirect"
+import { buildCmsAuthRequest, isAllowedSocialAuthHost } from "@/lib/socialAuth/hosts"
 
 export async function GET(req: Request) {
-  const url = new URL(req.url)
+  if (!(await isAllowedSocialAuthHost(req))) {
+    return new Response("Unknown auth host", { status: 404 })
+  }
+
+  const authRequest = buildCmsAuthRequest(req)
+  const url = new URL(authRequest.url)
   const session = await auth.api.getSession({
-    headers: req.headers,
+    headers: authRequest.headers,
     query: { disableCookieCache: true },
   })
 
@@ -16,7 +22,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const payloadCookie = await issuePayloadSessionCookie(payloadUserId, req)
+    const payloadCookie = await issuePayloadSessionCookie(payloadUserId, authRequest)
     const destination = validateNextRedirect(url.searchParams.get("next"))
     const response = NextResponse.redirect(new URL(destination, url))
     response.headers.append("Set-Cookie", payloadCookie)
@@ -25,4 +31,3 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL("/login?error=social-session", url))
   }
 }
-
