@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   loadPreviewGrantContext: vi.fn(),
   checkAndRecordPreviewDomainOrder: vi.fn(),
   loginOpenProvider: vi.fn(),
-  suggestAvailablePreviewDomains: vi.fn(),
+  suggestAvailablePreviewDomainBatch: vi.fn(),
 }))
 
 vi.mock("next/headers", () => ({
@@ -44,7 +44,7 @@ vi.mock("@/lib/domains/openprovider", () => ({
 vi.mock("@/lib/domains/previewDomainOrder", () => ({
   checkAndRecordPreviewDomainOrder: mocks.checkAndRecordPreviewDomainOrder,
   requireReadyPreviewDomainOrder: vi.fn(),
-  suggestAvailablePreviewDomains: mocks.suggestAvailablePreviewDomains,
+  suggestAvailablePreviewDomainBatch: mocks.suggestAvailablePreviewDomainBatch,
 }))
 
 vi.mock("@/lib/payments/molliePayments", () => ({
@@ -75,14 +75,16 @@ describe("preview checkout domain suggestion action", () => {
       suggestions: [],
     })
     mocks.loginOpenProvider.mockResolvedValue("token-123")
-    mocks.suggestAvailablePreviewDomains.mockResolvedValue([
-      {
+    mocks.suggestAvailablePreviewDomainBatch.mockResolvedValue({
+      suggestions: [{
         domain: "amicare-web.nl",
         included: false,
         extraFeeAmount: "20.00",
         extraFeeCurrency: "EUR",
-      },
-    ])
+      }],
+      nextCursor: 5,
+      done: false,
+    })
   })
 
   it("checks the primary typed domain without recording auto-check state", async () => {
@@ -126,16 +128,19 @@ describe("preview checkout domain suggestion action", () => {
         extraFeeCurrency: "EUR",
         extraFeeLabel: expect.stringContaining("20"),
       }],
+      cursor: 5,
+      done: false,
     })
     expect(mocks.loadPreviewGrantContext).toHaveBeenCalledWith({
       clientSlug: "ami-care",
       email: "Customer@Example.com",
     })
     expect(mocks.loginOpenProvider).toHaveBeenCalledTimes(1)
-    expect(mocks.suggestAvailablePreviewDomains).toHaveBeenCalledWith(
+    expect(mocks.suggestAvailablePreviewDomainBatch).toHaveBeenCalledWith(
       "ami-care.nl",
       { amount: "10.00", currency: "EUR" },
       "token-123",
+      { cursor: 0, batchSize: 5, existingDomains: [] },
     )
     const context = await mocks.loadPreviewGrantContext.mock.results[0]?.value
     expect(context.payload.update).not.toHaveBeenCalled()
@@ -152,6 +157,39 @@ describe("preview checkout domain suggestion action", () => {
       .rejects.toThrow("Preview login required")
     expect(mocks.loadPreviewGrantContext).not.toHaveBeenCalled()
     expect(mocks.loginOpenProvider).not.toHaveBeenCalled()
-    expect(mocks.suggestAvailablePreviewDomains).not.toHaveBeenCalled()
+    expect(mocks.suggestAvailablePreviewDomainBatch).not.toHaveBeenCalled()
+  })
+
+  it("marks suggestion provider failures terminal for the current typed domain", async () => {
+    mocks.loginOpenProvider.mockRejectedValue(new Error("provider unavailable"))
+    const { suggestPreviewCheckoutDomainsAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
+
+    const formData = new FormData()
+    formData.set("domain", "ami-care.nl")
+    const result = await suggestPreviewCheckoutDomainsAction(
+      "ami-care",
+      {
+        ok: true,
+        domain: "ami-care.nl",
+        cursor: 5,
+        done: false,
+        suggestions: [{
+          domain: "amicare-web.nl",
+          included: true,
+          extraFeeAmount: null,
+          extraFeeCurrency: null,
+        }],
+      },
+      formData,
+    )
+
+    expect(result).toMatchObject({
+      ok: false,
+      domain: "ami-care.nl",
+      cursor: 5,
+      done: true,
+      suggestions: [{ domain: "amicare-web.nl" }],
+    })
+    expect(mocks.suggestAvailablePreviewDomainBatch).not.toHaveBeenCalled()
   })
 })

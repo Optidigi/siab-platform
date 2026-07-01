@@ -47,6 +47,8 @@ export type PreviewCheckoutSuggestionsState = {
   ok: boolean
   domain?: string
   suggestions?: PreviewCheckoutDomainOption[]
+  cursor?: number
+  done?: boolean
 }
 
 type PreviewCheckoutAction = (
@@ -86,6 +88,8 @@ const initialState: PreviewCheckoutActionState = {
 const initialSuggestionsState: PreviewCheckoutSuggestionsState = {
   ok: false,
   suggestions: [],
+  cursor: 0,
+  done: false,
 }
 
 const emptyRegistrant = (customerEmail: string, registrant?: DomainRegistrantDetails | null): DomainRegistrantDetails => ({
@@ -156,10 +160,10 @@ export function PreviewCheckout({
   const domainFormRef = React.useRef<HTMLFormElement | null>(null)
   const suggestionsFormRef = React.useRef<HTMLFormElement | null>(null)
   const lastSubmittedDomainRef = React.useRef<string | null>(domainReady ? (currentDomain ?? null) : null)
-  const lastSuggestionsDomainRef = React.useRef<string | null>(null)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
   const checkAppliesToCurrentInput = Boolean(checkState.domain && checkState.domain === normalizedDomainValue)
   const suggestionsApplyToCurrentInput = Boolean(suggestionsState.domain && suggestionsState.domain === normalizedDomainValue)
+  const domainLooksCheckable = normalizedDomainValue.includes(".") && normalizedDomainValue.length >= 5
 
   React.useEffect(() => {
     if (checkState.ok && checkState.domain && checkState.domain === normalizedDomainValue) {
@@ -187,15 +191,37 @@ export function PreviewCheckout({
   }, [paymentState])
 
   React.useEffect(() => {
-    if (!checkAppliesToCurrentInput) return
-    if (!["unavailable", "premium", "service_error"].includes(checkState.status ?? "")) return
-    if (!checkState.domain || checkState.domain === lastSuggestionsDomainRef.current) return
-    lastSuggestionsDomainRef.current = checkState.domain
-    suggestionsFormRef.current?.requestSubmit()
-  }, [checkAppliesToCurrentInput, checkState.domain, checkState.status])
+    if (step !== "domain") return
+    if (!domainLooksCheckable) return
+    if (checkAppliesToCurrentInput && checkState.ok) return
+    if (suggestionsPending) return
+    if (
+      suggestionsApplyToCurrentInput &&
+      (suggestionsState.done || (suggestionsState.suggestions?.length ?? 0) >= 5)
+    ) return
+
+    const timer = window.setTimeout(() => {
+      suggestionsFormRef.current?.requestSubmit()
+    }, suggestionsApplyToCurrentInput ? 0 : 250)
+    return () => window.clearTimeout(timer)
+  }, [
+    checkAppliesToCurrentInput,
+    checkState.ok,
+    domainLooksCheckable,
+    normalizedDomainValue,
+    step,
+    suggestionsApplyToCurrentInput,
+    suggestionsPending,
+    suggestionsState.done,
+    suggestionsState.suggestions,
+  ])
 
   const selectedDomain = checkedDomain && checkedDomain === domainValue ? checkedDomain : null
-  const suggestions = suggestionsApplyToCurrentInput ? suggestionsState.suggestions : []
+  const primaryDomainAvailable = Boolean(checkAppliesToCurrentInput && checkState.ok)
+  const suggestions = !primaryDomainAvailable && suggestionsApplyToCurrentInput ? suggestionsState.suggestions : []
+  const showSuggestions = step === "domain" && domainLooksCheckable && !primaryDomainAvailable && (
+    suggestionsPending || suggestionsApplyToCurrentInput || (suggestions?.length ?? 0) > 0
+  )
   const holderComplete = registrantIsComplete(holder)
   const canContinueFromDomain = Boolean(
     selectedDomain && (checkState.ok || (domainReady && selectedDomain === currentDomain)),
@@ -305,7 +331,7 @@ export function PreviewCheckout({
                   </div>
                 </form>
                 <form ref={suggestionsFormRef} action={suggestionsAction} className="hidden">
-                  <input type="hidden" name="domain" value={checkState.domain ?? normalizedDomainValue} />
+                  <input type="hidden" name="domain" value={normalizedDomainValue} />
                 </form>
 
                 {domainResultKind === "error" && (
@@ -316,7 +342,7 @@ export function PreviewCheckout({
                   </Alert>
                 )}
 
-                {checkAppliesToCurrentInput && (
+                {showSuggestions && (
                   <DomainSuggestions
                     loading={suggestionsPending}
                     suggestions={suggestions}

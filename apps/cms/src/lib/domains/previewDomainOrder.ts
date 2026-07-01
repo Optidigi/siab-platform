@@ -27,6 +27,12 @@ export type PreviewDomainSuggestion = {
   extraFeeCurrency: string | null
 }
 
+export type PreviewDomainSuggestionBatch = {
+  suggestions: PreviewDomainSuggestion[]
+  nextCursor: number
+  done: boolean
+}
+
 export type PreviewDomainOrderResult = {
   run: SiteGenerationRun
   messageKey:
@@ -47,8 +53,11 @@ export function selectedDomainForCheckout(run: Pick<SiteGenerationRun, "domainOr
   return state.status === "ready_to_register" && state.domain ? state.domain : null
 }
 
-const suggestionSuffixes = ["site", "online", "web", "studio", "hq", "groep"]
-const splitSuffixes = ["web", "site", "online", "studio", "zorg", "care", "groep", "hq"]
+const suffixModifiers = ["online", "site", "web", "studio", "zorg", "praktijk", "groep", "hq"]
+const prefixModifiers = ["mijn", "de", "het"]
+const trailingBusinessWords = ["web", "site", "online", "studio", "zorg", "care", "praktijk", "clinic", "groep", "hq"]
+
+const titleCase = (value: string): string => value ? `${value[0]?.toUpperCase() ?? ""}${value.slice(1)}` : value
 
 const suggestionCandidates = (domain: string): string[] => {
   const normalized = normalizeDomain(domain)
@@ -58,16 +67,37 @@ const suggestionCandidates = (domain: string): string[] => {
   if (!compactName) return []
 
   const candidates = new Set<string>()
-  for (const suffix of splitSuffixes) {
-    if (compactName.endsWith(suffix) && compactName.length > suffix.length + 2) {
-      candidates.add(`${compactName.slice(0, -suffix.length)}-${suffix}.${extension}`)
+  const parts = compactName.split("-").filter(Boolean)
+  const joined = parts.join("")
+  const spaced = parts.join("-")
+  const roots = new Set<string>([compactName, joined, spaced])
+
+  for (const suffix of trailingBusinessWords) {
+    for (const root of [...roots]) {
+      if (root.endsWith(suffix) && root.length > suffix.length + 2) {
+        const trimmed = root.slice(0, -suffix.length).replace(/-+$/g, "")
+        if (trimmed) roots.add(trimmed)
+      }
     }
   }
-  for (const suffix of suggestionSuffixes) {
-    candidates.add(`${compactName}${suffix}.${extension}`)
-    candidates.add(`${compactName}-${suffix}.${extension}`)
+
+  for (const root of roots) {
+    candidates.add(`${root}.${extension}`)
+    for (const modifier of suffixModifiers) {
+      candidates.add(`${root}${modifier}.${extension}`)
+      candidates.add(`${root}-${modifier}.${extension}`)
+    }
+    for (const modifier of prefixModifiers) {
+      candidates.add(`${modifier}${root}.${extension}`)
+      candidates.add(`${modifier}-${root}.${extension}`)
+    }
   }
-  return [...candidates].filter((candidate) => candidate !== normalized.domain).slice(0, 16)
+
+  if (parts.length > 1) {
+    candidates.add(`${[...parts].reverse().join("-")}.${extension}`)
+    candidates.add(`${parts.at(0)}${parts.slice(1).map(titleCase).join("")}.${extension}`)
+  }
+  return [...candidates].filter((candidate) => candidate !== normalized.domain).slice(0, 48)
 }
 
 const suggestionForAvailability = (
@@ -89,45 +119,74 @@ export async function suggestAvailablePreviewDomains(
   includedProviderPrice: ReturnType<typeof maxDomainProviderPriceFromEnv>,
   token: string,
 ): Promise<PreviewDomainSuggestion[]> {
+  const suggestions: PreviewDomainSuggestion[] = []
+  let cursor = 0
+  let done = false
+  while (!done && suggestions.length < 5) {
+    const batch = await suggestAvailablePreviewDomainBatch(domain, includedProviderPrice, token, {
+      cursor,
+      batchSize: 8,
+      existingDomains: suggestions.map((suggestion) => suggestion.domain),
+    })
+    suggestions.push(...batch.suggestions)
+    cursor = batch.nextCursor
+    done = batch.done
+  }
+  return suggestions
+}
+
+export async function suggestAvailablePreviewDomainBatch(
+  domain: string,
+  includedProviderPrice: ReturnType<typeof maxDomainProviderPriceFromEnv>,
+  token: string,
+  options?: { cursor?: number; batchSize?: number; existingDomains?: string[] },
+): Promise<PreviewDomainSuggestionBatch> {
   const normalized = normalizeDomain(domain)
   const suggestions: PreviewDomainSuggestion[] = []
-  const checkedCandidates = new Set<string>()
-  const appendAvailableCandidates = async (candidates: string[]): Promise<void> => {
-    const uncheckedCandidates = candidates.filter((candidate) => {
-      if (checkedCandidates.has(candidate)) return false
-      checkedCandidates.add(candidate)
-      return true
+  const existingDomains = new Set(options?.existingDomains ?? [])
+  const cursor = Math.max(0, options?.cursor ?? 0)
+  const batchSize = Math.max(1, Math.min(options?.batchSize ?? 6, 12))
+  if (!normalized.ok) return { suggestions, nextCursor: cursor, done: true }
+
+  try {
+    const providerCandidatesPromise = cursor <= 8
+      ? suggestOpenProviderDomains(domain, { token, limit: 12 })
+        .then((providerSuggestions) => providerSuggestions.map((suggestion) => suggestion.domain))
+      .catch(() => [])
+      : Promise.resolve([])
+
+    const localCandidates = suggestionCandidates(domain)
+    const providerCandidates = cursor <= 8 ? await providerCandidatesPromise : []
+    const candidates = [...new Set([...localCandidates, ...providerCandidates])].filter((candidate) => {
+      const candidateDomain = normalizeDomain(candidate)
+      return candidateDomain.ok &&
+        candidateDomain.extension === normalized.extension &&
+        candidateDomain.domain !== normalized.domain
     })
-    if (uncheckedCandidates.length === 0 || suggestions.length >= 5) return
-    const availabilityResults = await checkOpenProviderDomainsAvailability(uncheckedCandidates, { token })
+    const batchCandidates = candidates.slice(cursor, cursor + batchSize)
+    if (batchCandidates.length === 0) {
+      return { suggestions, nextCursor: candidates.length, done: true }
+    }
+    const availabilityResults = await checkOpenProviderDomainsAvailability(batchCandidates, { token })
     for (const availability of availabilityResults) {
       const providerPrice = availability.price
         ? { amount: availability.price.amount, currency: availability.price.currency }
         : null
-      if (availability.status === "available" && providerPriceIsUsable(providerPrice, includedProviderPrice)) {
+      if (
+        availability.status === "available" &&
+        !existingDomains.has(availability.domain) &&
+        providerPriceIsUsable(providerPrice, includedProviderPrice)
+      ) {
         suggestions.push(suggestionForAvailability(availability.domain, providerPrice, includedProviderPrice))
+        existingDomains.add(availability.domain)
       }
       if (suggestions.length >= 5) break
     }
-  }
-
-  try {
-    const providerCandidatesPromise = suggestOpenProviderDomains(domain, { token, limit: 12 })
-      .then((providerSuggestions) => providerSuggestions.map((suggestion) => suggestion.domain))
-      .catch(() => [])
-
-    await appendAvailableCandidates(suggestionCandidates(domain))
-    if (suggestions.length >= 5) return suggestions
-
-    const providerCandidates = await providerCandidatesPromise
-    await appendAvailableCandidates(providerCandidates.filter((candidate) => {
-      const candidateDomain = normalizeDomain(candidate)
-      return candidateDomain.ok && normalized.ok && candidateDomain.extension === normalized.extension
-    }))
-    return suggestions
+    const nextCursor = cursor + batchCandidates.length
+    return { suggestions, nextCursor, done: nextCursor >= candidates.length }
   } catch {
     // Suggestions are optional; the primary domain check result remains authoritative.
-    return suggestions
+    return { suggestions, nextCursor: cursor + batchSize, done: false }
   }
 }
 

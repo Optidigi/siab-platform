@@ -4,7 +4,7 @@ import { headers } from "next/headers"
 import { getLocale, getTranslations } from "next-intl/server"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import { loadPreviewGrantContext, normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
-import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, suggestAvailablePreviewDomains } from "@/lib/domains/previewDomainOrder"
+import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, suggestAvailablePreviewDomainBatch } from "@/lib/domains/previewDomainOrder"
 import {
   fixedDomainOrderPriceFromEnv,
   maxDomainProviderPriceFromEnv,
@@ -40,6 +40,8 @@ export type PreviewCheckoutSuggestionsState = {
   ok: boolean
   domain?: string
   suggestions?: PreviewCheckoutDomainOption[]
+  cursor?: number
+  done?: boolean
 }
 
 const requirePreviewCheckoutContext = async (clientSlug: string) => {
@@ -185,22 +187,29 @@ export async function checkPreviewCheckoutDomainAction(
 
 export async function suggestPreviewCheckoutDomainsAction(
   clientSlug: string,
-  _previousState: PreviewCheckoutSuggestionsState,
+  previousState: PreviewCheckoutSuggestionsState,
   formData: FormData,
 ): Promise<PreviewCheckoutSuggestionsState> {
   await requirePreviewCheckoutContext(clientSlug)
 
   const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
-  if (!domain) return { ok: false, suggestions: [] }
+  if (!domain) return { ok: false, suggestions: [], cursor: 0, done: true }
 
   try {
     const locale = await getLocale()
     const token = await loginOpenProvider()
-    const suggestions = await suggestAvailablePreviewDomains(domain, maxDomainProviderPriceFromEnv(), token)
-    return {
-      ok: true,
-      domain,
-      suggestions: suggestions.map((suggestion) => {
+    const previousSuggestions = previousState.domain === domain ? previousState.suggestions ?? [] : []
+    if (previousSuggestions.length >= 5 || (previousState.domain === domain && previousState.done)) {
+      return { ok: true, domain, suggestions: previousSuggestions.slice(0, 5), cursor: previousState.cursor ?? 0, done: true }
+    }
+    const batch = await suggestAvailablePreviewDomainBatch(domain, maxDomainProviderPriceFromEnv(), token, {
+      cursor: previousState.domain === domain ? previousState.cursor ?? 0 : 0,
+      batchSize: 5,
+      existingDomains: previousSuggestions.map((suggestion) => suggestion.domain),
+    })
+    const nextSuggestions = [
+      ...previousSuggestions,
+      ...batch.suggestions.map((suggestion) => {
         const suggestionExtraFee = suggestion.extraFeeAmount && suggestion.extraFeeCurrency
           ? { amount: suggestion.extraFeeAmount, currency: suggestion.extraFeeCurrency }
           : null
@@ -209,10 +218,23 @@ export async function suggestPreviewCheckoutDomainsAction(
           extraFeeLabel: formatMoney(locale, suggestionExtraFee),
         }
       }),
+    ].slice(0, 5)
+    return {
+      ok: true,
+      domain,
+      suggestions: nextSuggestions,
+      cursor: batch.nextCursor,
+      done: batch.done || nextSuggestions.length >= 5,
     }
   } catch (error) {
     console.error("Preview checkout domain suggestions error", error)
-    return { ok: false, domain, suggestions: [] }
+    return {
+      ok: false,
+      domain,
+      suggestions: previousState.domain === domain ? previousState.suggestions ?? [] : [],
+      cursor: previousState.domain === domain ? previousState.cursor ?? 0 : 0,
+      done: true,
+    }
   }
 }
 
