@@ -151,6 +151,34 @@ describe("OpenProvider adapter", () => {
     }))
   })
 
+  it("can check availability without requesting price details", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      data: {
+        results: [{ domain: "fast-check.nl", status: "free" }],
+      },
+    }))
+
+    await expect(checkOpenProviderDomainAvailability("fast-check.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+      withPrice: false,
+    })).resolves.toMatchObject({
+      domain: "fast-check.nl",
+      status: "available",
+      price: null,
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith("https://openprovider.test/v1beta/domains/check", expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({ Authorization: "Bearer token-123" }),
+      body: JSON.stringify({
+        domains: [{ name: "fast-check", extension: "nl" }],
+        with_price: false,
+      }),
+    }))
+  })
+
   it("batch availability logs in once when no token is supplied", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
@@ -185,6 +213,209 @@ describe("OpenProvider adapter", () => {
         with_price: true,
       }),
     }))
+  })
+
+  it("reuses one process-local login for concurrent and later callers", async () => {
+    const fetchMock = vi.fn(async () => Response.json({ data: { token: "shared-token" } }))
+
+    await expect(Promise.all([
+      loginOpenProvider({ env, fetchImpl: fetchMock as typeof fetch }),
+      loginOpenProvider({ env, fetchImpl: fetchMock as typeof fetch }),
+    ])).resolves.toEqual(["shared-token", "shared-token"])
+    await expect(loginOpenProvider({ env, fetchImpl: fetchMock as typeof fetch })).resolves.toBe("shared-token")
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledWith("https://openprovider.test/v1beta/auth/login", expect.objectContaining({
+      method: "POST",
+    }))
+  })
+
+  it("refreshes the cached token once after an availability 401 and retries the read-only request", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith("/auth/login")) {
+        const loginCount = fetchMock.mock.calls.filter(([calledInput]) => String(calledInput).endsWith("/auth/login")).length
+        return Response.json({ data: { token: loginCount === 1 ? "old-token" : "fresh-token" } })
+      }
+      if (url.endsWith("/domains/check") && init?.headers && JSON.stringify(init.headers).includes("old-token")) {
+        return new Response("expired", { status: 401 })
+      }
+      return Response.json({
+        data: {
+          results: [{ domain: "refresh.nl", status: "free", price: { price: "8.50", currency: "EUR" } }],
+        },
+      })
+    })
+
+    await expect(checkOpenProviderDomainAvailability("refresh.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      domain: "refresh.nl",
+      status: "available",
+      price: { amount: "8.50", currency: "EUR" },
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "https://openprovider.test/v1beta/auth/login", expect.objectContaining({
+      method: "POST",
+    }))
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "https://openprovider.test/v1beta/domains/check", expect.objectContaining({
+      headers: expect.objectContaining({ Authorization: "Bearer old-token" }),
+    }))
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "https://openprovider.test/v1beta/auth/login", expect.objectContaining({
+      method: "POST",
+    }))
+    expect(fetchMock).toHaveBeenNthCalledWith(4, "https://openprovider.test/v1beta/domains/check", expect.objectContaining({
+      headers: expect.objectContaining({ Authorization: "Bearer fresh-token" }),
+    }))
+  })
+
+  it("caches normalized availability results briefly and bypasses that cache for explicit tokens", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith("/auth/login")) return Response.json({ data: { token: "cache-token" } })
+      return Response.json({
+        data: {
+          results: [{ domain: "cache.nl", status: "free", price: { price: "8.50", currency: "EUR" } }],
+        },
+      })
+    })
+
+    await expect(checkOpenProviderDomainsAvailability(["Cache.nl", "cache.nl"], {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toEqual([{
+      status: "available",
+      domain: "cache.nl",
+      available: true,
+      premium: false,
+      price: { amount: "8.50", currency: "EUR" },
+      internalReason: null,
+    }])
+
+    await expect(checkOpenProviderDomainAvailability("CACHE.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      domain: "cache.nl",
+      status: "available",
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    await expect(checkOpenProviderDomainAvailability("cache.nl", {
+      env,
+      token: "explicit-token",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      domain: "cache.nl",
+      status: "available",
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock).toHaveBeenLastCalledWith("https://openprovider.test/v1beta/domains/check", expect.objectContaining({
+      headers: expect.objectContaining({ Authorization: "Bearer explicit-token" }),
+    }))
+  })
+
+  it("keeps price and no-price availability cache entries separate", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith("/auth/login")) return Response.json({ data: { token: "split-cache-token" } })
+
+      const body = typeof init?.body === "string"
+        ? JSON.parse(init.body) as { with_price?: boolean }
+        : {}
+      return Response.json({
+        data: {
+          results: [{
+            domain: "split-cache.nl",
+            status: body.with_price === false ? "active" : "free",
+            ...(body.with_price === false ? {} : { price: { price: "8.50", currency: "EUR" } }),
+          }],
+        },
+      })
+    })
+
+    await expect(checkOpenProviderDomainAvailability("split-cache.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+      withPrice: false,
+    })).resolves.toMatchObject({
+      domain: "split-cache.nl",
+      status: "unavailable",
+      price: null,
+    })
+
+    await expect(checkOpenProviderDomainAvailability("split-cache.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      domain: "split-cache.nl",
+      status: "available",
+      price: { amount: "8.50", currency: "EUR" },
+    })
+
+    await expect(checkOpenProviderDomainAvailability("split-cache.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+      withPrice: false,
+    })).resolves.toMatchObject({
+      domain: "split-cache.nl",
+      status: "unavailable",
+      price: null,
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "https://openprovider.test/v1beta/domains/check", expect.objectContaining({
+      body: expect.stringContaining('"with_price":false'),
+    }))
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "https://openprovider.test/v1beta/domains/check", expect.objectContaining({
+      body: expect.stringContaining('"with_price":true'),
+    }))
+  })
+
+  it("scopes availability cache entries by account context", async () => {
+    const alternateEnv = {
+      ...env,
+      OPENPROVIDER_USERNAME: "alternate-user",
+      OPENPROVIDER_PASSWORD: "alternate-pass",
+    } as unknown as NodeJS.ProcessEnv
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith("/auth/login")) {
+        const body = typeof init?.body === "string" ? JSON.parse(init.body) as { username?: string } : {}
+        return Response.json({ data: { token: body.username === "alternate-user" ? "alternate-token" : "primary-token" } })
+      }
+      const headers = JSON.stringify(init?.headers)
+      return Response.json({
+        data: {
+          results: [{
+            domain: "scoped-cache.nl",
+            status: headers.includes("alternate-token") ? "active" : "free",
+          }],
+        },
+      })
+    })
+
+    await expect(checkOpenProviderDomainAvailability("scoped-cache.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      domain: "scoped-cache.nl",
+      status: "available",
+    })
+
+    await expect(checkOpenProviderDomainAvailability("scoped-cache.nl", {
+      env: alternateEnv,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      domain: "scoped-cache.nl",
+      status: "unavailable",
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(4)
   })
 
   it("parses nested OpenProvider product price details", async () => {

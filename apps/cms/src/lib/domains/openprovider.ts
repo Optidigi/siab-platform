@@ -51,7 +51,14 @@ type OpenProviderOptions = {
   token?: string
 }
 
+type OpenProviderAvailabilityOptions = OpenProviderOptions & {
+  withPrice?: boolean
+}
+
 const DEFAULT_API_BASE = "https://api.openprovider.eu/v1beta"
+const OPENPROVIDER_TOKEN_TTL_MS = 47 * 60 * 60 * 1000
+const AVAILABILITY_CACHE_TTL_MS = 60 * 1000
+const AVAILABILITY_CACHE_MAX_ENTRIES = 256
 
 export class OpenProviderApiError extends Error {
   status: number
@@ -95,6 +102,82 @@ const dataObject = (value: unknown): Record<string, unknown> => {
 
 const fetcher = (options?: OpenProviderOptions): FetchLike => options?.fetchImpl ?? globalThis.fetch
 
+type CachedOpenProviderToken = {
+  key: string
+  token: string
+  expiresAt: number
+}
+
+let fetcherIdSequence = 0
+const fetcherIds = new WeakMap<FetchLike, number>()
+let cachedOpenProviderToken: CachedOpenProviderToken | null = null
+let pendingOpenProviderLogin: Promise<CachedOpenProviderToken> | null = null
+let pendingOpenProviderLoginKey: string | null = null
+
+const fetcherCacheId = (fetchImpl: FetchLike): number => {
+  const existing = fetcherIds.get(fetchImpl)
+  if (existing) return existing
+  fetcherIdSequence += 1
+  fetcherIds.set(fetchImpl, fetcherIdSequence)
+  return fetcherIdSequence
+}
+
+const authCacheKey = (env: NodeJS.ProcessEnv, fetchImpl: FetchLike, username: string): string =>
+  `${apiBase(env)}:${username}:${fetcherCacheId(fetchImpl)}`
+
+const clearCachedOpenProviderToken = (key?: string): void => {
+  if (!key || cachedOpenProviderToken?.key === key) cachedOpenProviderToken = null
+  if (!key || pendingOpenProviderLoginKey === key) {
+    pendingOpenProviderLogin = null
+    pendingOpenProviderLoginKey = null
+  }
+}
+
+const cloneAvailabilityResult = (result: OpenProviderAvailabilityResult): OpenProviderAvailabilityResult => ({
+  ...result,
+  price: result.price ? { ...result.price } : null,
+})
+
+type CachedAvailabilityResult = {
+  expiresAt: number
+  result: OpenProviderAvailabilityResult
+}
+
+const availabilityCache = new Map<string, CachedAvailabilityResult>()
+
+const availabilityCacheKey = (scope: string, domain: string, withPrice: boolean): string =>
+  `${scope}:${domain}:with_price=${withPrice}`
+
+const getCachedAvailabilityResult = (scope: string, domain: string, withPrice: boolean, now = Date.now()): OpenProviderAvailabilityResult | null => {
+  const key = availabilityCacheKey(scope, domain, withPrice)
+  const cached = availabilityCache.get(key)
+  if (!cached) return null
+  if (cached.expiresAt <= now) {
+    availabilityCache.delete(key)
+    return null
+  }
+  return cloneAvailabilityResult(cached.result)
+}
+
+const pruneAvailabilityCache = (now = Date.now()): void => {
+  for (const [key, cached] of availabilityCache) {
+    if (cached.expiresAt <= now) availabilityCache.delete(key)
+  }
+  while (availabilityCache.size > AVAILABILITY_CACHE_MAX_ENTRIES) {
+    const oldestKey = availabilityCache.keys().next().value as string | undefined
+    if (!oldestKey) break
+    availabilityCache.delete(oldestKey)
+  }
+}
+
+const setCachedAvailabilityResult = (scope: string, result: OpenProviderAvailabilityResult, withPrice: boolean, now = Date.now()): void => {
+  availabilityCache.set(availabilityCacheKey(scope, result.domain, withPrice), {
+    expiresAt: now + AVAILABILITY_CACHE_TTL_MS,
+    result: cloneAvailabilityResult(result),
+  })
+  pruneAvailabilityCache(now)
+}
+
 export function requireOpenProviderCredentials(env: NodeJS.ProcessEnv = process.env): { username: string; password: string } {
   const username = cleanEnv(env.OPENPROVIDER_USERNAME)
   const password = cleanEnv(env.OPENPROVIDER_PASSWORD)
@@ -103,19 +186,46 @@ export function requireOpenProviderCredentials(env: NodeJS.ProcessEnv = process.
 }
 
 export async function loginOpenProvider(options?: OpenProviderOptions): Promise<string> {
+  if (options?.token) return options.token
+
   const env = options?.env ?? process.env
   const credentials = requireOpenProviderCredentials(env)
-  const response = await fetcher(options)(`${apiBase(env)}/auth/login`, {
-    method: "POST",
-    headers: jsonHeaders(),
-    body: JSON.stringify(credentials),
-  })
-  if (!response.ok) throw new OpenProviderApiError("OpenProvider login", response.status)
+  const fetchImpl = fetcher(options)
+  const key = authCacheKey(env, fetchImpl, credentials.username)
+  const now = Date.now()
+  if (cachedOpenProviderToken?.key === key && cachedOpenProviderToken.expiresAt > now) {
+    return cachedOpenProviderToken.token
+  }
+  if (pendingOpenProviderLogin && pendingOpenProviderLoginKey === key) {
+    return (await pendingOpenProviderLogin).token
+  }
 
-  const payload = dataObject(await json(response))
-  const token = typeof payload.token === "string" ? payload.token : null
-  if (!token) throw new Error("OpenProvider login response did not include a token.")
-  return token
+  pendingOpenProviderLoginKey = key
+  pendingOpenProviderLogin = (async () => {
+    const response = await fetchImpl(`${apiBase(env)}/auth/login`, {
+      method: "POST",
+      headers: jsonHeaders(),
+      body: JSON.stringify(credentials),
+    })
+    if (!response.ok) throw new OpenProviderApiError("OpenProvider login", response.status)
+
+    const payload = dataObject(await json(response))
+    const token = typeof payload.token === "string" ? payload.token : null
+    if (!token) throw new Error("OpenProvider login response did not include a token.")
+
+    const entry = { key, token, expiresAt: Date.now() + OPENPROVIDER_TOKEN_TTL_MS }
+    cachedOpenProviderToken = entry
+    return entry
+  })()
+
+  try {
+    return (await pendingOpenProviderLogin).token
+  } finally {
+    if (pendingOpenProviderLoginKey === key) {
+      pendingOpenProviderLogin = null
+      pendingOpenProviderLoginKey = null
+    }
+  }
 }
 
 const normalizeMoney = (source: unknown): { amount: string; currency: string } | null => {
@@ -186,9 +296,37 @@ const availabilityResultDomain = (value: unknown): string | null => {
   return `${name}.${extension.replace(/^\./, "")}`
 }
 
+const fetchOpenProviderAvailability = async (
+  env: NodeJS.ProcessEnv,
+  token: string,
+  domains: Array<{ name: string; extension: string }>,
+  withPrice: boolean,
+  options?: OpenProviderOptions,
+): Promise<Response> =>
+  fetcher(options)(`${apiBase(env)}/domains/check`, {
+    method: "POST",
+    headers: jsonHeaders(token),
+    body: JSON.stringify({
+      domains: domains.map((domain) => ({ name: domain.name, extension: domain.extension })),
+      with_price: withPrice,
+    }),
+  })
+
+const fetchOpenProviderSuggestions = async (
+  env: NodeJS.ProcessEnv,
+  token: string,
+  body: Record<string, unknown>,
+  options?: OpenProviderOptions,
+): Promise<Response> =>
+  fetcher(options)(`${apiBase(env)}/domains/suggest-name`, {
+    method: "POST",
+    headers: jsonHeaders(token),
+    body: JSON.stringify(body),
+  })
+
 export async function checkOpenProviderDomainsAvailability(
   domainInputs: string[],
-  options?: OpenProviderOptions,
+  options?: OpenProviderAvailabilityOptions,
 ): Promise<OpenProviderAvailabilityResult[]> {
   const domains = [...new Map(domainInputs.map((input) => {
     const domain = splitDomain(input)
@@ -197,18 +335,36 @@ export async function checkOpenProviderDomainsAvailability(
   if (domains.length === 0) return []
 
   const env = options?.env ?? process.env
-  const token = options?.token ?? await loginOpenProvider(options)
-  const response = await fetcher(options)(`${apiBase(env)}/domains/check`, {
-    method: "POST",
-    headers: jsonHeaders(token),
-    body: JSON.stringify({
-      domains: domains.map((domain) => ({ name: domain.name, extension: domain.extension })),
-      with_price: true,
-    }),
-  })
+  const withPrice = options?.withPrice ?? true
+  const canUseProcessCache = !options?.token
+  const fetchImpl = fetcher(options)
+  const cacheScope = canUseProcessCache
+    ? authCacheKey(env, fetchImpl, requireOpenProviderCredentials(env).username)
+    : null
+  const cachedResults = new Map<string, OpenProviderAvailabilityResult>()
+  const domainsToFetch = canUseProcessCache
+    ? domains.filter((domain) => {
+      const cached = cacheScope ? getCachedAvailabilityResult(cacheScope, domain.domain, withPrice) : null
+      if (cached) cachedResults.set(domain.domain, cached)
+      return !cached
+    })
+    : domains
+  if (domainsToFetch.length === 0) return domains.map((domain) => cachedResults.get(domain.domain) ?? internalAvailabilityResult(domain.domain, "unknown_provider_status"))
+
+  let token = options?.token ?? await loginOpenProvider(options)
+  let response = await fetchOpenProviderAvailability(env, token, domainsToFetch, withPrice, options)
+  if (!options?.token && response.status === 401) {
+    clearCachedOpenProviderToken(cacheScope ?? undefined)
+    token = await loginOpenProvider(options)
+    response = await fetchOpenProviderAvailability(env, token, domainsToFetch, withPrice, options)
+  }
 
   if (!response.ok) {
-    return domains.map((domain) => internalAvailabilityResult(domain.domain, `provider_http_${response.status}`))
+    const fetchedResults = new Map(domainsToFetch.map((domain) => [
+      domain.domain,
+      internalAvailabilityResult(domain.domain, `provider_http_${response.status}`),
+    ]))
+    return domains.map((domain) => cachedResults.get(domain.domain) ?? fetchedResults.get(domain.domain) ?? internalAvailabilityResult(domain.domain, `provider_http_${response.status}`))
   }
 
   const payload = await json(response)
@@ -217,7 +373,7 @@ export async function checkOpenProviderDomainsAvailability(
   const resultsByDomain = new Map<string, unknown>()
   rawResults.forEach((result, index) => {
     const directDomain = availabilityResultDomain(result)
-    const fallbackDomain = domains[index]?.domain ?? null
+    const fallbackDomain = domainsToFetch[index]?.domain ?? null
     let key = fallbackDomain
     if (directDomain) {
       try {
@@ -229,16 +385,22 @@ export async function checkOpenProviderDomainsAvailability(
     if (key) resultsByDomain.set(key, result)
   })
 
-  return domains.map((domain) => {
+  const fetchedResults = new Map<string, OpenProviderAvailabilityResult>()
+  domainsToFetch.forEach((domain) => {
     const result = resultsByDomain.get(domain.domain)
-    if (!result) return internalAvailabilityResult(domain.domain, "unknown_provider_status")
-    return normalizeOpenProviderAvailabilityResponse(domain.domain, { data: { results: [result] } })
+    const normalized = result
+      ? normalizeOpenProviderAvailabilityResponse(domain.domain, { data: { results: [result] } })
+      : internalAvailabilityResult(domain.domain, "unknown_provider_status")
+    fetchedResults.set(domain.domain, normalized)
+    if (cacheScope) setCachedAvailabilityResult(cacheScope, normalized, withPrice)
   })
+
+  return domains.map((domain) => cachedResults.get(domain.domain) ?? fetchedResults.get(domain.domain) ?? internalAvailabilityResult(domain.domain, "unknown_provider_status"))
 }
 
 export async function checkOpenProviderDomainAvailability(
   domainInput: string,
-  options?: OpenProviderOptions,
+  options?: OpenProviderAvailabilityOptions,
 ): Promise<OpenProviderAvailabilityResult> {
   const domain = splitDomain(domainInput)
   return (await checkOpenProviderDomainsAvailability([domain.domain], options))[0]
@@ -298,19 +460,22 @@ export async function suggestOpenProviderDomains(
 ): Promise<OpenProviderDomainSuggestion[]> {
   const domain = splitDomain(domainInput)
   const env = options?.env ?? process.env
-  const token = options?.token ?? await loginOpenProvider(options)
-  const response = await fetcher(options)(`${apiBase(env)}/domains/suggest-name`, {
-    method: "POST",
-    headers: jsonHeaders(token),
-    body: JSON.stringify({
-      language: options?.language ?? "dut",
-      limit: options?.limit ?? 8,
-      name: domain.name,
-      provider: "namestudio",
-      sensitive: true,
-      tlds: [domain.extension],
-    }),
-  })
+  const body = {
+    language: options?.language ?? "dut",
+    limit: options?.limit ?? 8,
+    name: domain.name,
+    provider: "namestudio",
+    sensitive: true,
+    tlds: [domain.extension],
+  }
+  let token = options?.token ?? await loginOpenProvider(options)
+  let response = await fetchOpenProviderSuggestions(env, token, body, options)
+  if (!options?.token && response.status === 401) {
+    const credentials = requireOpenProviderCredentials(env)
+    clearCachedOpenProviderToken(authCacheKey(env, fetcher(options), credentials.username))
+    token = await loginOpenProvider(options)
+    response = await fetchOpenProviderSuggestions(env, token, body, options)
+  }
   if (!response.ok) throw new OpenProviderApiError("OpenProvider domain suggestions", response.status)
   return normalizeOpenProviderSuggestionResponse(await json(response))
 }

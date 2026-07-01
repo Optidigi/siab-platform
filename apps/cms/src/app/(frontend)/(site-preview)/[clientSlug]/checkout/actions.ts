@@ -1,9 +1,6 @@
 "use server"
 
-import { headers } from "next/headers"
 import { getLocale, getTranslations } from "next-intl/server"
-import { previewAuth } from "@/lib/preview/betterAuth"
-import { loadPreviewGrantContext, normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
 import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, suggestAvailablePreviewDomainBatch } from "@/lib/domains/previewDomainOrder"
 import {
   fixedDomainOrderPriceFromEnv,
@@ -11,8 +8,9 @@ import {
   normalizeDomainRegistrantDetails,
   type FixedDomainOrderPrice,
 } from "@/lib/domains/orderState"
-import { loginOpenProvider } from "@/lib/domains/openprovider"
 import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayments"
+import { logPreviewCheckoutTiming, startPreviewCheckoutTimer } from "@/lib/preview/domainCheckoutTiming"
+import { requirePreviewCheckoutContext } from "./previewCheckoutContext"
 
 export type PreviewCheckoutDomainOption = {
   domain: string
@@ -42,21 +40,6 @@ export type PreviewCheckoutSuggestionsState = {
   suggestions?: PreviewCheckoutDomainOption[]
   cursor?: number
   done?: boolean
-}
-
-const requirePreviewCheckoutContext = async (clientSlug: string) => {
-  const t = await getTranslations("preview")
-  const session = await previewAuth.api.getSession({
-    headers: await headers(),
-    query: { disableCookieCache: true },
-  })
-  const customerEmail = session?.user?.email
-  if (!customerEmail) throw new Error(t("previewLoginRequired"))
-
-  return loadPreviewGrantContext({
-    clientSlug: normalizePreviewClientSlug(clientSlug),
-    email: customerEmail,
-  })
 }
 
 const textField = (formData: FormData, key: string): string | null => {
@@ -147,8 +130,11 @@ export async function checkPreviewCheckoutDomainAction(
   _previousState: PreviewCheckoutActionState,
   formData: FormData,
 ): Promise<PreviewCheckoutActionState> {
+  const totalStart = startPreviewCheckoutTimer()
   const t = await getTranslations("preview")
+  const authStart = startPreviewCheckoutTimer()
   const context = await requirePreviewCheckoutContext(clientSlug)
+  logPreviewCheckoutTiming("primary_check_auth", authStart, { clientSlug: context.clientSlug })
 
   const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
   if (!domain) return { ok: false, message: t("checkoutDomainRequired") }
@@ -156,12 +142,16 @@ export async function checkPreviewCheckoutDomainAction(
 
   try {
     const locale = await getLocale()
+    const providerStart = startPreviewCheckoutTimer()
     const result = await checkAndRecordPreviewDomainOrder(context.payload, context.run, domain, registrant, { record: false })
+    logPreviewCheckoutTiming("primary_check_provider", providerStart, { clientSlug: context.clientSlug, domain: result.domain }, {
+      status: result.messageKey,
+    })
     const extraFee = result.extraFeeAmount && result.extraFeeCurrency
       ? { amount: result.extraFeeAmount, currency: result.extraFeeCurrency }
       : null
     const totalPrice = addMoney(fixedDomainOrderPriceFromEnv(), extraFee)
-    return {
+    const response = {
       ok: result.messageKey === "checkoutDomainAvailable" || result.messageKey === "checkoutDomainAvailableExtraFee",
       status: domainStatusFromMessageKey(result.messageKey),
       message: t(result.messageKey, {
@@ -176,7 +166,16 @@ export async function checkPreviewCheckoutDomainAction(
       totalPriceLabel: formatMoney(locale, totalPrice),
       suggestions: [],
     }
+    logPreviewCheckoutTiming("primary_check_total", totalStart, { clientSlug: context.clientSlug, domain: result.domain }, {
+      ok: response.ok,
+      status: response.status,
+    })
+    return response
   } catch (error) {
+    logPreviewCheckoutTiming("primary_check_total", totalStart, { clientSlug: context.clientSlug, domain }, {
+      ok: false,
+      status: domainErrorStatus(error),
+    })
     return {
       ok: false,
       status: domainErrorStatus(error),
@@ -197,12 +196,11 @@ export async function suggestPreviewCheckoutDomainsAction(
 
   try {
     const locale = await getLocale()
-    const token = await loginOpenProvider()
     const previousSuggestions = previousState.domain === domain ? previousState.suggestions ?? [] : []
     if (previousSuggestions.length >= 5 || (previousState.domain === domain && previousState.done)) {
       return { ok: true, domain, suggestions: previousSuggestions.slice(0, 5), cursor: previousState.cursor ?? 0, done: true }
     }
-    const batch = await suggestAvailablePreviewDomainBatch(domain, maxDomainProviderPriceFromEnv(), token, {
+    const batch = await suggestAvailablePreviewDomainBatch(domain, maxDomainProviderPriceFromEnv(), {
       cursor: previousState.domain === domain ? previousState.cursor ?? 0 : 0,
       batchSize: 5,
       existingDomains: previousSuggestions.map((suggestion) => suggestion.domain),
@@ -243,8 +241,11 @@ export async function startPreviewCheckoutPaymentAction(
   _previousState: PreviewCheckoutActionState,
   formData: FormData,
 ): Promise<PreviewCheckoutActionState> {
+  const totalStart = startPreviewCheckoutTimer()
   const t = await getTranslations("preview")
+  const authStart = startPreviewCheckoutTimer()
   const context = await requirePreviewCheckoutContext(clientSlug)
+  logPreviewCheckoutTiming("payment_auth", authStart, { clientSlug: context.clientSlug })
 
   const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
   if (!domain) return { ok: false, message: t("checkoutDomainRequired") }
@@ -252,7 +253,10 @@ export async function startPreviewCheckoutPaymentAction(
   if (!registrant) return { ok: false, message: t("checkoutRegistrantRequired") }
 
   try {
+    const domainStart = startPreviewCheckoutTimer()
     const ready = await requireReadyPreviewDomainOrder(context.payload, context.run, domain, registrant)
+    logPreviewCheckoutTiming("payment_domain_check", domainStart, { clientSlug: context.clientSlug, domain: ready.domain })
+    const approvalStart = startPreviewCheckoutTimer()
     const approved = await context.payload.update({
       collection: "site-generation-runs",
       id: ready.run.id,
@@ -262,6 +266,8 @@ export async function startPreviewCheckoutPaymentAction(
       depth: 0,
       overrideAccess: true,
     }) as typeof context.run
+    logPreviewCheckoutTiming("payment_approval_update", approvalStart, { clientSlug: context.clientSlug, domain: ready.domain })
+    const mollieStart = startPreviewCheckoutTimer()
     const checkout = await createMollieCheckoutForGenerationRun(context.payload, {
       runId: approved.id,
       customerEmail: context.customerEmail,
@@ -269,12 +275,20 @@ export async function startPreviewCheckoutPaymentAction(
       selectedDomain: ready.domain,
       actor: context.customerEmail,
     })
+    logPreviewCheckoutTiming("payment_mollie_checkout", mollieStart, { clientSlug: context.clientSlug, domain: ready.domain })
+    logPreviewCheckoutTiming("payment_total", totalStart, { clientSlug: context.clientSlug, domain: ready.domain }, { ok: true })
     return {
       ok: true,
       message: t("checkoutRedirectingToPayment"),
       checkoutUrl: checkout.checkoutUrl,
     }
   } catch (error) {
+    logPreviewCheckoutTiming("payment_total", totalStart, { clientSlug: context.clientSlug, domain }, {
+      ok: false,
+      status: error instanceof Error && error.message === "Payment gate is already satisfied."
+        ? "payment_complete"
+        : domainErrorStatus(error),
+    })
     if (error instanceof Error && error.message === "Payment gate is already satisfied.") {
       return { ok: false, status: "payment_complete", message: t("checkoutPaymentAlreadyComplete") }
     }

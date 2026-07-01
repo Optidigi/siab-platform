@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@site
 import { Input } from "@siteinabox/ui/components/input"
 import { cn } from "@siteinabox/ui/lib/utils"
 import type { DomainRegistrantDetails } from "@/lib/domains/orderState"
+import { previewDomainCandidates } from "@/lib/domains/previewDomainCandidates"
 
 export type PreviewCheckoutDomainOption = {
   domain: string
@@ -56,11 +57,6 @@ type PreviewCheckoutAction = (
   formData: FormData,
 ) => Promise<PreviewCheckoutActionState>
 
-type PreviewCheckoutSuggestionsAction = (
-  previousState: PreviewCheckoutSuggestionsState,
-  formData: FormData,
-) => Promise<PreviewCheckoutSuggestionsState>
-
 type CheckoutStep = "domain" | "payment"
 
 type PreviewCheckoutProps = {
@@ -75,8 +71,9 @@ type PreviewCheckoutProps = {
   paymentStatus: string
   approvalStatus: string
   previewHref: string
+  prewarmHref: string
+  suggestionsHref: string
   checkDomainAction: PreviewCheckoutAction
-  suggestDomainAlternativesAction: PreviewCheckoutSuggestionsAction
   startPaymentAction: PreviewCheckoutAction
 }
 
@@ -127,6 +124,17 @@ const requiredRegistrantKeys: Array<keyof DomainRegistrantDetails> = [
 const registrantIsComplete = (holder: DomainRegistrantDetails): boolean =>
   requiredRegistrantKeys.every((key) => String(holder[key] ?? "").trim().length > 0)
 
+const placeholderSuggestionsForDomain = (domain: string): PreviewCheckoutDomainOption[] => {
+  return previewDomainCandidates(domain)
+    .slice(0, 5)
+    .map((candidate) => ({
+      domain: candidate,
+      included: true,
+      extraFeeAmount: null,
+      extraFeeCurrency: null,
+    }))
+}
+
 export function PreviewCheckout({
   customerEmail,
   currentDomain,
@@ -136,8 +144,9 @@ export function PreviewCheckout({
   initialTotalPriceLabel,
   paymentStatus,
   previewHref,
+  prewarmHref,
+  suggestionsHref,
   checkDomainAction,
-  suggestDomainAlternativesAction,
   startPaymentAction,
 }: PreviewCheckoutProps) {
   const t = useTranslations("preview")
@@ -150,20 +159,29 @@ export function PreviewCheckout({
     startPaymentAction,
     initialState,
   )
-  const [suggestionsState, suggestionsAction, suggestionsPending] = useActionState(
-    suggestDomainAlternativesAction,
-    initialSuggestionsState,
-  )
+  const [suggestionsState, setSuggestionsState] = React.useState<PreviewCheckoutSuggestionsState>(initialSuggestionsState)
+  const [suggestionsPending, setSuggestionsPending] = React.useState(false)
   const [domainValue, setDomainValue] = React.useState(currentDomain ?? "")
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(domainReady ? (currentDomain ?? null) : null)
   const [holder, setHolder] = React.useState(() => emptyRegistrant(customerEmail, registrant))
   const domainFormRef = React.useRef<HTMLFormElement | null>(null)
-  const suggestionsFormRef = React.useRef<HTMLFormElement | null>(null)
   const lastSubmittedDomainRef = React.useRef<string | null>(domainReady ? (currentDomain ?? null) : null)
+  const suggestionsAbortRef = React.useRef<AbortController | null>(null)
+  const lastSuggestionsRequestKeyRef = React.useRef<string | null>(null)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
   const checkAppliesToCurrentInput = Boolean(checkState.domain && checkState.domain === normalizedDomainValue)
   const suggestionsApplyToCurrentInput = Boolean(suggestionsState.domain && suggestionsState.domain === normalizedDomainValue)
   const domainLooksCheckable = normalizedDomainValue.includes(".") && normalizedDomainValue.length >= 5
+
+  React.useEffect(() => {
+    const controller = new AbortController()
+    void fetch(prewarmHref, {
+      method: "POST",
+      credentials: "same-origin",
+      signal: controller.signal,
+    }).catch(() => {})
+    return () => controller.abort()
+  }, [prewarmHref])
 
   React.useEffect(() => {
     if (checkState.ok && checkState.domain && checkState.domain === normalizedDomainValue) {
@@ -194,15 +212,81 @@ export function PreviewCheckout({
     if (step !== "domain") return
     if (!domainLooksCheckable) return
     if (checkAppliesToCurrentInput && checkState.ok) return
-    if (suggestionsPending) return
     if (
       suggestionsApplyToCurrentInput &&
       (suggestionsState.done || (suggestionsState.suggestions?.length ?? 0) >= 5)
     ) return
 
+    const existing = suggestionsApplyToCurrentInput ? suggestionsState.suggestions ?? [] : []
+    const cursor = suggestionsApplyToCurrentInput ? suggestionsState.cursor ?? 0 : 0
+    const requestKey = JSON.stringify({
+      domain: normalizedDomainValue,
+      cursor,
+      existing: existing.map((suggestion) => suggestion.domain),
+    })
+    if (suggestionsPending && lastSuggestionsRequestKeyRef.current === requestKey) return
+
     const timer = window.setTimeout(() => {
-      suggestionsFormRef.current?.requestSubmit()
-    }, suggestionsApplyToCurrentInput ? 0 : 250)
+      suggestionsAbortRef.current?.abort()
+      const controller = new AbortController()
+      suggestionsAbortRef.current = controller
+      lastSuggestionsRequestKeyRef.current = requestKey
+      setSuggestionsPending(true)
+      void fetch(suggestionsHref, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        signal: controller.signal,
+        body: JSON.stringify({
+          domain: normalizedDomainValue,
+          cursor,
+          existing: existing.map((suggestion) => suggestion.domain),
+        }),
+      })
+        .then(async (response) => {
+          if (!response.ok) throw new Error(`Suggestion request failed: ${response.status}`)
+          return await response.json() as PreviewCheckoutSuggestionsState
+        })
+        .then((nextState) => {
+          if (controller.signal.aborted) return
+          setSuggestionsState((previousState) => {
+            const previousSuggestions = previousState.domain === normalizedDomainValue
+              ? previousState.suggestions ?? []
+              : []
+            const nextSuggestions = nextState.domain === normalizedDomainValue
+              ? nextState.suggestions ?? []
+              : []
+            const merged = [
+              ...previousSuggestions,
+              ...nextSuggestions.filter((suggestion) => !previousSuggestions.some((existingSuggestion) => existingSuggestion.domain === suggestion.domain)),
+            ].slice(0, 5)
+            return {
+              ok: nextState.ok,
+              domain: normalizedDomainValue,
+              suggestions: merged,
+              cursor: nextState.cursor ?? cursor,
+              done: nextState.done || merged.length >= 5,
+            }
+          })
+        })
+        .catch((error) => {
+          if (controller.signal.aborted) return
+          console.error("Preview checkout suggestions request failed", error)
+          setSuggestionsState((previousState) => ({
+            ok: false,
+            domain: normalizedDomainValue,
+            suggestions: previousState.domain === normalizedDomainValue ? previousState.suggestions ?? [] : [],
+            cursor,
+            done: true,
+          }))
+        })
+        .finally(() => {
+          if (suggestionsAbortRef.current !== controller) return
+          suggestionsAbortRef.current = null
+          lastSuggestionsRequestKeyRef.current = null
+          setSuggestionsPending(false)
+        })
+    }, suggestionsApplyToCurrentInput ? 0 : 90)
     return () => window.clearTimeout(timer)
   }, [
     checkAppliesToCurrentInput,
@@ -211,16 +295,23 @@ export function PreviewCheckout({
     normalizedDomainValue,
     step,
     suggestionsApplyToCurrentInput,
+    suggestionsHref,
     suggestionsPending,
     suggestionsState.done,
     suggestionsState.suggestions,
+    suggestionsState.cursor,
   ])
 
   const selectedDomain = checkedDomain && checkedDomain === domainValue ? checkedDomain : null
   const primaryDomainAvailable = Boolean(checkAppliesToCurrentInput && checkState.ok)
   const suggestions = !primaryDomainAvailable && suggestionsApplyToCurrentInput ? suggestionsState.suggestions : []
+  const placeholderSuggestions = !primaryDomainAvailable && domainLooksCheckable
+    ? placeholderSuggestionsForDomain(normalizedDomainValue)
+      .filter((option) => !(suggestions ?? []).some((suggestion) => suggestion.domain === option.domain))
+      .slice(0, Math.max(0, 5 - (suggestions?.length ?? 0)))
+    : []
   const showSuggestions = step === "domain" && domainLooksCheckable && !primaryDomainAvailable && (
-    suggestionsPending || suggestionsApplyToCurrentInput || (suggestions?.length ?? 0) > 0
+    suggestionsPending || suggestionsApplyToCurrentInput || (suggestions?.length ?? 0) > 0 || placeholderSuggestions.length > 0
   )
   const holderComplete = registrantIsComplete(holder)
   const canContinueFromDomain = Boolean(
@@ -251,6 +342,10 @@ export function PreviewCheckout({
         : null
 
   const updateDomain = (value: string) => {
+    suggestionsAbortRef.current?.abort()
+    suggestionsAbortRef.current = null
+    lastSuggestionsRequestKeyRef.current = null
+    setSuggestionsPending(false)
     setDomainValue(value)
     if (value !== checkedDomain) {
       setCheckedDomain(null)
@@ -259,6 +354,10 @@ export function PreviewCheckout({
   }
 
   const selectSuggestedDomain = (option: PreviewCheckoutDomainOption) => {
+    suggestionsAbortRef.current?.abort()
+    suggestionsAbortRef.current = null
+    lastSuggestionsRequestKeyRef.current = null
+    setSuggestionsPending(false)
     setDomainValue(option.domain)
     setCheckedDomain(null)
     lastSubmittedDomainRef.current = option.domain
@@ -330,9 +429,6 @@ export function PreviewCheckout({
                     </div>
                   </div>
                 </form>
-                <form ref={suggestionsFormRef} action={suggestionsAction} className="hidden">
-                  <input type="hidden" name="domain" value={normalizedDomainValue} />
-                </form>
 
                 {domainResultKind === "error" && (
                   <Alert variant="destructive">
@@ -346,6 +442,7 @@ export function PreviewCheckout({
                   <DomainSuggestions
                     loading={suggestionsPending}
                     suggestions={suggestions}
+                    placeholders={suggestionsPending || !suggestionsApplyToCurrentInput ? placeholderSuggestions : []}
                     selectedDomain={null}
                     onSelect={selectSuggestedDomain}
                   />
@@ -537,10 +634,12 @@ function CheckoutActionBar({
 function DomainOptionRow({
   option,
   selected,
+  checking = false,
   onSelect,
 }: {
   option: PreviewCheckoutDomainOption
   selected?: boolean
+  checking?: boolean
   onSelect?: (option: PreviewCheckoutDomainOption) => void
 }) {
   const t = useTranslations("preview")
@@ -555,7 +654,9 @@ function DomainOptionRow({
         )}
       </span>
       <span className="flex shrink-0 items-center gap-2">
-        {option.included ? (
+        {checking ? (
+          <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
+        ) : option.included ? (
           <span className="text-success" aria-label={t("checkoutDomainIncludedBadge")}>
             <Check className="size-5" aria-hidden />
           </span>
@@ -588,7 +689,14 @@ function DomainOptionRow({
     )
   }
   return (
-    <div className={cn("flex w-full items-center justify-between gap-3 rounded-md border bg-background p-3", selected && "border-success bg-success/5 ring-1 ring-success/30")}>
+    <div
+      className={cn(
+        "flex w-full items-center justify-between gap-3 rounded-md border bg-background p-3",
+        selected && "border-success bg-success/5 ring-1 ring-success/30",
+        checking && "border-dashed text-muted-foreground",
+      )}
+      aria-busy={checking}
+    >
       {content}
     </div>
   )
@@ -597,17 +705,20 @@ function DomainOptionRow({
 function DomainSuggestions({
   loading,
   suggestions,
+  placeholders = [],
   selectedDomain,
   onSelect,
 }: {
   loading: boolean
   suggestions?: PreviewCheckoutDomainOption[]
+  placeholders?: PreviewCheckoutDomainOption[]
   selectedDomain: string | null
   onSelect: (option: PreviewCheckoutDomainOption) => void
 }) {
   const t = useTranslations("preview")
-  if (!loading && !suggestions?.length) return null
+  if (!loading && !suggestions?.length && !placeholders.length) return null
   const visibleSuggestions = (suggestions ?? []).slice(0, 5)
+  const visiblePlaceholders = placeholders.slice(0, Math.max(0, 5 - visibleSuggestions.length))
   return (
     <div className="grid gap-2">
       <div className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -621,6 +732,13 @@ function DomainSuggestions({
             option={option}
             selected={selectedDomain === option.domain}
             onSelect={onSelect}
+          />
+        ))}
+        {visiblePlaceholders.map((option) => (
+          <DomainOptionRow
+            key={`checking-${option.domain}`}
+            option={option}
+            checking
           />
         ))}
       </div>

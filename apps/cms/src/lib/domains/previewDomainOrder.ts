@@ -15,10 +15,10 @@ import {
 import {
   checkOpenProviderDomainAvailability,
   checkOpenProviderDomainsAvailability,
-  loginOpenProvider,
   suggestOpenProviderDomains,
 } from "@/lib/domains/openprovider"
 import { normalizeDomain } from "@/lib/domains/normalize"
+import { previewDomainCandidates } from "@/lib/domains/previewDomainCandidates"
 
 export type PreviewDomainSuggestion = {
   domain: string
@@ -53,53 +53,6 @@ export function selectedDomainForCheckout(run: Pick<SiteGenerationRun, "domainOr
   return state.status === "ready_to_register" && state.domain ? state.domain : null
 }
 
-const suffixModifiers = ["online", "site", "web", "studio", "zorg", "praktijk", "groep", "hq"]
-const prefixModifiers = ["mijn", "de", "het"]
-const trailingBusinessWords = ["web", "site", "online", "studio", "zorg", "care", "praktijk", "clinic", "groep", "hq"]
-
-const titleCase = (value: string): string => value ? `${value[0]?.toUpperCase() ?? ""}${value.slice(1)}` : value
-
-const suggestionCandidates = (domain: string): string[] => {
-  const normalized = normalizeDomain(domain)
-  if (!normalized.ok) return []
-  const [name, extension] = [normalized.name, normalized.extension]
-  const compactName = name.replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "")
-  if (!compactName) return []
-
-  const candidates = new Set<string>()
-  const parts = compactName.split("-").filter(Boolean)
-  const joined = parts.join("")
-  const spaced = parts.join("-")
-  const roots = new Set<string>([compactName, joined, spaced])
-
-  for (const suffix of trailingBusinessWords) {
-    for (const root of [...roots]) {
-      if (root.endsWith(suffix) && root.length > suffix.length + 2) {
-        const trimmed = root.slice(0, -suffix.length).replace(/-+$/g, "")
-        if (trimmed) roots.add(trimmed)
-      }
-    }
-  }
-
-  for (const root of roots) {
-    candidates.add(`${root}.${extension}`)
-    for (const modifier of suffixModifiers) {
-      candidates.add(`${root}${modifier}.${extension}`)
-      candidates.add(`${root}-${modifier}.${extension}`)
-    }
-    for (const modifier of prefixModifiers) {
-      candidates.add(`${modifier}${root}.${extension}`)
-      candidates.add(`${modifier}-${root}.${extension}`)
-    }
-  }
-
-  if (parts.length > 1) {
-    candidates.add(`${[...parts].reverse().join("-")}.${extension}`)
-    candidates.add(`${parts.at(0)}${parts.slice(1).map(titleCase).join("")}.${extension}`)
-  }
-  return [...candidates].filter((candidate) => candidate !== normalized.domain).slice(0, 48)
-}
-
 const suggestionForAvailability = (
   domain: string,
   providerPrice: FixedDomainOrderPrice | null,
@@ -117,7 +70,7 @@ const suggestionForAvailability = (
 export async function suggestAvailablePreviewDomains(
   domain: string,
   includedProviderPrice: ReturnType<typeof maxDomainProviderPriceFromEnv>,
-  token: string,
+  token?: string,
 ): Promise<PreviewDomainSuggestion[]> {
   const suggestions: PreviewDomainSuggestion[] = []
   let cursor = 0
@@ -138,21 +91,23 @@ export async function suggestAvailablePreviewDomains(
 export async function suggestAvailablePreviewDomainBatch(
   domain: string,
   includedProviderPrice: ReturnType<typeof maxDomainProviderPriceFromEnv>,
-  token: string,
-  options?: { cursor?: number; batchSize?: number; existingDomains?: string[] },
+  tokenOrOptions?: string | { cursor?: number; batchSize?: number; existingDomains?: string[] },
+  maybeOptions?: { cursor?: number; batchSize?: number; existingDomains?: string[] },
 ): Promise<PreviewDomainSuggestionBatch> {
   const normalized = normalizeDomain(domain)
   const suggestions: PreviewDomainSuggestion[] = []
+  const token = typeof tokenOrOptions === "string" ? tokenOrOptions : undefined
+  const options = typeof tokenOrOptions === "string" ? maybeOptions : tokenOrOptions ?? maybeOptions
   const existingDomains = new Set(options?.existingDomains ?? [])
   const cursor = Math.max(0, options?.cursor ?? 0)
   const batchSize = Math.max(1, Math.min(options?.batchSize ?? 6, 12))
   if (!normalized.ok) return { suggestions, nextCursor: cursor, done: true }
 
   try {
-    const localCandidates = suggestionCandidates(domain)
+    const localCandidates = previewDomainCandidates(domain)
     const didLoadProviderCandidates = cursor >= localCandidates.length
     const providerCandidates = didLoadProviderCandidates
-      ? await suggestOpenProviderDomains(domain, { token, limit: 12 })
+      ? await suggestOpenProviderDomains(domain, token ? { token, limit: 12 } : { limit: 12 })
         .then((providerSuggestions) => providerSuggestions.map((suggestion) => suggestion.domain))
         .catch(() => [])
       : []
@@ -166,7 +121,10 @@ export async function suggestAvailablePreviewDomainBatch(
     if (batchCandidates.length === 0) {
       return { suggestions, nextCursor: candidates.length, done: true }
     }
-    const availabilityResults = await checkOpenProviderDomainsAvailability(batchCandidates, { token })
+    const availabilityResults = await checkOpenProviderDomainsAvailability(
+      batchCandidates,
+      token ? { token } : undefined,
+    )
     for (const availability of availabilityResults) {
       const providerPrice = availability.price
         ? { amount: availability.price.amount, currency: availability.price.currency }
@@ -208,8 +166,7 @@ export async function checkAndRecordPreviewDomainOrder(
 
   const fixedPrice = fixedDomainOrderPriceFromEnv()
   const includedProviderPrice = maxDomainProviderPriceFromEnv()
-  const token = await loginOpenProvider()
-  const availability = await checkOpenProviderDomainAvailability(normalized.domain, { token })
+  const availability = await checkOpenProviderDomainAvailability(normalized.domain)
   const now = new Date().toISOString()
   const providerPrice = availability.price
     ? { amount: availability.price.amount, currency: availability.price.currency }

@@ -10,10 +10,10 @@ vi.mock("@/lib/domains/openprovider", () => ({
 import {
   checkOpenProviderDomainAvailability,
   checkOpenProviderDomainsAvailability,
-  loginOpenProvider,
   suggestOpenProviderDomains,
 } from "@/lib/domains/openprovider"
 import { createDomainOrderState, type DomainRegistrantDetails } from "@/lib/domains/orderState"
+import { previewDomainCandidates } from "@/lib/domains/previewDomainCandidates"
 import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, suggestAvailablePreviewDomainBatch, suggestAvailablePreviewDomains } from "@/lib/domains/previewDomainOrder"
 
 describe("preview domain order", () => {
@@ -25,7 +25,6 @@ describe("preview domain order", () => {
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY", "EUR")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT", "25.00")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_OFFER_CURRENCY", "EUR")
-    vi.mocked(loginOpenProvider).mockResolvedValue("token-123")
     vi.mocked(suggestOpenProviderDomains).mockResolvedValue([])
   })
 
@@ -58,8 +57,7 @@ describe("preview domain order", () => {
       domain: "acme.nl",
       suggestions: [],
     })
-    expect(loginOpenProvider).toHaveBeenCalledTimes(1)
-    expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("acme.nl", { token: "token-123" })
+    expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("acme.nl")
     expect(suggestOpenProviderDomains).not.toHaveBeenCalled()
     expect(checkOpenProviderDomainsAvailability).not.toHaveBeenCalled()
     expect(run.domainOrder).toMatchObject({
@@ -94,7 +92,6 @@ describe("preview domain order", () => {
     await expect(suggestAvailablePreviewDomains(
       "acme.nl",
       { amount: "10.00", currency: "EUR" },
-      "token-123",
     )).resolves.toEqual([
       { domain: "acmeonline.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
       { domain: "acme-online.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
@@ -105,8 +102,21 @@ describe("preview domain order", () => {
     expect(suggestOpenProviderDomains).not.toHaveBeenCalled()
     expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledWith(
       expect.arrayContaining(["acmesite.nl", "acme-site.nl", "acmeonline.nl", "acme-online.nl", "acmeweb.nl"]),
-      { token: "token-123" },
+      undefined,
     )
+  })
+
+  it("exposes shared local preview domain candidates in server suggestion order", () => {
+    expect(previewDomainCandidates("ami-care.nl").slice(0, 7)).toEqual([
+      "ami-careonline.nl",
+      "ami-care-online.nl",
+      "ami-caresite.nl",
+      "ami-care-site.nl",
+      "ami-careweb.nl",
+      "ami-care-web.nl",
+      "ami-carestudio.nl",
+    ])
+    expect(previewDomainCandidates("https://www.acme.nl/path")).not.toContain("acme.nl")
   })
 
   it("uses provider suggestions only after local candidates are exhausted", async () => {
@@ -126,14 +136,13 @@ describe("preview domain order", () => {
     const batch = await suggestAvailablePreviewDomainBatch(
       "acme.nl",
       { amount: "10.00", currency: "EUR" },
-      "token-123",
       { cursor: 22, batchSize: 3 },
     )
 
-    expect(suggestOpenProviderDomains).toHaveBeenCalledWith("acme.nl", { token: "token-123", limit: 12 })
+    expect(suggestOpenProviderDomains).toHaveBeenCalledWith("acme.nl", { limit: 12 })
     expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledWith(
       ["provider-one.nl", "provider-two.nl"],
-      { token: "token-123" },
+      undefined,
     )
     expect(batch).toMatchObject({
       suggestions: [
@@ -158,7 +167,6 @@ describe("preview domain order", () => {
     const finalLocalBatch = await suggestAvailablePreviewDomainBatch(
       "acme.nl",
       { amount: "10.00", currency: "EUR" },
-      "token-123",
       { cursor: 20, batchSize: 5 },
     )
 
@@ -186,7 +194,6 @@ describe("preview domain order", () => {
     await expect(suggestAvailablePreviewDomainBatch(
       "acme.nl",
       { amount: "10.00", currency: "EUR" },
-      "token-123",
       { cursor: finalLocalBatch.nextCursor, batchSize: 5 },
     )).resolves.toMatchObject({
       suggestions: [{ domain: "provider-one.nl" }],
@@ -207,7 +214,6 @@ describe("preview domain order", () => {
     await expect(suggestAvailablePreviewDomainBatch(
       "ami-care.nl",
       { amount: "10.00", currency: "EUR" },
-      "token-123",
       { cursor: 0, batchSize: 3 },
     )).resolves.toMatchObject({
       suggestions: [
@@ -233,7 +239,6 @@ describe("preview domain order", () => {
     const batch = await suggestAvailablePreviewDomainBatch(
       "ami-care.nl",
       { amount: "10.00", currency: "EUR" },
-      "token-123",
       {
         cursor: 3,
         batchSize: 2,
@@ -243,7 +248,7 @@ describe("preview domain order", () => {
 
     expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledWith(
       ["ami-care-site.nl", "ami-careweb.nl"],
-      { token: "token-123" },
+      undefined,
     )
     expect(batch).toMatchObject({
       suggestions: [
@@ -370,8 +375,7 @@ describe("preview domain order", () => {
 
     expect(result).toMatchObject({ domain: "levelweb.nl" })
     expect(payload.update).toHaveBeenCalledTimes(1)
-    expect(loginOpenProvider).toHaveBeenCalledTimes(1)
-    expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("levelweb.nl", { token: "token-123" })
+    expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("levelweb.nl")
     expect(run.domainOrder).toMatchObject({
       status: "ready_to_register",
       domain: "levelweb.nl",
