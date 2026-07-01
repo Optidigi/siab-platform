@@ -6,6 +6,7 @@ import { getBetterAuthInfraPlugins } from "@/lib/betterAuthInfra"
 import { getEnabledSocialAuthProviders } from "@/lib/socialAuth/providers"
 import { resolvePayloadUserForMagicLink, resolvePayloadUserForSocialSignup } from "@/lib/socialAuth/payloadUser"
 import { getBetterAuthBaseURL, getTrustedSocialAuthOrigins } from "@/lib/socialAuth/hosts"
+import { canonicalizeCmsMagicLinkUrl } from "@/lib/auth/cmsMagicLinkUrl"
 import { getMagicLinkRateLimit } from "@/lib/auth/magicLinkRateLimit"
 import { sendEmail } from "@/lib/email/sendEmail"
 import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
@@ -138,9 +139,10 @@ export const auth = betterAuth({
     magicLink({
       expiresIn: 300,
       rateLimit: getMagicLinkRateLimit(),
-      sendMagicLink: async ({ email, url }) => {
+      sendMagicLink: async ({ email, url }, ctx) => {
         await resolvePayloadUserForMagicLink(email)
-        const message = magicLinkTemplate({ loginUrl: url })
+        const loginUrl = await canonicalizeCmsMagicLinkUrl(url, ctx)
+        const message = magicLinkTemplate({ loginUrl })
         const payload = await getMailPayload()
         await sendEmail({
           to: email,

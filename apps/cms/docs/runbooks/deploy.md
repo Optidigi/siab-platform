@@ -171,7 +171,11 @@ CMS snapshot endpoint rejects requests when this token is missing or incorrect.
 `SITE_URL` should match the public CMS/admin origin where runtime metadata or
 absolute URLs need the CMS origin. Better Auth also uses this value as the
 canonical fallback for magic-link URLs when `BETTER_AUTH_URL` is unset, which
-keeps production auth links off localhost or internal container hosts.
+keeps production auth links off localhost or internal container hosts. CMS and
+preview magic-link emails are additionally canonicalized immediately before
+send: the verification URL is rewritten to the trusted public admin/preview
+origin and unsafe localhost or `0.0.0.0` callback origins are reduced to a
+relative `/` callback.
 Cloudflare Email Sending is the canonical mail path. Runtime delivery prefers
 Cloudflare's REST Email Sending API over HTTPS using `CLOUDFLARE_ACCOUNT_ID`
 and `CLOUDFLARE_API_TOKEN`, with `EMAIL_FROM` as the platform sender. SMTP via

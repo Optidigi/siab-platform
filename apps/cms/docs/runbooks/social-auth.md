@@ -47,12 +47,16 @@ Payload-backed host gate still runs before Better Auth handles the request.
 In production, localhost/internal container hosts are not accepted as Better
 Auth base hosts. Set `SITE_URL=https://admin.siteinabox.nl`; optionally set
 `BETTER_AUTH_URL` only when the canonical auth origin must differ from
-`SITE_URL`. This fallback is what keeps magic-link URLs on the public admin
-origin behind Traefik.
+`SITE_URL`. This fallback is the platform admin origin when no request host is
+available. Outgoing CMS magic-link emails are also rewritten at send time to
+the trusted public request origin (`admin.siteinabox.nl` or a verified
+`admin.<tenant-domain>`), preserving the token while stripping localhost,
+`0.0.0.0`, and external callback origins.
 Customer preview auth is a separate Better Auth instance on
 `https://preview.siteinabox.nl/api/preview-auth`. In production it accepts only
 the public preview host and uses `https://preview.siteinabox.nl` as its
-fallback origin; localhost preview auth is development-only.
+fallback origin; outgoing preview magic-link emails are likewise rewritten to
+that public origin. Localhost preview auth is development-only.
 
 `BETTER_AUTH_API_KEY` is optional and enables the Better Auth Infrastructure
 `dash()` plugin for dashboard/audit visibility. Use the key from the existing

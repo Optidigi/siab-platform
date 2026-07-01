@@ -3,6 +3,7 @@ import { APIError } from "better-auth/api"
 import { Pool } from "pg"
 import { magicLink } from "better-auth/plugins"
 import { getMagicLinkRateLimit } from "@/lib/auth/magicLinkRateLimit"
+import { canonicalizeMagicLinkUrl } from "@/lib/auth/magicLinkUrl"
 import { hasActivePreviewGrant } from "@/lib/preview/previewAccess"
 import { sendEmail } from "@/lib/email/sendEmail"
 import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
@@ -44,7 +45,7 @@ if (process.env.NODE_ENV !== "production") {
   globalThis.__siabPreviewBetterAuthPool = pool
 }
 
-const PREVIEW_ORIGIN = "https://preview.siteinabox.nl"
+export const PREVIEW_ORIGIN = "https://preview.siteinabox.nl"
 
 export function getPreviewBetterAuthBaseURL() {
   const allowedHosts = ["preview.siteinabox.nl"]
@@ -104,9 +105,10 @@ export const previewAuth = betterAuth({
             message: "No active preview access grant matches this email.",
           })
         }
+        const loginUrl = canonicalizeMagicLinkUrl(url, PREVIEW_ORIGIN)
         const message = metadata?.previewSiteReady === true
-          ? siteReadyPreviewTemplate({ loginUrl: url })
-          : magicLinkTemplate({ loginUrl: url })
+          ? siteReadyPreviewTemplate({ loginUrl })
+          : magicLinkTemplate({ loginUrl })
         const payload = await getMailPayload()
         await sendEmail({
           to: email,

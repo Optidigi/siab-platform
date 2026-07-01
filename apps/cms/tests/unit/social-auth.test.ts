@@ -15,6 +15,8 @@ vi.mock("payload", async () => {
 import { getEnabledSocialAuthProviders } from "@/lib/socialAuth/providers"
 import { getBetterAuthBaseURL, getTrustedSocialAuthOrigins, isAllowedSocialAuthHost } from "@/lib/socialAuth/hosts"
 import { resolvePayloadUserForMagicLink, resolvePayloadUserForSocialSignup } from "@/lib/socialAuth/payloadUser"
+import { canonicalizeCmsMagicLinkUrl } from "@/lib/auth/cmsMagicLinkUrl"
+import { canonicalizeMagicLinkUrl } from "@/lib/auth/magicLinkUrl"
 
 describe("social auth provider configuration", () => {
   const originalEnv = process.env
@@ -206,5 +208,53 @@ describe("social auth host validation", () => {
     process.env.BETTER_AUTH_URL = "https://admin.siteinabox.nl/"
 
     await expect(getTrustedSocialAuthOrigins()).resolves.toEqual(["https://admin.siteinabox.nl"])
+  })
+
+  it("rewrites CMS magic links from internal container origins to the trusted request admin host", async () => {
+    process.env.SITE_URL = "https://admin.siteinabox.nl"
+    const loginUrl = await canonicalizeCmsMagicLinkUrl(
+      "http://0.0.0.0:3000/api/auth/magic-link/verify?token=test-token&callbackURL=http%3A%2F%2F0.0.0.0%3A3000%2F",
+      {
+        headers: new Headers({
+          host: "0.0.0.0:3000",
+          "x-forwarded-host": "admin.siteinabox.nl",
+          "x-forwarded-proto": "https",
+        }),
+      },
+    )
+
+    const parsed = new URL(loginUrl)
+    expect(parsed.origin).toBe("https://admin.siteinabox.nl")
+    expect(parsed.pathname).toBe("/api/auth/magic-link/verify")
+    expect(parsed.searchParams.get("token")).toBe("test-token")
+    expect(parsed.searchParams.get("callbackURL")).toBe("/")
+  })
+
+  it("rewrites tenant CMS magic links to the Payload-approved tenant admin host", async () => {
+    fakeFind.mockResolvedValueOnce({ docs: [{ id: 7, domain: "ami-care.nl", status: "active" }] })
+
+    const loginUrl = await canonicalizeCmsMagicLinkUrl(
+      "http://0.0.0.0:3000/api/auth/magic-link/verify?token=test-token&callbackURL=%2Fapi%2Fsiab-auth%2Fcomplete%3Fnext%3D%252F",
+      {
+        headers: {
+          host: "0.0.0.0:3000",
+          "x-forwarded-host": "admin.ami-care.nl",
+          "x-forwarded-proto": "https",
+        },
+      },
+    )
+
+    const parsed = new URL(loginUrl)
+    expect(parsed.origin).toBe("https://admin.ami-care.nl")
+    expect(parsed.searchParams.get("callbackURL")).toBe("/api/siab-auth/complete?next=%2F")
+  })
+
+  it("keeps magic-link callback URLs relative to the canonical origin", () => {
+    const loginUrl = canonicalizeMagicLinkUrl(
+      "https://admin.siteinabox.nl/api/auth/magic-link/verify?token=test-token&callbackURL=https%3A%2F%2Fevil.example%2F",
+      "https://admin.siteinabox.nl",
+    )
+
+    expect(new URL(loginUrl).searchParams.get("callbackURL")).toBe("/")
   })
 })

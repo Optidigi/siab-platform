@@ -47,4 +47,20 @@ describe("preview Better Auth host configuration", () => {
       "http://127.0.0.1:*",
     ])
   })
+
+  it("rewrites preview magic links from internal origins to the public preview host", async () => {
+    const { PREVIEW_ORIGIN } = await import("@/lib/preview/betterAuth")
+    const { canonicalizeMagicLinkUrl } = await import("@/lib/auth/magicLinkUrl")
+
+    const loginUrl = canonicalizeMagicLinkUrl(
+      "http://0.0.0.0:3000/api/preview-auth/magic-link/verify?token=test-token&callbackURL=http%3A%2F%2F0.0.0.0%3A3000%2Fami-care",
+      PREVIEW_ORIGIN,
+    )
+
+    const parsed = new URL(loginUrl)
+    expect(parsed.origin).toBe("https://preview.siteinabox.nl")
+    expect(parsed.pathname).toBe("/api/preview-auth/magic-link/verify")
+    expect(parsed.searchParams.get("token")).toBe("test-token")
+    expect(parsed.searchParams.get("callbackURL")).toBe("/")
+  })
 })

@@ -49,8 +49,17 @@ const cleanOrigin = (value: string | undefined): string | undefined => {
   }
 }
 
-const getConfiguredBetterAuthOrigin = (): string | undefined =>
+export const getConfiguredBetterAuthOrigin = (): string | undefined =>
   cleanOrigin(process.env.BETTER_AUTH_URL) ?? cleanOrigin(process.env.SITE_URL)
+
+const getDefaultSuperAdminOrigin = (): string => {
+  const domain = process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN?.trim() || "siteinabox.nl"
+  return `https://admin.${domain}`
+}
+
+export const getCmsAuthFallbackOrigin = (): string | undefined =>
+  getConfiguredBetterAuthOrigin() ??
+  (process.env.NODE_ENV === "production" ? getDefaultSuperAdminOrigin() : undefined)
 
 export function getBetterAuthBaseURL() {
   const allowedHosts = [
@@ -61,7 +70,7 @@ export function getBetterAuthBaseURL() {
     allowedHosts.push("localhost:*", "127.0.0.1:*")
   }
 
-  const fallback = getConfiguredBetterAuthOrigin()
+  const fallback = getCmsAuthFallbackOrigin()
 
   return {
     allowedHosts: Array.from(new Set(allowedHosts)),
@@ -95,7 +104,7 @@ export async function isAllowedSocialAuthHost(request: Request): Promise<boolean
 }
 
 export async function getTrustedSocialAuthOrigins(request?: Request): Promise<string[]> {
-  const fallback = getConfiguredBetterAuthOrigin()
+  const fallback = getCmsAuthFallbackOrigin()
   if (!request) return fallback ? [fallback] : []
   if (!(await isAllowedSocialAuthHost(request))) return []
   const origins = [`${requestProtocol(request)}://${requestHost(request)}`, fallback].filter(
