@@ -211,7 +211,13 @@ export function PreviewCheckout({
   React.useEffect(() => {
     if (step !== "domain") return
     if (!domainLooksCheckable) return
-    if (checkAppliesToCurrentInput && checkState.ok) return
+    const primaryDomainUnavailable = Boolean(
+      !checkPending &&
+      checkAppliesToCurrentInput &&
+      !checkState.ok &&
+      ["unavailable", "premium"].includes(checkState.status ?? ""),
+    )
+    if (!primaryDomainUnavailable) return
     if (
       suggestionsApplyToCurrentInput &&
       (suggestionsState.done || (suggestionsState.suggestions?.length ?? 0) >= 5)
@@ -290,7 +296,9 @@ export function PreviewCheckout({
     return () => window.clearTimeout(timer)
   }, [
     checkAppliesToCurrentInput,
+    checkPending,
     checkState.ok,
+    checkState.status,
     domainLooksCheckable,
     normalizedDomainValue,
     step,
@@ -303,14 +311,20 @@ export function PreviewCheckout({
   ])
 
   const selectedDomain = checkedDomain && checkedDomain === domainValue ? checkedDomain : null
-  const primaryDomainAvailable = Boolean(checkAppliesToCurrentInput && checkState.ok)
-  const suggestions = !primaryDomainAvailable && suggestionsApplyToCurrentInput ? suggestionsState.suggestions : []
-  const placeholderSuggestions = !primaryDomainAvailable && domainLooksCheckable
+  const primaryDomainAvailable = Boolean(!checkPending && checkAppliesToCurrentInput && checkState.ok)
+  const primaryDomainUnavailable = Boolean(
+    !checkPending &&
+    checkAppliesToCurrentInput &&
+    !checkState.ok &&
+    ["unavailable", "premium"].includes(checkState.status ?? ""),
+  )
+  const suggestions = primaryDomainUnavailable && suggestionsApplyToCurrentInput ? suggestionsState.suggestions : []
+  const placeholderSuggestions = primaryDomainUnavailable && domainLooksCheckable
     ? placeholderSuggestionsForDomain(normalizedDomainValue)
       .filter((option) => !(suggestions ?? []).some((suggestion) => suggestion.domain === option.domain))
       .slice(0, Math.max(0, 5 - (suggestions?.length ?? 0)))
     : []
-  const showSuggestions = step === "domain" && domainLooksCheckable && !primaryDomainAvailable && (
+  const showSuggestions = step === "domain" && domainLooksCheckable && primaryDomainUnavailable && (
     suggestionsPending || suggestionsApplyToCurrentInput || (suggestions?.length ?? 0) > 0 || placeholderSuggestions.length > 0
   )
   const holderComplete = registrantIsComplete(holder)
