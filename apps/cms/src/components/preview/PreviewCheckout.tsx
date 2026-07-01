@@ -444,7 +444,7 @@ export function PreviewCheckout({
                     </div>
                   </div>
                   {domainInputState === "warning" && (
-                    <p id="checkout-domain-unavailable" className="-mt-1 text-sm font-medium text-destructive">
+                    <p id="checkout-domain-unavailable" className="-mt-1 text-sm font-medium text-warning">
                       {t("checkoutDomainUnavailableTitle")}
                     </p>
                   )}
@@ -699,7 +699,7 @@ function DomainOptionRow({
         type="button"
         variant="ghost"
         className={cn(
-          "h-auto min-h-12 w-full justify-between whitespace-normal border border-success bg-success/5 p-2.5 text-left shadow-xs hover:bg-success/10 dark:border-success dark:bg-success/5 dark:hover:bg-success/10",
+          "h-auto min-h-12 w-full justify-between whitespace-normal border border-border bg-success/5 p-2.5 text-left shadow-xs ring-1 ring-success hover:bg-success/10 dark:bg-success/5 dark:hover:bg-success/10",
           selected && "bg-success/10 dark:bg-success/10",
         )}
         aria-pressed={selected}
