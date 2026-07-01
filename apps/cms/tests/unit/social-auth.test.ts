@@ -238,7 +238,7 @@ describe("social auth host validation", () => {
     )
   })
 
-  it("builds a fresh auth request without cloning framework request internals", async () => {
+  it("builds a fresh public-origin auth request without cloning framework request internals", async () => {
     const request = new Request("https://0.0.0.0:3000/api/auth/sign-in/magic-link", {
       method: "POST",
       headers: {
@@ -251,7 +251,7 @@ describe("social auth host validation", () => {
 
     const next = buildCmsAuthRequest(request)
 
-    expect(next.url).toBe("https://0.0.0.0:3000/api/auth/sign-in/magic-link")
+    expect(next.url).toBe("https://admin.siteinabox.nl/api/auth/sign-in/magic-link")
     expect(next.method).toBe("POST")
     expect(next.headers.get("host")).toBe("admin.siteinabox.nl")
     expect(next.headers.get("x-forwarded-host")).toBe("admin.siteinabox.nl")

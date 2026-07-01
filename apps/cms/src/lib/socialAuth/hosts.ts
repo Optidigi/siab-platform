@@ -94,16 +94,27 @@ export function buildCmsAuthHeaders(source: Headers): Headers {
   return next
 }
 
+function buildPublicAuthUrl(request: Request, headers: Headers): string {
+  const publicHost = headers.get("x-forwarded-host") || headers.get("host")
+  if (!publicHost) return request.url
+  const next = new URL(request.url)
+  next.protocol = headers.get("x-forwarded-proto") === "http" ? "http:" : "https:"
+  next.host = publicHost
+  if (!publicHost.includes(":")) next.port = ""
+  return next.toString()
+}
+
 export function buildCmsAuthRequest(request: Request): Request {
+  const headers = buildCmsAuthHeaders(request.headers)
   const init: RequestInit & { duplex?: "half" } = {
     method: request.method,
-    headers: buildCmsAuthHeaders(request.headers),
+    headers,
     body: request.body,
     redirect: request.redirect,
     signal: request.signal,
   }
   if (request.body) init.duplex = "half"
-  return new Request(request.url, init)
+  return new Request(buildPublicAuthUrl(request, headers), init)
 }
 
 export function getBetterAuthBaseURL() {

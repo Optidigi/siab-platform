@@ -21,6 +21,9 @@ const buildPreviewAuthRequest = (request: Request): Request => {
   headers.set("host", PREVIEW_HOST)
   headers.set("x-forwarded-host", PREVIEW_HOST)
   headers.set("x-forwarded-proto", "https")
+  const url = new URL(request.url)
+  url.protocol = "https:"
+  url.host = PREVIEW_HOST
   const init: RequestInit & { duplex?: "half" } = {
     method: request.method,
     headers,
@@ -29,7 +32,7 @@ const buildPreviewAuthRequest = (request: Request): Request => {
     signal: request.signal,
   }
   if (request.body) init.duplex = "half"
-  return new Request(request.url, init)
+  return new Request(url, init)
 }
 
 const ensureAllowedHost = (request: Request): Response | null => {
