@@ -170,6 +170,7 @@ describe("sendEmail", () => {
       subject: "Magic link",
       html: "<p>Login</p>",
       text: "Login",
+      replyTo: "support@example.com",
       payload,
     }, {
       now: () => new Date("2026-07-01T12:03:00.000Z"),
@@ -190,6 +191,7 @@ describe("sendEmail", () => {
           subject: "Magic link",
           html: "<p>Login</p>",
           text: "Login",
+          replyTo: "support@example.com",
         }),
       }),
     )

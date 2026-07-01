@@ -116,6 +116,8 @@ describe("social auth host validation", () => {
   beforeEach(() => {
     fakeFind.mockReset()
     delete process.env.BETTER_AUTH_ALLOWED_HOSTS
+    delete process.env.BETTER_AUTH_URL
+    delete process.env.SITE_URL
     process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN = "siteinabox.nl"
   })
 
@@ -130,11 +132,23 @@ describe("social auth host validation", () => {
 
   it("configures Better Auth dynamic base URL for generated admin hosts", () => {
     process.env.BETTER_AUTH_ALLOWED_HOSTS = "preview.example.com, admin.extra.test"
+    process.env.SITE_URL = "https://admin.siteinabox.nl"
 
     expect(getBetterAuthBaseURL()).toEqual({
-      allowedHosts: ["admin.*", "localhost:*", "127.0.0.1:*", "preview.example.com", "admin.extra.test"],
+      allowedHosts: ["admin.*", "preview.example.com", "admin.extra.test"],
       protocol: "https",
+      fallback: "https://admin.siteinabox.nl",
     })
+  })
+
+  it("allows localhost dynamic auth bases only in development", () => {
+    const originalNodeEnv = process.env.NODE_ENV
+    vi.stubEnv("NODE_ENV", "development")
+    expect(getBetterAuthBaseURL()).toEqual({
+      allowedHosts: ["admin.*", "localhost:*", "127.0.0.1:*"],
+      protocol: "http",
+    })
+    vi.stubEnv("NODE_ENV", originalNodeEnv)
   })
 
   it("allows generated tenant admin hosts from Payload tenant domains", async () => {
@@ -173,5 +187,11 @@ describe("social auth host validation", () => {
     })
 
     await expect(isAllowedSocialAuthHost(req)).resolves.toBe(false)
+  })
+
+  it("trusts the configured canonical Better Auth origin without a request", async () => {
+    process.env.BETTER_AUTH_URL = "https://admin.siteinabox.nl/"
+
+    await expect(getTrustedSocialAuthOrigins()).resolves.toEqual(["https://admin.siteinabox.nl"])
   })
 })

@@ -86,10 +86,12 @@ not available to generation.
 ## Email And Analytics
 
 Cloudflare Email Sending is the canonical email path. Runtime delivery uses
-Cloudflare SMTP through Nodemailer for platform/admin mail, Payload email,
-Better Auth CMS and preview magic links, intake internal notifications, privacy
-exports, preview handoff mail, and verified tenant-site form notifications.
-`CLOUDFLARE_EMAIL_SMTP_TOKEN` and `EMAIL_FROM` configure the SMTP sender.
+Cloudflare's REST Email Sending API for platform/admin mail, Better Auth CMS
+and preview magic links, intake internal notifications, privacy exports,
+preview handoff mail, and verified tenant-site form notifications.
+`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and `EMAIL_FROM` configure the
+primary runtime sender; `CLOUDFLARE_EMAIL_SMTP_TOKEN` remains an optional SMTP
+fallback for environments that can reach Cloudflare's port 465 endpoint.
 
 Tenant generated-site mail uses a per-tenant Cloudflare Email Sending sender,
 normally `noreply@mail.<tenant-domain>`. Domain provisioning creates or reuses

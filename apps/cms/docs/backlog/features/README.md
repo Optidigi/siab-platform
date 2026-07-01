@@ -177,7 +177,7 @@ tenant sender verification remain separate activation gates.
 **Status:** Foundation added 2026-07-01.
 
 Cloudflare Email Sending is now represented in CMS operations as both a
-platform SMTP delivery path and tenant sender state. The CMS records
+platform REST delivery path with SMTP fallback and tenant sender state. The CMS records
 metadata-only outbound delivery rows in `mail-logs` and writes
 super-admin-visible `operational-alerts` for important or repeated mail
 failures. Rendered subjects, bodies, and secrets are not stored.

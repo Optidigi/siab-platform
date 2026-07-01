@@ -44,6 +44,11 @@ provider callbacks.
 Better Auth is configured with its dynamic `baseURL` option for `admin.*`
 hosts so provider redirects are built from the incoming admin host; SIAB's
 Payload-backed host gate still runs before Better Auth handles the request.
+In production, localhost/internal container hosts are not accepted as Better
+Auth base hosts. Set `SITE_URL=https://admin.siteinabox.nl`; optionally set
+`BETTER_AUTH_URL` only when the canonical auth origin must differ from
+`SITE_URL`. This fallback is what keeps magic-link URLs on the public admin
+origin behind Traefik.
 
 `BETTER_AUTH_API_KEY` is optional and enables the Better Auth Infrastructure
 `dash()` plugin for dashboard/audit visibility. Use the key from the existing
@@ -55,7 +60,8 @@ Infrastructure transactional email, SMS, or Sentinel.
 Email magic links also require the normal app email transport:
 
 ```bash
-CLOUDFLARE_EMAIL_SMTP_TOKEN=
+CLOUDFLARE_ACCOUNT_ID=
+CLOUDFLARE_API_TOKEN=
 EMAIL_FROM=noreply@siteinabox.nl
 ```
 

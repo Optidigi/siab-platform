@@ -34,17 +34,39 @@ const isLoopbackHost = (host: string): boolean =>
 const isExtraAllowedHost = (host: string): boolean =>
   splitList(process.env.BETTER_AUTH_ALLOWED_HOSTS).includes(host)
 
+const cleanOrigin = (value: string | undefined): string | undefined => {
+  const origin = value?.trim()
+  if (!origin) return undefined
+  try {
+    const url = new URL(origin)
+    if (url.protocol !== "http:" && url.protocol !== "https:") return undefined
+    url.pathname = ""
+    url.search = ""
+    url.hash = ""
+    return url.toString().replace(/\/$/, "")
+  } catch {
+    return undefined
+  }
+}
+
+const getConfiguredBetterAuthOrigin = (): string | undefined =>
+  cleanOrigin(process.env.BETTER_AUTH_URL) ?? cleanOrigin(process.env.SITE_URL)
+
 export function getBetterAuthBaseURL() {
   const allowedHosts = [
     "admin.*",
-    "localhost:*",
-    "127.0.0.1:*",
     ...splitList(process.env.BETTER_AUTH_ALLOWED_HOSTS),
   ]
+  if (process.env.NODE_ENV === "development") {
+    allowedHosts.push("localhost:*", "127.0.0.1:*")
+  }
+
+  const fallback = getConfiguredBetterAuthOrigin()
 
   return {
     allowedHosts: Array.from(new Set(allowedHosts)),
     protocol: process.env.NODE_ENV === "development" ? "http" : "https",
+    ...(fallback ? { fallback } : {}),
   } as const
 }
 
@@ -73,7 +95,11 @@ export async function isAllowedSocialAuthHost(request: Request): Promise<boolean
 }
 
 export async function getTrustedSocialAuthOrigins(request?: Request): Promise<string[]> {
-  if (!request) return []
+  const fallback = getConfiguredBetterAuthOrigin()
+  if (!request) return fallback ? [fallback] : []
   if (!(await isAllowedSocialAuthHost(request))) return []
-  return [`${requestProtocol(request)}://${requestHost(request)}`]
+  const origins = [`${requestProtocol(request)}://${requestHost(request)}`, fallback].filter(
+    (origin): origin is string => Boolean(origin),
+  )
+  return Array.from(new Set(origins))
 }

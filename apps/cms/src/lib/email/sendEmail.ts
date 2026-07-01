@@ -201,7 +201,7 @@ export function createCloudflareRestProvider(config: { accountId: string; token:
             subject: input.subject,
             html: input.html,
             ...(input.text ? { text: input.text } : {}),
-            ...(input.replyTo ? { reply_to: input.replyTo } : {}),
+            ...(input.replyTo ? { replyTo: input.replyTo } : {}),
           }),
           signal: controller.signal,
         })

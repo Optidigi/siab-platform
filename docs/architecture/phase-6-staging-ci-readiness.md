@@ -53,7 +53,7 @@ CMS/staging:
 - `NEXT_PUBLIC_SUPER_ADMIN_DOMAIN`: super-admin host domain, expected `siteinabox.nl`.
 - `SITE_URL`: public CMS/admin origin.
 - `DATA_DIR`: CMS tenant media/projection data directory.
-- `CLOUDFLARE_EMAIL_SMTP_TOKEN`, `EMAIL_FROM`: Cloudflare SMTP delivery for auth, preview, intake/internal, platform, and verified tenant mail.
+- `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `EMAIL_FROM`: Cloudflare REST Email Sending delivery for auth, preview, intake/internal, platform, and verified tenant mail. `CLOUDFLARE_EMAIL_SMTP_TOKEN` is optional fallback only.
 - `SIAB_PUBLIC_POST_RATE_LIMIT_POINTS`, `SIAB_PUBLIC_POST_RATE_LIMIT_WINDOW_SECONDS`: anonymous public POST limiter for `/api/forms`, `/api/intake`, and forgot-password.
 - `SIAB_FORM_TARGET_RATE_LIMIT_POINTS`, `SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS`: generated-site form limiter keyed by tenant/form target.
 - `MOLLIE_API_KEY`, `MOLLIE_SITE_PAYMENT_AMOUNT`, `MOLLIE_SITE_PAYMENT_CURRENCY`, `MOLLIE_WEBHOOK_BASE_URL`, `MOLLIE_WEBHOOK_SIGNING_SECRET`: Mollie checkout/webhook configuration.

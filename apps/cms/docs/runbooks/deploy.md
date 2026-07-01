@@ -169,11 +169,16 @@ chmod 600 /srv/saas/infra/stacks/siteinabox/apps/cms/.env
 snapshot lookup. Use the same value in the renderer stack. In production, the
 CMS snapshot endpoint rejects requests when this token is missing or incorrect.
 `SITE_URL` should match the public CMS/admin origin where runtime metadata or
-absolute URLs need the CMS origin.
-Cloudflare Email Sending is the canonical mail path. SMTP delivery uses
-`CLOUDFLARE_EMAIL_SMTP_TOKEN` with `EMAIL_FROM` for platform/admin messages,
-Payload email, Better Auth CMS and preview magic links, intake internal
-notifications, privacy exports, preview handoff mail, and any other
+absolute URLs need the CMS origin. Better Auth also uses this value as the
+canonical fallback for magic-link URLs when `BETTER_AUTH_URL` is unset, which
+keeps production auth links off localhost or internal container hosts.
+Cloudflare Email Sending is the canonical mail path. Runtime delivery prefers
+Cloudflare's REST Email Sending API over HTTPS using `CLOUDFLARE_ACCOUNT_ID`
+and `CLOUDFLARE_API_TOKEN`, with `EMAIL_FROM` as the platform sender. SMTP via
+`CLOUDFLARE_EMAIL_SMTP_TOKEN` is only a fallback for environments where
+outbound `smtps://smtp.mx.cloudflare.net:465` is reachable. This path covers
+platform/admin messages, Better Auth CMS and preview magic links, intake
+internal notifications, privacy exports, preview handoff mail, and any other
 platform-sender mail. Tenant generated-site form notifications use the tenant's
 verified sender, normally `noreply@mail.<tenant-domain>`, after
 `tenants.emailSending.status` is verified.
@@ -203,7 +208,7 @@ Cloudflare DNS automation requires an account id, API token, and either
 `SIAB_RENDERER_TARGET_HOST` for proxied CNAME records or
 `SIAB_RENDERER_TARGET_IP` for proxied A records. The same account/token must be
 allowed to manage the customer zone and Cloudflare Email Sending subdomains.
-`RESEND_API_KEY` is obsolete after the Cloudflare SMTP mail-path change and
+`RESEND_API_KEY` is obsolete after the Cloudflare Email Sending mail-path change and
 should not be carried forward into the production `.env`.
 
 Current Phase 3 env readiness status:
@@ -219,7 +224,7 @@ Current Phase 3 env readiness status:
 | Better Auth | Set `BETTER_AUTH_SECRET` and `BETTER_AUTH_PREVIEW_SECRET`; `BETTER_AUTH_API_KEY` remains optional Infrastructure dashboard/audit integration. |
 | CMS origin | Set `SITE_URL=https://admin.siteinabox.nl`. |
 | Renderer token | Set `SIAB_RENDERER_API_TOKEN` now for the CMS snapshot endpoint; renderer `.env` is a later separate phase using the same token. |
-| Email | Set `CLOUDFLARE_EMAIL_SMTP_TOKEN` and `EMAIL_FROM`; remove obsolete `RESEND_API_KEY`. |
+| Email | Set `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and `EMAIL_FROM`; keep `CLOUDFLARE_EMAIL_SMTP_TOKEN` only as optional SMTP fallback; remove obsolete `RESEND_API_KEY`. |
 | Rate limits | Keep or tune `SIAB_PUBLIC_POST_RATE_LIMIT_*` and `SIAB_FORM_TARGET_RATE_LIMIT_*` for anonymous public POST and form-target budgets. |
 | Mollie | Set `MOLLIE_API_KEY`, amount, currency, webhook base URL, and optional webhook signing secret. |
 | OpenProvider | Set username/password, SIAB technical/billing handles, and max allowed provider domain cost before enabling paid customer domain registration. |

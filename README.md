@@ -41,8 +41,9 @@ Current invariants:
   provenance, variants, and editable-field metadata. CMS block schemas live in
   `apps/cms/src/blocks/`, and live/preview rendering lives in
   `packages/site-renderer/src/blocks/`.
-- Cloudflare Email Sending is the canonical mail path. The CMS sends through
-  Cloudflare SMTP, uses Cloudflare's API to provision/refresh tenant sending
+- Cloudflare Email Sending is the canonical mail path. The CMS sends runtime
+  mail through Cloudflare's REST Email Sending API, keeps SMTP only as a
+  fallback, uses Cloudflare's API to provision/refresh tenant sending
   subdomains, and records metadata-only mail logs and operational alerts.
   Tenant generated-site activation requires verified tenant Email Sending state.
   Do not add a second transactional mail provider without an approved
