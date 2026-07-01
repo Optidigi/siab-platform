@@ -33,6 +33,7 @@ services:
       SITE_URL: ${SITE_URL:-https://admin.siteinabox.nl}
       SIAB_RENDERER_API_TOKEN: ${SIAB_RENDERER_API_TOKEN:-}
       CLOUDFLARE_EMAIL_SMTP_TOKEN: ${CLOUDFLARE_EMAIL_SMTP_TOKEN:-}
+      KVK_API_KEY: ${KVK_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@siteinabox.nl}
       MOLLIE_API_KEY: ${MOLLIE_API_KEY:-}
       MOLLIE_SITE_PAYMENT_AMOUNT: ${MOLLIE_SITE_PAYMENT_AMOUNT:-}
@@ -96,6 +97,12 @@ services:
       - traefik.http.routers.siteinabox-cms.tls.certresolver=letsencrypt
       - traefik.http.routers.siteinabox-cms.middlewares=hsts@docker
       - traefik.http.routers.siteinabox-cms.service=siteinabox-cms
+      - traefik.http.routers.siteinabox-cms-intake-api.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && PathPrefix(`/api/intake`)
+      - traefik.http.routers.siteinabox-cms-intake-api.entrypoints=websecure
+      - traefik.http.routers.siteinabox-cms-intake-api.tls.certresolver=letsencrypt
+      - traefik.http.routers.siteinabox-cms-intake-api.middlewares=hsts@docker
+      - traefik.http.routers.siteinabox-cms-intake-api.priority=250
+      - traefik.http.routers.siteinabox-cms-intake-api.service=siteinabox-cms
       - traefik.http.services.siteinabox-cms.loadbalancer.server.port=3000
     depends_on:
       postgres: { condition: service_healthy }
