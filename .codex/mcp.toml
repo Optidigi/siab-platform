@@ -21,6 +21,9 @@ args = ["-y", "@upstash/context7-mcp"]
 [mcp_servers.better-auth]
 url = "https://mcp.better-auth.com/mcp"
 
+[mcp_servers.cloudflare]
+url = "https://mcp.cloudflare.com/mcp"
+
 [mcp_servers.docker]
 command = "npx"
 args = ["-y", "mcp-server-docker"]

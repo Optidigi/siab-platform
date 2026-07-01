@@ -124,11 +124,40 @@ Configured servers:
 - `sequential-thinking`: `npx -y @modelcontextprotocol/server-sequential-thinking`
 - `context7`: `npx -y @upstash/context7-mcp`
 - `better-auth`: `https://mcp.better-auth.com/mcp`
+- `cloudflare`: `https://mcp.cloudflare.com/mcp`
 - `posthog`: `https://mcp.posthog.com/mcp`; supply credentials/auth from
   user-scope Codex config or user environment, never repo config.
 
 Do not add API keys, tokens, or secret env values to repo-local MCP files.
 Authenticated MCP credentials belong in user-scope config.
+
+### MCP Use Policy
+
+Use the relevant configured MCP when CMS work depends on a vendor, framework, or
+external system that has a project MCP. This is a semi-enforced rule: agents
+should use the matching MCP before finalizing research, design, or code that
+depends on that system, unless the MCP is unavailable or the task is purely
+local and the existing source is sufficient. If an expected MCP cannot be used,
+say so in the final response and fall back to official docs or repo-local
+source.
+
+Task routing:
+
+- Cloudflare DNS, proxy, Workers, Email Sending, Turnstile, analytics, or API
+  work: use `cloudflare`.
+- Better Auth configuration, routes, plugin behavior, session, magic-link, or
+  social-auth work: use `better-auth`.
+- shadcn primitive discovery or upstream component comparison: use `shadcn`.
+- Current third-party library, framework, SDK, or CLI documentation: use
+  `context7`, except when a more specific MCP is configured.
+- GitHub workflow/release/repository operations: use `github` when available.
+- Postgres schema/data inspection: use `postgres` when the local database is
+  available.
+- Docker/container inspection: use `docker` when available, or the local Docker
+  CLI when that is the established path.
+- PostHog configuration or analytics verification: use `posthog`.
+- Multi-step architecture/debugging where explicit reasoning traces are useful:
+  use `sequential-thinking`.
 
 For shadcn discovery work, prefer these shadcn MCP operations when available:
 

@@ -107,6 +107,12 @@ services:
       - traefik.http.routers.siteinabox-cms-intake-api.middlewares=hsts@docker
       - traefik.http.routers.siteinabox-cms-intake-api.priority=250
       - traefik.http.routers.siteinabox-cms-intake-api.service=siteinabox-cms
+      - traefik.http.routers.siteinabox-cms-contact-api.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && PathPrefix(`/api/contact`)
+      - traefik.http.routers.siteinabox-cms-contact-api.entrypoints=websecure
+      - traefik.http.routers.siteinabox-cms-contact-api.tls.certresolver=letsencrypt
+      - traefik.http.routers.siteinabox-cms-contact-api.middlewares=hsts@docker
+      - traefik.http.routers.siteinabox-cms-contact-api.priority=250
+      - traefik.http.routers.siteinabox-cms-contact-api.service=siteinabox-cms
       - traefik.http.services.siteinabox-cms.loadbalancer.server.port=3000
     depends_on:
       postgres: { condition: service_healthy }

@@ -25,7 +25,9 @@ artifacts, and the provisional product app shell.
   generated sites.
 - Future generation must create validated CMS tenant/site/page/theme/SEO data,
   not generated source code.
-- DNS/domain pointing remains manual outside approved automation.
+- DNS/domain, proxy, and tenant Email Sending provisioning must stay inside
+  approved application/service automation. Do not restore prompt-runbook
+  provisioning flows.
 - New app images or deploy contracts require an explicit architecture/deploy
   decision before implementation.
 
@@ -39,7 +41,9 @@ artifacts, and the provisional product app shell.
 - Define any future tenant provisioning/deploy automation as product code or
   approved infra automation, not as prompt/runbook command flows.
 - Keep local MCP declarations in `.mcp.json`, `.mcp.toml`,
-  `.codex/config.toml`, and `.codex/mcp.toml` synchronized.
+  `.codex/config.toml`, and `.codex/mcp.toml` synchronized between the
+  monorepo root and `apps/cms`. Use the matching MCP for vendor-specific work
+  when available.
 - Treat retired legacy tenants as out of scope for the current SIAB tenant
   roster. Do not recreate tenant-specific operations until a future migration
   is explicitly approved.
@@ -64,6 +68,15 @@ renderer, and proxy preservation of the public `Host` / `X-Forwarded-Host`.
 Aliases serve the same active snapshot; canonical redirects remain out of
 scope. Domain verification remains a super-admin manual checklist on existing
 tenant fields, with no DNS automation.
+
+Follow-up on 2026-07-02 added renderer-owned generated-site form ingress at
+`POST /api/forms`. The renderer resolves the active snapshot by request host,
+injects the snapshot tenant id, normalizes browser form/JSON payloads, and
+forwards to CMS Forms. The production renderer router now uses Traefik v3
+`HostRegexp` for apex `.nl` tenant domains at low priority so platform-owned
+exact routers continue to win. Future non-`.nl` TLD support still needs an
+approved routing/certificate automation rule before those domains can be
+activated.
 
 ### 2026-06-29 — Legacy source cleanup
 

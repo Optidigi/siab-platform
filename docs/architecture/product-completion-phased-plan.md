@@ -32,11 +32,14 @@ rules.
 
 ### Intake UI Status
 
-There is not currently a production intake app connected to `POST /api/intake`.
+There is a production intake app routed at `/intake` and connected to the CMS
+intake route. The CMS route stores normalized submissions for SIAB review; it
+does not automatically generate a site from the public POST.
 
-`apps/landing` has public marketing pages and a contact form on `/contact`, but
-that form posts to Web3Forms and is not the generation intake flow. The
-home-page CTA should navigate into the dedicated intake surface.
+`apps/landing` has public marketing pages and a contact form on `/contact`.
+That form posts to CMS `POST /api/contact` for platform mail to
+`admin@siteinabox.nl`; it is not the generation intake flow. The home-page CTA
+should navigate into the dedicated intake surface.
 
 The intended public intake surface is a dedicated, substantial intake
 application/form mounted at `www.siteinabox.nl/intake`. The marketing site should
@@ -45,8 +48,9 @@ as a small contact-section replacement. The intake app is expected to own its ow
 multi-step UI, KVK API lookup/enrichment, Zod validation/schema logic, business
 rules, normalized output shape, and wiring into the CMS intake API.
 
-The CMS has tenant form/submission management screens, but no operator/customer
-generation-intake dashboard for reviewing and triggering intake submissions.
+The CMS has tenant form/submission management screens and generation operations
+screens for reviewing intake submissions and triggering draft generation after
+super-admin approval.
 
 ### Preview UI Status
 
@@ -257,8 +261,8 @@ into `POST /api/intake`.
 - Add or wire the dedicated public intake app/route at `/intake`, keeping the
   route reachable from `www.siteinabox.nl/intake`.
 - Update the marketing site CTA/navigation to send users to `/intake`.
-- Keep the contact form separate; do not repurpose Web3Forms as generation
-  intake.
+- Keep the contact form separate; do not repurpose platform contact mail as
+  generation intake.
 - Use the intake app's KVK enrichment, Zod schema validation, normalization, and
   business logic to produce the payload sent to `POST /api/intake`.
 - Show submission, validation, queued/generating, success, and failure states.

@@ -10,6 +10,7 @@ export function ContactSectionBlockRenderer({ block, options }: { block: Contact
   const provider = block.provider
   const formAction = provider?.action ?? provider?.fallbackHref ?? options.formAction ?? "/api/forms"
   const method = provider?.method ?? (provider?.provider === "mailto" ? "GET" : "POST")
+  const hasSubmitStatus = method.toUpperCase() === "POST" && !formAction.startsWith("mailto:")
   const sourceVariant = rendererVariantClassName(block)
 
   return (
@@ -86,9 +87,15 @@ export function ContactSectionBlockRenderer({ block, options }: { block: Contact
         <button type="submit" className={cx("cms-block__form-submit", nativeBlockClassName(block, "submit"))} style={{ borderRadius: "var(--radius-md)" }}>
           {block.submitLabel ?? "Send"}
         </button>
-        {(provider?.successMessage || provider?.errorMessage) && (
-          <p className="cms-block__form-message" data-success-message={provider.successMessage ?? undefined} data-error-message={provider.errorMessage ?? undefined}>
-            {provider.successMessage ?? provider.errorMessage}
+        {hasSubmitStatus && (
+          <p
+            className="cms-block__form-message"
+            data-success-message={provider?.successMessage ?? undefined}
+            data-error-message={provider?.errorMessage ?? undefined}
+            hidden
+            role="status"
+          >
+            {provider?.successMessage ?? provider?.errorMessage ?? ""}
           </p>
         )}
       </form>

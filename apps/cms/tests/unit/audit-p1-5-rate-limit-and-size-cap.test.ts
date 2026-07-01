@@ -9,7 +9,7 @@ import {
   rateLimitForgotPasswordByTargetEmail,
 } from "@/hooks/rateLimitForgotPassword"
 
-// Audit finding #5 (P1, T4) — Public form-submit + forgot-password
+// Audit finding #5 (P1, T4) — Public form-submit/contact + forgot-password
 // unrate-limited; Forms.data has no size cap. This batch lands BOTH sub-
 // fixes (audit's suggested-fix items 1 + 2; item 3 hCaptcha is deferred
 // per the audit's own deferral note).
@@ -20,8 +20,8 @@ import {
 //     caller is "anonymous" iff BOTH `Authorization` header is absent
 //     AND the `payload-token` cookie is absent. Authed super-admin
 //     callers (API-key client requests) bypass.
-//   • Path scope (per dispatch Constraint 2): `/api/forms` and
-//     `/api/users/forgot-password` ONLY. POST method only. The audit's
+//   • Path scope: `/api/forms`, `/api/contact`, `/api/intake`, and
+//     `/api/users/forgot-password`. POST method only. The audit's
 //     `/api/users` bootstrap path is INTENTIONALLY out of scope (T2 is
 //     closed by P1 #6's BOOTSTRAP_TOKEN gate; rate-limiting that path
 //     would interfere with the seed runbook).
@@ -149,6 +149,15 @@ describe("audit-p1 #5 sub-fix 1 — anonymous POST rate-limit (T4)", () => {
       expectAllowed(res, `req #${i}`)
     }
     const res = await middleware(reqAt({ path: "/api/users/forgot-password", ip: "203.0.113.20" }))
+    expectBlocked(res, "req #11")
+  })
+
+  it("Case 2b: /api/contact anon — 10 permitted, 11th returns 429 + Retry-After", async () => {
+    for (let i = 1; i <= 10; i++) {
+      const res = await middleware(reqAt({ path: "/api/contact", ip: "203.0.113.22" }))
+      expectAllowed(res, `req #${i}`)
+    }
+    const res = await middleware(reqAt({ path: "/api/contact", ip: "203.0.113.22" }))
     expectBlocked(res, "req #11")
   })
 

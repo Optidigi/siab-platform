@@ -53,11 +53,11 @@ Current surfaces:
 - Shared UI must come from `packages/ui`. Do not import app components from
   one app into another app.
 - Shared data shapes belong in `packages/contracts`.
-- DNS/domain pointing stays manual or stubbed for the current production-readiness
-  pass. Later intake/domain work is expected to use OpenProvider for domain
-  purchase and Cloudflare for DNS/proxy automation once that phase is approved.
-  A submitted domain is normalized into domain data and used to derive slug,
-  preview path, live hostname, and deployment metadata.
+- Domain provisioning uses approved application/service boundaries, not
+  prompt-runbook workflows. OpenProvider owns domain purchase and Cloudflare
+  owns DNS/proxy plus Email Sending provisioning where that automation has been
+  implemented. A submitted domain is normalized into domain data and used to
+  derive slug, preview path, live hostname, and deployment metadata.
 - Mollie is the selected payment service provider. Payment work should use a
   clear Mollie adapter boundary, keep payment state explicit in CMS, and must not
   commit API keys, webhook secrets, or other secret values.
@@ -79,6 +79,7 @@ Configured root servers:
 - `github`: `npx -y @modelcontextprotocol/server-github`
 - `context7`: `npx -y @upstash/context7-mcp`
 - `better-auth`: `https://mcp.better-auth.com/mcp`
+- `cloudflare`: `https://mcp.cloudflare.com/mcp`
 - `docker`: `npx -y mcp-server-docker`
 - `sequential-thinking`: `npx -y @modelcontextprotocol/server-sequential-thinking`
 - `posthog`: `https://mcp.posthog.com/mcp`
@@ -87,6 +88,34 @@ Do not add API keys, tokens, or secret env values to repo-local MCP files.
 Authenticated MCP credentials belong in user-scope config. Local services such
 as Postgres or Docker must still be running on the workstation for those MCP
 servers to be useful.
+
+## MCP Use Policy
+
+Use the relevant configured MCP when work depends on a vendor, framework, or
+external system that has a project MCP. This is a semi-enforced repo rule:
+agents should use the matching MCP before finalizing research, design, or code
+that depends on that system, unless the MCP is unavailable or the task is
+purely local and the existing repo source is sufficient. If an expected MCP
+cannot be used, say so in the final response and fall back to official docs or
+repo-local source.
+
+Task routing:
+
+- Cloudflare DNS, proxy, Workers, Email Sending, Turnstile, analytics, or API
+  work: use `cloudflare`.
+- Better Auth configuration, routes, plugin behavior, session, magic-link, or
+  social-auth work: use `better-auth`.
+- shadcn primitive discovery or upstream component comparison: use `shadcn`.
+- Current third-party library, framework, SDK, or CLI documentation: use
+  `context7`, except when a more specific MCP is configured.
+- GitHub workflow/release/repository operations: use `github` when available.
+- Postgres schema/data inspection: use `postgres` when the local database is
+  available.
+- Docker/container inspection: use `docker` when available, or the local Docker
+  CLI when that is the established path.
+- PostHog configuration or analytics verification: use `posthog`.
+- Multi-step architecture/debugging where explicit reasoning traces are useful:
+  use `sequential-thinking`.
 
 For shadcn discovery work, prefer these shadcn MCP operations when available:
 

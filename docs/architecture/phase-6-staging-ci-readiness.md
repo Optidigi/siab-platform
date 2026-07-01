@@ -34,7 +34,7 @@ images.
 | Preview access | `preview-access.test.ts`, `preview-access-action.test.ts`, `request-preview-magic-link.test.ts`, `preview-route.test.tsx` | Magic-link email delivery and session cookie behavior on `preview.siteinabox.nl` | Preview is Better Auth/session gated and grant scoped. |
 | Preview customizer/approval | `preview-customizer.test.ts`, `preview-customizer-source.test.ts` | Customer preview acceptance browser smoke | Preview renders the shared renderer directly; no iframe boundary. |
 | Payment checkout/webhook | `molliePayments.test.ts`, `generationRunPayment.test.ts`, `generationRunPaymentAction.test.ts` | Mollie test checkout and webhook delivery from Mollie dashboard/tunnel | PSP is Mollie. Payment state alone never publishes or activates a site. |
-| Manual domain verification | `domainVerificationAction.test.ts` | DNS and Traefik host-rule checks | OpenProvider/Cloudflare automation is deferred. |
+| Domain and sender verification | `domainVerificationAction.test.ts`, tenant Email Sending tests | DNS, Traefik host-rule, OpenProvider, and Cloudflare provisioning checks | Activation requires verified domain ownership and, for generated-site runs, verified tenant Email Sending state. |
 | Publish/activate/rollback | `publish-current-state.test.ts`, `publish-route.test.ts`, `publishOperations.test.ts` | Operator smoke for publish, activate, rollback in staging | Live activation requires approved preview plus completed/waived payment, unless explicit super-admin manual activation is used; tenant/domain gates still apply. |
 | Renderer snapshot lookup | `renderer-snapshot-route.test.ts`, `renderer-snapshot-loader.test.ts` | Bearer token parity, `Host`/`X-Forwarded-Host` preservation, unknown host 404 | Live renderer serves only active published snapshots and inactive/unknown hosts return 404. |
 | Landing/intake/legacy builds | Package build/test commands | Public route and asset smoke after deploy | Compatibility `site:*` scripts map to landing. |
@@ -54,7 +54,7 @@ CMS/staging:
 - `SITE_URL`: public CMS/admin origin.
 - `DATA_DIR`: CMS tenant media/projection data directory.
 - `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `EMAIL_FROM`: Cloudflare REST Email Sending delivery for auth, preview, intake/internal, platform, and verified tenant mail. `CLOUDFLARE_EMAIL_SMTP_TOKEN` is optional fallback only.
-- `SIAB_PUBLIC_POST_RATE_LIMIT_POINTS`, `SIAB_PUBLIC_POST_RATE_LIMIT_WINDOW_SECONDS`: anonymous public POST limiter for `/api/forms`, `/api/intake`, and forgot-password.
+- `SIAB_PUBLIC_POST_RATE_LIMIT_POINTS`, `SIAB_PUBLIC_POST_RATE_LIMIT_WINDOW_SECONDS`: anonymous public POST limiter for `/api/forms`, `/api/intake`, `/api/contact`, and forgot-password.
 - `SIAB_FORM_TARGET_RATE_LIMIT_POINTS`, `SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS`: generated-site form limiter keyed by tenant/form target.
 - `MOLLIE_API_KEY`, `MOLLIE_SITE_PAYMENT_AMOUNT`, `MOLLIE_SITE_PAYMENT_CURRENCY`, `MOLLIE_WEBHOOK_BASE_URL`, `MOLLIE_WEBHOOK_SIGNING_SECRET`: Mollie checkout/webhook configuration.
 - `OPENPROVIDER_USERNAME`, `OPENPROVIDER_PASSWORD`, `OPENPROVIDER_API_BASE_URL`, `OPENPROVIDER_TECH_HANDLE`, `OPENPROVIDER_BILLING_HANDLE`, `OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT`, `OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY`, `OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT`, `OPENPROVIDER_DOMAIN_MAX_OFFER_CURRENCY`, `OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT`, `OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY`, `OPENPROVIDER_NS_GROUP`, `OPENPROVIDER_NAMESERVERS`: domain availability/registration configuration.
@@ -79,7 +79,6 @@ Landing/intake/legacy snapshots:
 - `PUBLIC_INTAKE_SUBMIT_ENDPOINT`: intake submit endpoint; production should route `/api/intake` to CMS.
 - `PUBLIC_KVK_SEARCH_ENDPOINT`, `PUBLIC_KVK_PROFILE_ENDPOINT`: browser-facing CMS proxy endpoints for factual KVK prefill; KVK credentials stay in CMS.
 - `PUBLIC_ADMIN_ORIGIN`, `PREVIEW_HMAC_SECRET`: legacy preview compatibility for static surfaces.
-- `PUBLIC_WEB3FORMS_KEY`, `PUBLIC_CONTACT_EMAIL`: legacy/static contact form config where present.
 - `CMS_DATA_DIR`, `CMS_DATA_DIR_ABS`, `CMS_TENANT_ID`: legacy tenant snapshot local projection helpers.
 
 ## Migration Inventory
@@ -113,8 +112,9 @@ payment state, or published snapshots.
 - `preview.siteinabox.nl` routes to CMS and preserves the public host.
 - Tenant primary domains and aliases route to the renderer and preserve
   `Host` and preferably `X-Forwarded-Host`.
-- Domain purchase and DNS/proxy automation are manual/deferred. Do not add
-  OpenProvider or Cloudflare automation in this phase.
+- Domain purchase, DNS/proxy, and tenant Email Sending provisioning use the
+  approved OpenProvider and Cloudflare service boundaries. Do not add
+  prompt-runbook provisioning flows or tenant-specific deploy artifacts.
 - Mollie is the only PSP in scope. Do not introduce Stripe wiring.
 
 ## Mocked, Manual, and Deferred
@@ -122,12 +122,14 @@ payment state, or published snapshots.
 - Mocked locally: default site generation provider, provider-neutral payment
   completed/waived states, renderer fixture mode outside production.
 - Manual in staging: email deliverability, Mollie hosted checkout/webhook,
-  DNS/Traefik routing, domain verification, bootstrap token removal, rollback
-  operator smoke.
+  DNS/Traefik routing verification, bootstrap token removal, rollback operator
+  smoke, and any operator fallback needed when external provider automation is
+  unavailable.
 - Manual in staging: KVK lookup with production/test credentials and manual
   fallback.
-- Deferred: OpenProvider domain purchase, Cloudflare DNS/proxy automation,
-  canonical renderer redirects, per-tenant generated source/deploy artifacts.
+- Deferred: canonical renderer redirects and any tenant-specific generated
+  source/deploy artifacts. Tenant-specific source folders, workflows, and
+  images remain prohibited.
 
 ## Verification Matrix
 

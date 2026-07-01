@@ -91,7 +91,9 @@ pnpm renderer:build
 
 - Work normally starts from this monorepo root.
 - MCP definitions are mirrored at the root and under `apps/cms`; see
-  `AGENTS.md` for the canonical server list.
+  `AGENTS.md` for the canonical server list and MCP use policy. Domain-specific
+  MCPs are expected for matching work, for example Cloudflare work uses the
+  Cloudflare MCP and Better Auth work uses the Better Auth MCP.
 - Repo-local command prompt directories have been removed. `.codex/` is config
   only.
 - There are no repo-local skills. Global/user skills may exist outside this

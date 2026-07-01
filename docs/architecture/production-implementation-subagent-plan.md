@@ -52,13 +52,12 @@ tenant-specific images.
 - Mollie is the selected payment service provider. Provider-neutral
   placeholders should be replaced with a Mollie adapter while preserving clear
   payment state in CMS.
-- Domain purchase will use OpenProvider from the intake/customer flow, but this
-  is deferred until the full intake app is ready.
-- DNS/server routing is intended to be automated through Cloudflare, including
-  wildcard DNS pointing to the server, but this is deferred with domain purchase.
-- Until domain automation is implemented, production readiness work should keep
-  a manual or stubbed domain-ready gate so publish/activation can be tested
-  without pretending OpenProvider or Cloudflare automation exists.
+- Historical note: this plan originally treated OpenProvider purchase and
+  Cloudflare DNS/server routing as deferred work with a manual/stubbed gate.
+  That state is superseded by the current AGENTS.md and readiness docs:
+  provider automation belongs in approved application/service boundaries, while
+  prompt-runbook provisioning flows and tenant-specific deploy artifacts remain
+  prohibited.
 - Amicare must stay on the data-driven renderer runtime. Its legacy parity
   behavior belongs in scoped renderer/CMS snapshot data and
   `packages/site-renderer`, not restored tenant app source.

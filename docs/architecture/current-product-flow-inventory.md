@@ -16,7 +16,7 @@ current implementation only; it does not define new product behavior.
 
 | Perspective | Current user-operable surfaces | Current non-UI operations |
 | --- | --- | --- |
-| Public customer | `apps/landing/src/pages/index.astro` and `apps/landing/src/pages/contact.astro`; contact posts to Web3Forms. `apps/intake/src/pages/index.astro` owns the public intake scaffold and posts structured submissions to the configured CMS intake API. Signed preview at `apps/cms/src/app/(frontend)/preview/[token]/page.tsx`. | Intake still depends on the CMS `POST /api/intake` route; richer KVK-backed intake logic remains future work. |
+| Public customer | `apps/landing/src/pages/index.astro` and `apps/landing/src/pages/contact.astro`; contact posts to CMS `POST /api/contact` for platform mail. `apps/intake/src/pages/index.astro` owns the public intake scaffold and posts structured submissions to the configured CMS intake API. Signed preview at `apps/cms/src/app/(frontend)/preview/[token]/page.tsx`. | Intake depends on CMS `POST /api/intake`, which stores submissions for SIAB review. Richer KVK-backed intake logic remains future work. |
 | Operator | CMS dashboard, site list/detail/edit, page editor, forms, media, users, settings, analytics, and generation-run operations under `apps/cms/src/app/(frontend)/(admin)`. Payload admin at `apps/cms/src/app/(payload)/admin/[[...segments]]/page.tsx`. | `POST /api/intake`, `POST /api/preview-tokens`, `POST /api/publish`, and direct Payload collection access for operational collections. |
 | CMS admin | Payload collections for tenants, pages, forms, intake submissions, generation runs, and published snapshots. | Generation/import, approval persistence, publish, activation, renderer snapshot lookup, and rollback are implemented in services/routes. |
 | Renderer | `apps/renderer/src/pages/[...path].astro` serves public paths from active snapshots. | `apps/renderer/src/lib/snapshot.ts` fetches CMS snapshots from `GET /api/renderer/snapshot`; fixture mode exists outside production. |
@@ -27,39 +27,43 @@ current implementation only; it does not define new product behavior.
    `apps/cms/src/app/(payload)/api/intake/route.ts`.
    The route accepts JSON up to 64 KB, rejects invalid JSON/body shape, parses
    with `parsePublicIntakeSubmission`, and calls
-   `processIntakeSubmission`.
-2. `apps/cms/src/lib/intake/processIntakeSubmission.ts` normalizes the intake,
-   creates or reuses an `intake-submissions` row and a `site-generation-runs`
-   row by idempotency key, calls the configured generation provider, validates
-   the returned `SiteGenerationSpec`, and imports it through
-   `applySiteGenerationSpec`.
-3. `apps/cms/src/lib/site-generation/applySiteGenerationSpec.ts` upserts the
+   `storeIntakeSubmission`.
+2. `apps/cms/src/lib/intake/storeIntakeSubmission.ts` normalizes the intake,
+   creates or reuses an `intake-submissions` row by idempotency key, and sends
+   an internal notification to `admin@siteinabox.nl`. This is intentionally
+   manual-review first for v1.
+3. A super-admin reviews and approves the stored `GenerationInput` from the CMS
+   generation operations UI. `generateReviewedIntakeDraftAction` then calls
+   `processReviewedIntakeSubmission`, which creates the `site-generation-runs`
+   row, calls the configured generation provider, validates the returned
+   `SiteGenerationSpec`, and imports it through `applySiteGenerationSpec`.
+4. `apps/cms/src/lib/site-generation/applySiteGenerationSpec.ts` upserts the
    tenant, site settings, pages, theme, and site manifest from structured data.
    Generated pages are imported with `status: "draft"` and use
    `skipProjection`, so they are not live output.
-4. Customer preview access is issued from the super-admin generation-run detail
+5. Customer preview access is issued from the super-admin generation-run detail
    UI. The CMS creates or refreshes a `preview-access-grants` row, then sends a
    Better Auth magic link through the isolated `/api/preview-auth/*` auth
    surface.
-5. The customer preview route at `preview.siteinabox.nl/{clientSlug}` and
+6. The customer preview route at `preview.siteinabox.nl/{clientSlug}` and
    `preview.siteinabox.nl/{clientSlug}/pages/{pageSlug}` requires a valid
    preview Better Auth session plus a matching active grant before loading data
    through `apps/cms/src/lib/preview/customizer.ts`. It renders
    `@siteinabox/site-renderer` directly, not in an iframe. The old
    `/preview/[token]` route is internal compatibility only and is disabled in
    production unless `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE=1`.
-6. Preview theme changes call `setPreviewTheme` and persist tenant theme JSON.
+7. Preview theme changes call `setPreviewTheme` and persist tenant theme JSON.
    The approval button calls `approvePreviewSite`, which records
    `clientApproval: { status: "approved" }` and payment
    `{ status: "pending_provider" }` on the latest `preview_ready` generation
    run. It does not publish or activate.
-7. Publishing is available from the super-admin generation-run detail UI and
+8. Publishing is available from the super-admin generation-run detail UI and
    through `apps/cms/src/app/(payload)/api/publish/route.ts`.
    `publishSiteSnapshot` builds an immutable `PublishedSiteSnapshot` from
    run-linked CMS pages that are already `published`, creates a
    `published-site-snapshots` row with `status: "drafted"`, and optionally
    activates it.
-8. Activation is handled by
+9. Activation is handled by
    `activatePublishedSnapshot` in
    `apps/cms/src/lib/publish/siteSnapshots.ts`. Activation gates require:
    tenant not `suspended` or `archived`; domain verification `verified`;
@@ -67,20 +71,27 @@ current implementation only; it does not define new product behavior.
    activation; approved generation run unless manual activation is requested;
    and payment `completed` or `waived` unless manual activation is requested.
    Manual activation bypasses approval/payment only. Activation marks the
-   selected snapshot `active`, supersedes other active snapshots, and updates
-   the tenant to `status: "active"` with `activeSnapshot`.
-9. Renderer lookup starts in `apps/renderer/src/pages/[...path].astro`, which
+   selected snapshot `active`, supersedes other active snapshots, updates the
+   tenant to `status: "active"` with `activeSnapshot`, and sends a non-blocking
+   `site.live_notice` handoff email for first activation of run-linked
+   generated-site snapshots.
+10. Renderer lookup starts in `apps/renderer/src/pages/[...path].astro`, which
    normalizes the host and calls `resolvePublishedPage`. The renderer fetches
    `GET /api/renderer/snapshot?host=...` from the CMS when `SIAB_CMS_URL` is
    set, validates the snapshot contract, finds a non-draft page by slug, and
    renders it through `SitePageRenderer`.
-10. The CMS renderer endpoint
+11. Generated-site form posts go to the renderer-owned `POST /api/forms`
+    endpoint. The renderer resolves the active snapshot by Host, injects the
+    snapshot tenant id, normalizes browser form/JSON payloads, and forwards to
+    CMS Forms. CMS stores the submission and notifies the tenant contact email
+    only when the tenant has verified Cloudflare Email Sending.
+12. The CMS renderer endpoint
     `apps/cms/src/app/(payload)/api/renderer/snapshot/route.ts` authorizes with
     `SIAB_RENDERER_API_TOKEN` in production and resolves host to tenant by
     tenant domain or site-settings aliases. It returns only active tenants with
     an active, contract-valid snapshot whose snapshot domain still matches the
     tenant domain.
-11. Rollback is available from the super-admin generation-run detail UI and
+13. Rollback is available from the super-admin generation-run detail UI and
     through `POST /api/publish` with `action: "rollback"` and `snapshotId`. It
     activates the requested snapshot with `rollback: true`, marks prior active
     snapshots `rolled_back`, and stores the rollback reason.
@@ -92,7 +103,8 @@ current implementation only; it does not define new product behavior.
 - `/`: marketing home page in `apps/landing/src/pages/index.astro`.
   Primary generation CTAs navigate to `/intake`.
 - `/contact`: contact page in `apps/landing/src/pages/contact.astro`.
-  The form posts to Web3Forms, not CMS intake.
+  The form posts to CMS `POST /api/contact`, which sends platform mail to
+  `admin@siteinabox.nl`; it is intentionally separate from generation intake.
 - `/__preview`: legacy/static site preview page in
   `apps/landing/src/pages/__preview.astro`.
 - `/404`: public 404 page.
@@ -131,9 +143,9 @@ API calls.
 
 | Operation | Current visibility |
 | --- | --- |
-| Public contact inquiry | Fully user-operable in `apps/landing`; posts to Web3Forms. |
+| Public contact inquiry | Fully user-operable in `apps/landing`; posts to CMS `POST /api/contact` and sends platform mail via Cloudflare through `sendEmail`. |
 | Generation intake submission | Public scaffold at `apps/intake` mounted on `/intake`; posts to `POST /api/intake` by configured URL. |
-| Intake normalization/generation/import | Service-only through `processIntakeSubmission`; covered by unit tests such as `apps/cms/tests/unit/intakeGenerationRun.test.ts`. |
+| Intake storage/review | Public route stores normalized submissions for SIAB review. Generation is intentionally started by super-admin after reviewed input approval. |
 | Generated draft review in CMS | User-operable through `/generation-runs`, `/generation-runs/[id]`, normal page list/editor, Better Auth preview access issuance, and explicit page promotion. |
 | Preview access issuance | Super-admin UI on `/generation-runs/[id]` creates or refreshes a preview grant and sends a Better Auth magic link for `preview.siteinabox.nl/{clientSlug}`. |
 | Preview/customizer | User-operable with a valid preview Better Auth session and active grant; includes page navigation, style save status, approval state, and payment gate status. |
@@ -143,10 +155,12 @@ API calls.
 | Page publish/unpublish | User-operable in the page editor through page `status`; also available through Payload collection writes. |
 | Snapshot publish | Operator UI on `/generation-runs/[id]` and API at `POST /api/publish`. |
 | Snapshot activation | Operator UI on `/generation-runs/[id]` and API/service through `POST /api/publish` or `activatePublishedSnapshot`. |
+| Live handoff email | Sent non-blockingly as `site.live_notice` after first generated-site snapshot activation. |
 | Rollback | Operator UI on `/generation-runs/[id]` and API through `POST /api/publish` with `action: "rollback"`. |
 | Domain and tenant sender verification | Checkout provisioning can create Cloudflare/OpenProvider domain state and Cloudflare Email Sending subdomain state; operator/manual verification remains a fallback. Activation requires verified domain ownership and, for generated-site runs, verified tenant Email Sending. |
 | Mail logs and operational alerts | Payload collections `mail-logs` and `operational-alerts` are super-admin-only, metadata-only visibility for outbound delivery and important/repeated mail failures. |
 | Renderer live lookup | Service-only between renderer and CMS; public users see rendered pages or 404. |
+| Generated-site form submissions | Renderer `POST /api/forms` proxies active-snapshot submissions to CMS Forms; tenant notification requires verified tenant Email Sending and Site Settings contact email. |
 
 ## State Transitions
 

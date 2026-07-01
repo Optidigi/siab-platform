@@ -22,6 +22,7 @@ import { resolveSettingsContract } from "@/lib/settingsContract"
 import { isActivationPaymentSatisfied } from "@/lib/payments/generationRunPayment"
 import { hasVerifiedTenantSender } from "@/lib/tenants/emailSending"
 import { refreshTenantEmailSendingFromCloudflare } from "@/lib/tenants/emailSendingRefresh"
+import { sendLiveHandoffEmailAfterActivation } from "@/lib/publish/liveHandoffEmail"
 
 const PUBLISH_SNAPSHOT_MUTATION_CONTEXT = { publishSnapshotLifecycleMutation: true } as const
 
@@ -297,6 +298,7 @@ export async function activatePublishedSnapshot(
   if (!gate.ok) throw new Error(gate.reason)
 
   const now = new Date().toISOString()
+  const handoffSnapshotDoc = { ...snapshotDoc }
   const activeSnapshots = await payload.find({
     collection: "published-site-snapshots" as any,
     where: { and: [{ tenant: { equals: tenantId } }, { status: { equals: "active" } }] },
@@ -345,6 +347,13 @@ export async function activatePublishedSnapshot(
     } as any,
     depth: 0,
     overrideAccess: true,
+  })
+
+  await sendLiveHandoffEmailAfterActivation(payload, {
+    tenant,
+    run,
+    snapshotDoc: handoffSnapshotDoc,
+    rollback: options.rollback,
   })
 
   return activatedSnapshot as any

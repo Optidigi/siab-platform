@@ -1,24 +1,19 @@
 ---
 import { site } from '../../content/site';
-
-const web3FormsKey = import.meta.env.PUBLIC_WEB3FORMS_KEY ?? '';
 ---
 
 <section class="siab-contact-form-section" aria-label="Contactformulier">
   <form
     class="siab-contact-form"
-    action="https://api.web3forms.com/submit"
+    action="/api/contact"
     method="POST"
     novalidate
     data-siab-form
-    data-siab-simulate={web3FormsKey ? undefined : 'true'}
     aria-describedby="siab-form-required-hint"
   >
     <p id="siab-form-required-hint" class="visually-hidden">Velden met een sterretje zijn verplicht.</p>
 
-    <input type="hidden" name="access_key" value={web3FormsKey} />
-    <input type="hidden" name="from_name" value={site.brand} />
-    <input type="hidden" name="subject" value={`Nieuw bericht via ${site.primaryDomain}`} />
+    <input type="hidden" name="source" value={`${site.primaryDomain}/contact`} />
 
     <div class="siab-form-summary" role="alert" hidden data-siab-summary>
       Er ging iets mis. Controleer de gemarkeerde velden hieronder.
@@ -279,7 +274,6 @@ const web3FormsKey = import.meta.env.PUBLIC_WEB3FORMS_KEY ?? '';
     const form = document.querySelector('[data-siab-form]') as HTMLFormElement | null;
     if (!form) return;
 
-    const simulate = form.dataset.siabSimulate === 'true';
     const loadedAtInput = form.querySelector<HTMLInputElement>('[data-siab-loaded-at]');
     const loadedAt = Date.now();
     if (loadedAtInput) loadedAtInput.value = String(loadedAt);
@@ -360,11 +354,6 @@ const web3FormsKey = import.meta.env.PUBLIC_WEB3FORMS_KEY ?? '';
         form.hidden = true;
         if (success) { success.hidden = false; success.focus(); }
       };
-
-      if (simulate) {
-        setTimeout(showSuccess, 400);
-        return;
-      }
 
       try {
         const data = new FormData(form);

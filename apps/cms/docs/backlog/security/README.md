@@ -246,6 +246,10 @@ Generated-site forms also have a second anonymous limiter keyed by tenant/form
 target. Bot-token validation remains absent by product decision for the CMS
 surface.
 
+#### Update — 2026-07-02
+The anonymous public POST limiter now also covers `POST /api/contact` for the
+platform marketing contact route.
+
 #### Rollback validation
 Rollback verification passed on 2026-05-26:
 

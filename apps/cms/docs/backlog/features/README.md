@@ -188,3 +188,22 @@ the tenant has a verified Cloudflare sender and a Site Settings contact email.
 Tenant provisioning stores non-secret Email Sending API state on
 `tenants.emailSending`; generated-site activation for a run is blocked until
 that state is verified.
+
+### 2026-07-02 — Public contact, generated forms, and live handoff mail
+
+**Status:** Foundation added 2026-07-02.
+
+The public marketing contact form now posts to CMS `POST /api/contact` instead
+of Web3Forms. The CMS validates the small contact payload, rate-limits the
+anonymous public POST surface, and sends platform mail to `admin@siteinabox.nl`
+through the centralized Cloudflare-backed `sendEmail` path.
+
+Generated-site contact sections now have a renderer-owned ingress path at
+`POST /api/forms`. The renderer derives the tenant from the active published
+snapshot for the request host and forwards normalized submissions to CMS Forms;
+CMS notification still requires a verified tenant sender and a Site Settings
+contact email, with no platform fallback for normal tenant mail.
+
+Generated-site activation sends a non-blocking `site.live_notice` handoff email
+after first activation of a run-linked drafted snapshot. Rollbacks, current
+state activations, and reactivations skip the normal live-site handoff.

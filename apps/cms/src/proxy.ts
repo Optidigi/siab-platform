@@ -10,7 +10,7 @@ import { stripAdminPrefix, isSuperAdminDomain } from "@/lib/hostToTenant"
 //
 // Most of /api/* is excluded (Payload's REST/GraphQL endpoints have their
 // own auth), with two opt-in exceptions for audit-p1 #5 (T4) rate-limit:
-// /api/forms and /api/users/forgot-password are anonymous public surfaces
+// /api/forms, /api/intake, /api/contact, and /api/users/forgot-password are anonymous public surfaces
 // whose abuse-by-flood vector the matcher MUST route through middleware.
 //
 // The (frontend) route group's pages (/, /login, /sites/*, etc.) all match
@@ -124,7 +124,7 @@ const applySecurityHeaders = (res: NextResponse, pathname: string, nonce: string
 // fans out to multiple Node processes or hosts, swap to RateLimiterCluster
 // or a Redis-backed limiter. (Documented in audits/07-fix-batch-6-report.md.)
 //
-// Scope (per dispatch Constraint 2): /api/forms and /api/users/forgot-password
+// Scope: /api/forms, /api/intake, /api/contact, and /api/users/forgot-password
 // ONLY. POST method only. /api/users (bootstrap surface) is INTENTIONALLY
 // out-of-scope; rate-limiting it would interfere with the P1 #6 BOOTSTRAP_TOKEN
 // seed runbook + AMD-1 owner-invite flow.
@@ -213,6 +213,7 @@ export const __resetRateLimitersForTests = (): void => {
 
 const RATE_LIMITED_PATHS = new Set<string>([
   "/api/forms",
+  "/api/contact",
   "/api/intake",
   "/api/users/forgot-password",
 ])
@@ -461,6 +462,8 @@ export const config = {
     // trailing-slash handling (which differs between dev / prod / nginx).
     "/api/forms",
     "/api/forms/",
+    "/api/contact",
+    "/api/contact/",
     "/api/intake",
     "/api/intake/",
     "/api/users/forgot-password",

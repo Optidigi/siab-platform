@@ -2561,6 +2561,14 @@ svg {
   font-size: 0.9rem;
 }
 
+.site-renderer:not([data-legacy-tenant]) .cms-block__form-message[data-state="success"] {
+  color: #166534;
+}
+
+.site-renderer:not([data-legacy-tenant]) .cms-block__form-message[data-state="error"] {
+  color: #b91c1c;
+}
+
 .site-renderer:not([data-legacy-tenant]) .rt-link {
   color: var(--color-accent);
   font-weight: 700;
