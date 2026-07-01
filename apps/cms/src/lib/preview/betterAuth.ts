@@ -44,18 +44,36 @@ if (process.env.NODE_ENV !== "production") {
   globalThis.__siabPreviewBetterAuthPool = pool
 }
 
-const previewBaseURL = {
-  allowedHosts: ["preview.siteinabox.nl", "localhost:*", "127.0.0.1:*"],
-  protocol: (process.env.NODE_ENV === "development" ? "http" : "https") as "http" | "https",
+const PREVIEW_ORIGIN = "https://preview.siteinabox.nl"
+
+export function getPreviewBetterAuthBaseURL() {
+  const allowedHosts = ["preview.siteinabox.nl"]
+  if (process.env.NODE_ENV === "development") {
+    allowedHosts.push("localhost:*", "127.0.0.1:*")
+  }
+
+  return {
+    allowedHosts,
+    protocol: (process.env.NODE_ENV === "development" ? "http" : "https") as "http" | "https",
+    fallback: PREVIEW_ORIGIN,
+  } as const
+}
+
+export function getPreviewTrustedOrigins() {
+  const origins = [PREVIEW_ORIGIN]
+  if (process.env.NODE_ENV === "development") {
+    origins.push("http://localhost:*", "http://127.0.0.1:*")
+  }
+  return origins
 }
 
 export const previewAuth = betterAuth({
   appName: "SiteInABox Preview",
-  baseURL: previewBaseURL,
+  baseURL: getPreviewBetterAuthBaseURL(),
   basePath: "/api/preview-auth",
   secret: authSecret,
   database: pool,
-  trustedOrigins: ["https://preview.siteinabox.nl", "http://localhost:*", "http://127.0.0.1:*"],
+  trustedOrigins: getPreviewTrustedOrigins(),
   telemetry: { enabled: false },
   advanced: {
     cookiePrefix: "siab-preview-auth",

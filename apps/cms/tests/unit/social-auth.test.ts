@@ -169,6 +169,19 @@ describe("social auth host validation", () => {
     )
   })
 
+  it("keeps tenant admin origins first while also trusting the canonical CMS fallback", async () => {
+    process.env.SITE_URL = "https://admin.siteinabox.nl"
+    fakeFind.mockResolvedValueOnce({ docs: [{ id: 7, domain: "ami-care.nl", status: "active" }] })
+    const req = new Request("https://admin.ami-care.nl/api/auth/sign-in/magic-link", {
+      headers: { host: "admin.ami-care.nl" },
+    })
+
+    await expect(getTrustedSocialAuthOrigins(req)).resolves.toEqual([
+      "https://admin.ami-care.nl",
+      "https://admin.siteinabox.nl",
+    ])
+  })
+
   it("rejects unknown tenant admin hosts", async () => {
     fakeFind.mockResolvedValueOnce({ docs: [] })
     const req = new Request("https://admin.unknown.example/api/auth/sign-in/social", {

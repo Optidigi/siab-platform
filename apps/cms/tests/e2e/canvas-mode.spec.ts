@@ -17,7 +17,7 @@
  * tenant CSS compilation, which requires an Astro build artefact in DATA_DIR).
  */
 import { test, expect } from "@playwright/test"
-import { ensureE2EUser } from "./_setup"
+import { ensureE2EUser, loginAsE2ESuperAdmin } from "./_setup"
 import { readE2ESeed } from "./_seed"
 
 test.describe("canvas mode", () => {
@@ -27,18 +27,12 @@ test.describe("canvas mode", () => {
 
   test("canvas mode: rt-canvas surface present with hero block", async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 900 })
-    const creds = await ensureE2EUser()
     const seed = readE2ESeed()
 
     // -----------------------------------------------------------------------
     // 1. Log in
     // -----------------------------------------------------------------------
-    await page.goto("/login")
-    await page.waitForLoadState("networkidle")
-    await page.fill('input[type="email"]', creds.email)
-    await page.fill('input[type="password"]', creds.password)
-    await page.getByRole("button", { name: /sign in/i }).click()
-    await expect(page).toHaveURL("/", { timeout: 20_000 })
+    await loginAsE2ESuperAdmin(page)
 
     await page.goto(seed.audit.pageUrl)
     const pageUrl = page.url()

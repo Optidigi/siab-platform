@@ -1,13 +1,10 @@
 import { test, expect } from "@playwright/test"
-import { ensureE2EUser } from "./_setup"
+import { ensureE2EUser, fillGhostedPasswordLogin } from "./_setup"
 
 test("/login is reachable; bad credentials show error", async ({ page }) => {
   await ensureE2EUser()
   await page.goto("/login")
-  await page.waitForLoadState("networkidle")
-  await page.fill('input[type="email"]', "e2e-sa@test.local")
-  await page.fill('input[type="password"]', "WRONG_PASSWORD")
-  await page.getByRole("button", { name: /sign in/i }).click()
+  await fillGhostedPasswordLogin(page, "e2e-sa@test.local", "WRONG_PASSWORD")
   // Status feedback appears on failed login.
   await expect(page.getByText(/Invalid email or password/i)).toBeVisible({ timeout: 10_000 })
 })

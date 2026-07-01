@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test"
 import { readE2ESeed } from "./_seed"
+import { fillGhostedPasswordLogin } from "./_setup"
 
 const seed = readE2ESeed()
 const password = "e2e-test-1234"
@@ -29,10 +30,7 @@ async function loginAsTenantRole(page: Page, role: "owner" | "editor" | "viewer"
   }
 
   await page.goto(loginUrl)
-  await page.waitForLoadState("networkidle")
-  await page.fill('input[type="email"]', `${role}.audit@test.local`)
-  await page.fill('input[type="password"]', password)
-  await page.getByRole("button", { name: /sign in/i }).click()
+  await fillGhostedPasswordLogin(page, `${role}.audit@test.local`, password)
   await page.waitForURL((url) => url.origin === new URL(loginUrl).origin && url.pathname === "/", {
     timeout: 30_000,
   })

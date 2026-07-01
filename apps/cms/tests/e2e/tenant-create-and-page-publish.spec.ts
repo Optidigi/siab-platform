@@ -1,17 +1,11 @@
 import { test, expect } from "@playwright/test"
-import { ensureE2EUser, cleanupE2ETenant } from "./_setup"
+import { cleanupE2ETenant, loginAsE2ESuperAdmin } from "./_setup"
 
 test("super-admin: create tenant + publish page", async ({ page }) => {
   const slug = `e2e-${Date.now()}`
   await cleanupE2ETenant(slug)
-  const creds = await ensureE2EUser()
 
-  await page.goto("/login")
-  await page.waitForLoadState("networkidle")
-  await page.fill('input[type="email"]', creds.email)
-  await page.fill('input[type="password"]', creds.password)
-  await page.getByRole("button", { name: /sign in/i }).click()
-  await expect(page).toHaveURL("/", { timeout: 20_000 })
+  await loginAsE2ESuperAdmin(page)
 
   // Create site
   await page.goto("/sites")
