@@ -149,14 +149,13 @@ export async function suggestAvailablePreviewDomainBatch(
   if (!normalized.ok) return { suggestions, nextCursor: cursor, done: true }
 
   try {
-    const providerCandidatesPromise = cursor <= 8
-      ? suggestOpenProviderDomains(domain, { token, limit: 12 })
-        .then((providerSuggestions) => providerSuggestions.map((suggestion) => suggestion.domain))
-      .catch(() => [])
-      : Promise.resolve([])
-
     const localCandidates = suggestionCandidates(domain)
-    const providerCandidates = cursor <= 8 ? await providerCandidatesPromise : []
+    const didLoadProviderCandidates = cursor >= localCandidates.length
+    const providerCandidates = didLoadProviderCandidates
+      ? await suggestOpenProviderDomains(domain, { token, limit: 12 })
+        .then((providerSuggestions) => providerSuggestions.map((suggestion) => suggestion.domain))
+        .catch(() => [])
+      : []
     const candidates = [...new Set([...localCandidates, ...providerCandidates])].filter((candidate) => {
       const candidateDomain = normalizeDomain(candidate)
       return candidateDomain.ok &&
@@ -183,7 +182,7 @@ export async function suggestAvailablePreviewDomainBatch(
       if (suggestions.length >= 5) break
     }
     const nextCursor = cursor + batchCandidates.length
-    return { suggestions, nextCursor, done: nextCursor >= candidates.length }
+    return { suggestions, nextCursor, done: didLoadProviderCandidates && nextCursor >= candidates.length }
   } catch {
     // Suggestions are optional; the primary domain check result remains authoritative.
     return { suggestions, nextCursor: cursor + batchSize, done: false }

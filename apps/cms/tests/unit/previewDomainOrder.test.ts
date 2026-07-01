@@ -102,11 +102,96 @@ describe("preview domain order", () => {
       { domain: "acme-site.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
       { domain: "acmeweb.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
     ])
-    expect(suggestOpenProviderDomains).toHaveBeenCalledWith("acme.nl", { token: "token-123", limit: 12 })
+    expect(suggestOpenProviderDomains).not.toHaveBeenCalled()
     expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledWith(
       expect.arrayContaining(["acmesite.nl", "acme-site.nl", "acmeonline.nl", "acme-online.nl", "acmeweb.nl"]),
       { token: "token-123" },
     )
+  })
+
+  it("uses provider suggestions only after local candidates are exhausted", async () => {
+    vi.mocked(suggestOpenProviderDomains).mockResolvedValue([
+      { domain: "provider-one.nl", name: "provider-one", extension: "nl" },
+      { domain: "provider-two.nl", name: "provider-two", extension: "nl" },
+    ])
+    vi.mocked(checkOpenProviderDomainsAvailability).mockImplementation(async (domains: string[]) => domains.map((domain) => ({
+      status: "available",
+      domain,
+      available: true,
+      premium: false,
+      price: { amount: "6.50", currency: "EUR" },
+      internalReason: null,
+    })))
+
+    const batch = await suggestAvailablePreviewDomainBatch(
+      "acme.nl",
+      { amount: "10.00", currency: "EUR" },
+      "token-123",
+      { cursor: 22, batchSize: 3 },
+    )
+
+    expect(suggestOpenProviderDomains).toHaveBeenCalledWith("acme.nl", { token: "token-123", limit: 12 })
+    expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledWith(
+      ["provider-one.nl", "provider-two.nl"],
+      { token: "token-123" },
+    )
+    expect(batch).toMatchObject({
+      suggestions: [
+        { domain: "provider-one.nl" },
+        { domain: "provider-two.nl" },
+      ],
+      nextCursor: 24,
+      done: true,
+    })
+  })
+
+  it("keeps pagination open after the final local batch so provider suggestions can load next", async () => {
+    vi.mocked(checkOpenProviderDomainsAvailability).mockImplementation(async (domains: string[]) => domains.map((domain) => ({
+      status: "unavailable",
+      domain,
+      available: false,
+      premium: false,
+      price: null,
+      internalReason: null,
+    })))
+
+    const finalLocalBatch = await suggestAvailablePreviewDomainBatch(
+      "acme.nl",
+      { amount: "10.00", currency: "EUR" },
+      "token-123",
+      { cursor: 20, batchSize: 5 },
+    )
+
+    expect(suggestOpenProviderDomains).not.toHaveBeenCalled()
+    expect(finalLocalBatch).toMatchObject({
+      suggestions: [],
+      nextCursor: 22,
+      done: false,
+    })
+
+    vi.mocked(suggestOpenProviderDomains).mockResolvedValue([
+      { domain: "provider-one.nl", name: "provider-one", extension: "nl" },
+    ])
+    vi.mocked(checkOpenProviderDomainsAvailability).mockResolvedValue([
+      {
+        status: "available",
+        domain: "provider-one.nl",
+        available: true,
+        premium: false,
+        price: { amount: "6.50", currency: "EUR" },
+        internalReason: null,
+      },
+    ])
+
+    await expect(suggestAvailablePreviewDomainBatch(
+      "acme.nl",
+      { amount: "10.00", currency: "EUR" },
+      "token-123",
+      { cursor: finalLocalBatch.nextCursor, batchSize: 5 },
+    )).resolves.toMatchObject({
+      suggestions: [{ domain: "provider-one.nl" }],
+      done: true,
+    })
   })
 
   it("returns progressive suggestion batches with cursor state", async () => {
