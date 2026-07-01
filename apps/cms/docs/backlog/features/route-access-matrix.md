@@ -79,5 +79,3 @@ context and no-op update handlers.
   `tests/unit/selected-tenant-route-access.test.ts`.
 - Source-level route/navigation parity canaries:
   `tests/unit/route-navigation-parity-source.test.ts`.
-- Tenant-host browser route/nav smoke coverage:
-  `tests/e2e/role-route-matrix.spec.ts`.

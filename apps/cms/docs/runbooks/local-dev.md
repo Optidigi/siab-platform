@@ -67,7 +67,7 @@ Values to set:
 - `DATABASE_URI=postgres://payload:change-me@localhost:5432/payload` — matches the compose defaults; already set in `.env.example`
 - `DATA_DIR=./.data-out` — gitignored; Payload writes per-tenant JSON snapshots here
 - `NEXT_PUBLIC_SUPER_ADMIN_DOMAIN=siteinabox.nl` — Phase 7's `hostToTenant` falls back to treating `localhost` as super-admin in dev
-- `SIAB_ALLOWED_DEV_ORIGINS=admin.siteinabox.nl` — allows Next dev resources when local e2e maps the production admin hostname to `127.0.0.1`.
+- `SIAB_ALLOWED_DEV_ORIGINS=admin.siteinabox.nl` — allows Next dev resources when local browser checks map the production admin hostname to `127.0.0.1`.
 - `CLOUDFLARE_EMAIL_SMTP_TOKEN=` — leave empty in dev unless testing live email. Mail sends throw before opening SMTP when unset.
 - `EMAIL_FROM=noreply@siteinabox.nl`
 - `SIAB_PUBLIC_POST_RATE_LIMIT_POINTS=10` and `SIAB_PUBLIC_POST_RATE_LIMIT_WINDOW_SECONDS=60` — anonymous POST budget for `/api/forms`, `/api/intake`, and `/api/users/forgot-password`.
@@ -115,43 +115,6 @@ Then sign in at http://localhost:3000/login.
 
 - **Unit tests:** `pnpm test`
 - **Integration tests** (require DB up): `pnpm test tests/integration/` — they skip if the DB isn't reachable; with the local compose up they run.
-- **E2E tests** (require dev server up + Playwright browser installed):
-
-  ```bash
-  pnpm dlx playwright install chromium   # one-time
-  pnpm test:e2e
-  ```
-
-### Local E2E with Podman
-
-Podman is viable for the full local E2E path as long as it provides the same
-Postgres contract as `docker-compose.local.yml`: database `payload`, user
-`payload`, password matching `.env`, and host port `5432`. The Playwright
-global setup seeds Payload through `DATABASE_URI`, so it does not care whether
-Postgres came from Docker or Podman.
-
-On this Linux dev box, `podman` is installed but no compose provider is
-available (`podman compose` looks for `docker-compose` / `podman-compose` and
-fails). Use direct Podman commands:
-
-```bash
-# Start the existing local DB container.
-podman start siteinabox-cms-postgres-dev
-podman exec siteinabox-cms-postgres-dev pg_isready -U payload -d payload
-
-# In one terminal, run the CMS on the Playwright-configured port.
-pnpm exec next dev -p 3001
-
-# In another terminal, run all E2E tests.
-pnpm exec playwright install chromium   # one-time if browsers are missing
-pnpm test:e2e
-```
-
-If the container does not exist yet, create it with the `podman run` command in
-Step 2. If `DATABASE_URI` points at a different password or port than the
-Podman container, Playwright global setup will fail before opening the browser
-with a Postgres connection error.
-
 ## Common operations
 
 - **Reset the local DB (lose all data):**

@@ -84,4 +84,4 @@ pnpm check:responsive
 pnpm typecheck
 ```
 
-Run focused unit or E2E coverage for the touched surface.
+Run focused unit or integration coverage for the touched surface.

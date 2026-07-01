@@ -55,7 +55,6 @@ pnpm test
 pnpm test tests/unit/
 pnpm test tests/unit/foo.test.ts
 pnpm test tests/integration/
-pnpm test:e2e
 
 # CI gates
 pnpm payload:contract
@@ -177,7 +176,6 @@ Use `context7` for current library documentation when docs are needed. Use
 - Integration tests in `tests/integration/` use real Postgres, DB
   `payload_test`, sequential execution, and committed migrations via
   `migrateFresh`.
-- E2E tests use Playwright and require a running dev server.
 - Test setup reads `.env` and overrides `DATABASE_URI` to `payload_test`.
 
 ## Canvas Work
