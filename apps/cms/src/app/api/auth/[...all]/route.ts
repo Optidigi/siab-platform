@@ -1,5 +1,5 @@
 import { auth } from "@/lib/betterAuth"
-import { isAllowedSocialAuthHost } from "@/lib/socialAuth/hosts"
+import { buildCmsAuthRequest, isAllowedSocialAuthHost } from "@/lib/socialAuth/hosts"
 import { toNextJsHandler } from "better-auth/next-js"
 
 const handlers = toNextJsHandler(auth)
@@ -10,9 +10,15 @@ const ensureAllowedHost = async (request: Request): Promise<Response | null> => 
 }
 
 export async function GET(request: Request) {
-  return (await ensureAllowedHost(request)) ?? handlers.GET(request)
+  const denied = await ensureAllowedHost(request)
+  if (denied) return denied
+  const authRequest = buildCmsAuthRequest(request)
+  return handlers.GET(authRequest)
 }
 
 export async function POST(request: Request) {
-  return (await ensureAllowedHost(request)) ?? handlers.POST(request)
+  const denied = await ensureAllowedHost(request)
+  if (denied) return denied
+  const authRequest = buildCmsAuthRequest(request)
+  return handlers.POST(authRequest)
 }

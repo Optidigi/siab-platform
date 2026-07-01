@@ -4,10 +4,19 @@ import { headers } from "next/headers"
 import { getTranslations } from "next-intl/server"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import { normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
+import { PREVIEW_HOST } from "@/lib/preview/previewHost"
 
 export type RequestPreviewMagicLinkState = {
   ok: boolean
   message: string
+}
+
+const previewAuthHeaders = (source: Headers): Headers => {
+  const next = new Headers(source)
+  next.set("host", PREVIEW_HOST)
+  next.set("x-forwarded-host", PREVIEW_HOST)
+  next.set("x-forwarded-proto", "https")
+  return next
 }
 
 export async function requestPreviewMagicLinkAction(
@@ -32,7 +41,7 @@ export async function requestPreviewMagicLinkAction(
         errorCallbackURL: callbackPath,
         metadata: { previewClientSlug: normalizedClientSlug },
       },
-      headers: await headers(),
+      headers: previewAuthHeaders(await headers()),
     })
     return { ok: true, message: genericSuccess }
   } catch (error) {

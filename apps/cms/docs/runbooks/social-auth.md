@@ -48,15 +48,17 @@ In production, localhost/internal container hosts are not accepted as Better
 Auth base hosts. Set `SITE_URL=https://admin.siteinabox.nl`; optionally set
 `BETTER_AUTH_URL` only when the canonical auth origin must differ from
 `SITE_URL`. This fallback is the platform admin origin when no request host is
-available. Outgoing CMS magic-link emails are also rewritten at send time to
-the trusted public request origin (`admin.siteinabox.nl` or a verified
-`admin.<tenant-domain>`), preserving the token while stripping localhost,
-`0.0.0.0`, and external callback origins.
+available. CMS auth routes and server actions normalize `host`,
+`x-forwarded-host`, and `x-forwarded-proto` before handing the request to
+Better Auth, so Better Auth's native magic-link URL generation sees the public
+admin origin (`admin.siteinabox.nl` or a verified `admin.<tenant-domain>`) and
+does not derive links from the container bind host.
 Customer preview auth is a separate Better Auth instance on
 `https://preview.siteinabox.nl/api/preview-auth`. In production it accepts only
 the public preview host and uses `https://preview.siteinabox.nl` as its
-fallback origin; outgoing preview magic-link emails are likewise rewritten to
-that public origin. Localhost preview auth is development-only.
+fallback origin. Preview auth routes and preview server actions normalize
+their Better Auth headers to that public host. Localhost preview auth is
+development-only.
 
 `BETTER_AUTH_API_KEY` is optional and enables the Better Auth Infrastructure
 `dash()` plugin for dashboard/audit visibility. Use the key from the existing

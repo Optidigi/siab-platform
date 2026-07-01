@@ -16,15 +16,29 @@ const isAllowedPreviewAuthHost = (request: Request): boolean => {
   return process.env.NODE_ENV === "development" && (host === "localhost" || host === "127.0.0.1")
 }
 
+const buildPreviewAuthRequest = (request: Request): Request => {
+  const headers = new Headers(request.headers)
+  headers.set("host", PREVIEW_HOST)
+  headers.set("x-forwarded-host", PREVIEW_HOST)
+  headers.set("x-forwarded-proto", "https")
+  return new Request(request, { headers })
+}
+
 const ensureAllowedHost = (request: Request): Response | null => {
   if (isAllowedPreviewAuthHost(request)) return null
   return new Response("Unknown preview auth host", { status: 404 })
 }
 
 export async function GET(request: Request) {
-  return ensureAllowedHost(request) ?? handlers.GET(request)
+  const denied = ensureAllowedHost(request)
+  if (denied) return denied
+  const authRequest = buildPreviewAuthRequest(request)
+  return handlers.GET(authRequest)
 }
 
 export async function POST(request: Request) {
-  return ensureAllowedHost(request) ?? handlers.POST(request)
+  const denied = ensureAllowedHost(request)
+  if (denied) return denied
+  const authRequest = buildPreviewAuthRequest(request)
+  return handlers.POST(authRequest)
 }

@@ -14,7 +14,12 @@ vi.mock("@/payload.config", () => ({ default: {} }))
 
 // Stub Next 15's dynamic headers() API — server action will call it.
 vi.mock("next/headers", () => ({
-  headers: async () => new Headers({ cookie: "payload-token=fake" })
+  headers: async () => new Headers({
+    cookie: "payload-token=fake",
+    host: "0.0.0.0:3000",
+    "x-forwarded-host": "admin.siteinabox.nl",
+    "x-forwarded-proto": "https",
+  })
 }))
 
 // Mock the payload runtime. `getPayload` returns a fake instance whose
@@ -132,6 +137,9 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
       }),
       headers: expect.any(Headers),
     }))
+    const callHeaders = mocks.signInMagicLink.mock.calls[0]![0].headers as Headers
+    expect(callHeaders.get("host")).toBe("admin.siteinabox.nl")
+    expect(callHeaders.get("x-forwarded-host")).toBe("admin.siteinabox.nl")
   })
 
   it("owner with numeric-id tenant relationship (un-populated FK) still gates correctly", async () => {

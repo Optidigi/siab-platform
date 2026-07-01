@@ -4,6 +4,7 @@ import { headers } from "next/headers"
 import config from "@/payload.config"
 import crypto from "node:crypto"
 import { auth } from "@/lib/betterAuth"
+import { buildCmsAuthHeaders } from "@/lib/socialAuth/hosts"
 
 // fn-batch-6 follow-up — return shape now distinguishes auth/permission
 // failures (still throw — they're system-level) from validation failures
@@ -33,7 +34,7 @@ export async function sendInviteMagicLink(input: { email: string; name?: string 
         intent: "user_invite",
       },
     },
-    headers: await headers(),
+    headers: buildCmsAuthHeaders(await headers()),
   })
 }
 

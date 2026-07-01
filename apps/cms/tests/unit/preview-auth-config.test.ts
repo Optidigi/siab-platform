@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { resolveBaseURL } from "better-auth"
 
 vi.mock("@/lib/email/sendEmail", () => ({
   sendEmail: vi.fn(),
@@ -30,6 +31,14 @@ describe("preview Better Auth host configuration", () => {
       fallback: "https://preview.siteinabox.nl",
     })
     expect(getPreviewTrustedOrigins()).toEqual(["https://preview.siteinabox.nl"])
+    const headers = new Headers({
+      host: "preview.siteinabox.nl",
+      "x-forwarded-host": "preview.siteinabox.nl",
+      "x-forwarded-proto": "https",
+    })
+    expect(resolveBaseURL(getPreviewBetterAuthBaseURL(), "/api/preview-auth", headers, false, true)).toBe(
+      "https://preview.siteinabox.nl/api/preview-auth",
+    )
   })
 
   it("adds loopback preview hosts only in development", async () => {
@@ -46,21 +55,5 @@ describe("preview Better Auth host configuration", () => {
       "http://localhost:*",
       "http://127.0.0.1:*",
     ])
-  })
-
-  it("rewrites preview magic links from internal origins to the public preview host", async () => {
-    const { PREVIEW_ORIGIN } = await import("@/lib/preview/betterAuth")
-    const { canonicalizeMagicLinkUrl } = await import("@/lib/auth/magicLinkUrl")
-
-    const loginUrl = canonicalizeMagicLinkUrl(
-      "http://0.0.0.0:3000/api/preview-auth/magic-link/verify?token=test-token&callbackURL=http%3A%2F%2F0.0.0.0%3A3000%2Fami-care",
-      PREVIEW_ORIGIN,
-    )
-
-    const parsed = new URL(loginUrl)
-    expect(parsed.origin).toBe("https://preview.siteinabox.nl")
-    expect(parsed.pathname).toBe("/api/preview-auth/magic-link/verify")
-    expect(parsed.searchParams.get("token")).toBe("test-token")
-    expect(parsed.searchParams.get("callbackURL")).toBe("/")
   })
 })

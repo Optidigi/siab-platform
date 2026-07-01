@@ -57,7 +57,11 @@ describe("requestPreviewMagicLinkAction", () => {
         callbackURL: "/reserved-domain",
         metadata: { previewClientSlug: "reserved-domain" },
       }),
+      headers: expect.any(Headers),
     }))
+    const callHeaders = mocks.signInMagicLink.mock.calls[0]![0].headers as Headers
+    expect(callHeaders.get("host")).toBe("preview.siteinabox.nl")
+    expect(callHeaders.get("x-forwarded-host")).toBe("preview.siteinabox.nl")
   })
 
   it("returns the same public response when no matching grant exists", async () => {

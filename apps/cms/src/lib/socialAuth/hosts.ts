@@ -61,6 +61,44 @@ export const getCmsAuthFallbackOrigin = (): string | undefined =>
   getConfiguredBetterAuthOrigin() ??
   (process.env.NODE_ENV === "production" ? getDefaultSuperAdminOrigin() : undefined)
 
+export const isInternalAuthHost = (host: string): boolean =>
+  host === "0.0.0.0" ||
+  host === "localhost" ||
+  host.endsWith(".localhost") ||
+  host.startsWith("127.") ||
+  host === "::1" ||
+  host === "[::1]"
+
+const cleanHeaderHost = (value: string | null): string => normalizeHost(value)
+
+export function buildCmsAuthHeaders(source: Headers): Headers {
+  const next = new Headers(source)
+  const forwardedHost = cleanHeaderHost(source.get("x-forwarded-host"))
+  const host = cleanHeaderHost(source.get("host"))
+  const tenantDomain = cleanHeaderHost(source.get("x-siab-host"))
+  const fallbackHost = getCmsAuthFallbackOrigin()
+    ? cleanHeaderHost(new URL(getCmsAuthFallbackOrigin() as string).host)
+    : ""
+  const publicHost = forwardedHost && !isInternalAuthHost(forwardedHost)
+    ? forwardedHost
+    : host && !isInternalAuthHost(host)
+      ? host
+      : tenantDomain
+        ? `admin.${tenantDomain}`
+        : fallbackHost
+
+  if (publicHost) {
+    next.set("host", publicHost)
+    next.set("x-forwarded-host", publicHost)
+  }
+  next.set("x-forwarded-proto", "https")
+  return next
+}
+
+export function buildCmsAuthRequest(request: Request): Request {
+  return new Request(request, { headers: buildCmsAuthHeaders(request.headers) })
+}
+
 export function getBetterAuthBaseURL() {
   const allowedHosts = [
     "admin.*",
