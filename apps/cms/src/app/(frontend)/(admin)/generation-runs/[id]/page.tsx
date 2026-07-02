@@ -38,7 +38,6 @@ import {
   CheckCircle2,
   CreditCard,
   ExternalLink,
-  FileText,
   PlayCircle,
   RotateCcw,
   ShieldCheck,
@@ -168,7 +167,6 @@ export default async function GenerationRunDetailPage({
       ?? lifecycle.tenant?.domain,
     "No domain selected",
   )
-  const paymentProvider = displayValue(payment.provider, "manual/provider")
   const isLive = Boolean(lifecycle.activeSnapshotId)
   const summary = workflowSummaryForGenerationRun(run)
   const previewPages = pageRecords
@@ -196,53 +194,27 @@ export default async function GenerationRunDetailPage({
   const customerPreviewUrl = previewClientSlug ? `https://preview.siteinabox.nl/${previewClientSlug}` : null
   const liveUrl = lifecycle.tenant?.domain ? `https://${lifecycle.tenant.domain}` : null
   const defaultPreviewEmail = intakeContactEmail(run.intakeSubmission)
-  const draftReady = ["draft_ready", "preview_ready"].includes(run.status) || pageRecords.length > 0 || isLive
-  const nextAction = summary.primaryAction
-  const preparedPageCount = lifecycle.linkedPages.filter((page) => page.status === "published").length
-  const pagesNeedPrepared = pageRecords.length > 0 && preparedPageCount < pageRecords.length
   const readyToGoLive = Boolean(tenantId) && lifecycle.publishBlockers.length === 0 && lifecycle.blockers.length === 0
   const checkoutComplete = isApproved && paymentSatisfied
   const statusPanels = [
     {
-      label: "Automatic generation",
-      value: summary.state === "Needs attention" ? "Needs attention" : draftReady ? "Draft ready" : displayStatus(run.status),
-      helper: draftReady ? "Draft pages are linked to this run." : "The AI draft pipeline is still running.",
-      badge: statusBadge(summary.state === "Needs attention" ? "destructive" : draftReady ? "success" : "secondary", draftReady ? "ready" : displayStatus(run.status)),
+      label: "Preview",
+      value: customerPreviewUrl ? "Ready" : "Not ready",
+      badge: statusBadge(previewDisabledReason ? "secondary" : "default", previewDisabledReason ? "waiting" : "send"),
     },
     {
-      label: "Preview send",
-      value: customerPreviewUrl ? "Preview link available" : "Preview not ready",
-      helper: previewDisabledReason ?? "Send the preview manually when the draft is ready.",
-      badge: statusBadge(previewDisabledReason ? "secondary" : "default", previewDisabledReason ? "waiting" : "send manually"),
-    },
-    {
-      label: "Client feedback",
-      value: isApproved ? "Approved" : "Waiting for approval",
-      helper: isApproved ? "Client approval is recorded from the preview UI." : "Client approval and feedback happen in the preview UI.",
-      badge: statusBadge(isApproved ? "success" : "secondary", isApproved ? "approved" : "waiting"),
-    },
-    {
-      label: "Payment/subscription",
+      label: "Checkout",
       value: displayStatus(payment.status),
-      helper: paymentSatisfied ? `Satisfied through ${paymentProvider}.` : "Payment or subscription checkout is still open.",
       badge: statusBadge(paymentSatisfied ? "success" : "secondary", paymentSatisfied ? "complete" : displayStatus(payment.status)),
     },
     {
-      label: "Domain order",
-      value: domainOrderDomain,
-      helper: `Order/provisioning status: ${displayStatus(domainOrderStatus)}.`,
-      badge: statusBadge(domainOrderStatus === "completed" || domainOrderStatus === "provisioned" ? "success" : "secondary", displayStatus(domainOrderStatus)),
-    },
-    {
       label: "Provisioning",
-      value: `Domain ${String(domainCheck?.status ?? "not_checked")}`,
-      helper: emailSendingVerified ? "Tenant sender is verified." : `Tenant sender is ${displayStatus(emailSendingStatus)}.`,
+      value: domainVerified && emailSendingVerified ? "Ready" : displayStatus(domainOrderStatus),
       badge: statusBadge(domainVerified && emailSendingVerified ? "success" : "secondary", domainVerified && emailSendingVerified ? "ready" : "waiting"),
     },
     {
-      label: "Live status",
+      label: "Live",
       value: isLive ? "Live" : "Not live",
-      helper: isLive ? "An active snapshot is serving visitors." : "Activation is still pending.",
       badge: statusBadge(isLive ? "success" : readyToGoLive ? "default" : "secondary", isLive ? "live" : readyToGoLive ? "ready" : "waiting"),
     },
   ]
@@ -281,19 +253,29 @@ export default async function GenerationRunDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Next action</CardTitle>
+          <CardTitle>Send preview</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 text-sm md:grid-cols-[1fr_auto] md:items-center">
-          <div>
-            <div className="text-lg font-semibold">{nextAction}</div>
-            <div className="text-muted-foreground">{summary.helper}</div>
+        <CardContent className="grid gap-4 text-sm lg:grid-cols-[1fr_auto] lg:items-start">
+          <div className="grid gap-3">
+            <div>
+              <div className="font-medium">Preview email</div>
+              <div className="text-muted-foreground">
+                Manual preview send is the normal operator gate.
+              </div>
+            </div>
+            <PreviewAccessShare
+              generationRunId={run.id}
+              defaultEmail={defaultPreviewEmail}
+              previewUrl={customerPreviewUrl}
+              disabledReason={previewDisabledReason}
+            />
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 lg:justify-end">
             {customerPreviewUrl && (
-              <Button asChild variant={nextAction === "Open site" ? "default" : "outline"}>
+              <Button asChild variant="outline">
                 <a href={customerPreviewUrl} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="mr-1 size-4" aria-hidden />
-                  Open site
+                  Open preview
                 </a>
               </Button>
             )}
@@ -301,7 +283,7 @@ export default async function GenerationRunDetailPage({
               <Button asChild>
                 <a href={liveUrl} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="mr-1 size-4" aria-hidden />
-                  Live
+                  Live site
                 </a>
               </Button>
             )}
@@ -311,107 +293,45 @@ export default async function GenerationRunDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Client/site summary</CardTitle>
+          <CardTitle>Client</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-md border p-3">
-            <div className="text-muted-foreground">Client</div>
-            <div className="mt-1 font-medium">{defaultPreviewEmail ?? "No email on intake"}</div>
+        <CardContent className="grid gap-4 text-sm lg:grid-cols-[1.3fr_1fr]">
+          <div className="grid gap-2">
+            <div className="text-base font-medium">{relationLabel(run.tenant, "Draft site")}</div>
+            <div className="text-muted-foreground">{defaultPreviewEmail ?? "No intake email"}</div>
+            <div className="break-all text-muted-foreground">{domainOrderDomain}</div>
           </div>
-          <div className="rounded-md border p-3">
-            <div className="text-muted-foreground">Site</div>
-            <div className="mt-1 font-medium">
-              {tenantSlug ? (
-                <Link href={`/sites/${tenantSlug}`} className="hover:underline">
-                  {relationLabel(run.tenant)}
-                </Link>
-              ) : tenantId ? (
-                relationLabel(run.tenant)
-              ) : (
-                "No tenant linked"
-              )}
+          <div className="grid gap-2 rounded-md bg-muted/40 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <span>Payment</span>
+              <Badge variant={paymentSatisfied ? "success" : "secondary"}>{displayStatus(payment.status)}</Badge>
             </div>
-          </div>
-          <div className="rounded-md border p-3">
-            <div className="text-muted-foreground">Pages</div>
-            <div className="mt-1 font-medium">{pageRecords.length}</div>
-          </div>
-          <div className="rounded-md border p-3">
-            <div className="text-muted-foreground">Live URL</div>
-            <div className="mt-1 break-all font-medium">{liveUrl ?? "Not live yet"}</div>
+            <div className="flex items-center justify-between gap-3">
+              <span>Approval</span>
+              <Badge variant={isApproved ? "success" : "secondary"}>{isApproved ? "approved" : "waiting"}</Badge>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span>Live</span>
+              <Badge variant={isLive ? "success" : "secondary"}>{isLive ? "live" : "not live"}</Badge>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Operations status</CardTitle>
+          <CardTitle>Status</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <CardContent className="grid gap-2 text-sm md:grid-cols-4">
           {statusPanels.map((panel) => (
-            <div key={panel.label} className="rounded-md border p-3 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div className="font-medium">{panel.label}</div>
+            <div key={panel.label} className="rounded-md border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-muted-foreground">{panel.label}</div>
                 {panel.badge}
               </div>
               <div className="mt-2 font-medium">{panel.value}</div>
-              <div className="mt-1 text-muted-foreground">{panel.helper}</div>
             </div>
           ))}
-
-          {!readyToGoLive && !isLive && (
-            <div className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground md:col-span-2 xl:col-span-3">
-              Finish the waiting checks before going live. Technical controls and manual overrides are in Advanced.
-            </div>
-          )}
-
-          {isLive && liveUrl && (
-            <div className="md:col-span-2 xl:col-span-3">
-              <Button asChild>
-                <a href={liveUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="mr-1 size-4" aria-hidden />
-                  Open live site
-                </a>
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Preview</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 text-sm">
-          <div>
-            <div className="font-medium">Send preview</div>
-            <div className="text-muted-foreground">Manual preview send stays available when the draft is ready.</div>
-          </div>
-          <PreviewAccessShare
-            generationRunId={run.id}
-            defaultEmail={defaultPreviewEmail}
-            previewUrl={customerPreviewUrl}
-            disabledReason={previewDisabledReason}
-          />
-          <div className="flex flex-col gap-2">
-            <div>Pages: {pageRecords.length}</div>
-            <div className="flex flex-wrap gap-2">
-              {pageRecords.map((page) => {
-                const pageId = relationId(page)
-                const label = relationLabel(page, "Page")
-                return pageId && tenantSlug ? (
-                  <Button key={pageId} asChild variant="outline" size="sm">
-                    <Link href={`/sites/${tenantSlug}/pages/${pageId}`}>
-                      <FileText className="mr-1 size-4" aria-hidden />
-                      {label}
-                    </Link>
-                  </Button>
-                ) : (
-                  <Badge key={pageId ?? label} variant="secondary">{label}</Badge>
-                )
-              })}
-            </div>
-          </div>
         </CardContent>
       </Card>
 

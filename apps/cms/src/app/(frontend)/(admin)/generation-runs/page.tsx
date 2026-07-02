@@ -86,6 +86,62 @@ const domainForRun = (run: any): string | null =>
   ?? textField(run.domainOrder, "domain")
   ?? textField(run.domainOrder, "requestedDomain")
 
+type InboxItem = {
+  id: string
+  title: string
+  subtitle: string
+  state: OperationsWorkflowState
+  label: string
+  primaryAction: string
+  href: string
+  runId: string | number | null
+  contactEmail: string | null
+  domain: string | null
+  updatedAt?: string | null
+}
+
+function ClientQueueItem({ item }: { item: InboxItem }) {
+  const canSendPreview = item.primaryAction === "Send preview" && item.runId && item.contactEmail
+  return (
+    <Card className="py-0">
+      <CardContent className="flex flex-col gap-3 p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="truncate text-sm font-medium">{item.title}</div>
+            <div className="mt-0.5 truncate text-xs text-muted-foreground">
+              {item.domain ?? item.subtitle}
+            </div>
+          </div>
+          <Badge variant={inboxTone(item.state)} className="shrink-0">{item.state}</Badge>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">{item.label}</span>
+            <span className="mx-1">·</span>
+            <span>{formatDate(item.updatedAt)}</span>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            {canSendPreview ? (
+              <form action={sendPreviewAccessEmailAction.bind(null, item.runId!)}>
+                <input type="hidden" name="email" value={item.contactEmail!} />
+                <Button type="submit" size="icon" aria-label={`Send preview email to ${item.title}`}>
+                  <Mail className="size-4" aria-hidden />
+                </Button>
+              </form>
+            ) : null}
+            <Button asChild variant={canSendPreview ? "outline" : "default"} size="icon" aria-label={`Open ${item.title}`}>
+              <Link href={item.href}>
+                <ExternalLink className="size-4" aria-hidden />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export const dynamic = "force-dynamic"
 
 export default async function GenerationRunsPage({
@@ -231,47 +287,9 @@ export default async function GenerationRunsPage({
             />
           )
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {inboxItems.map((item) => (
-              <Card key={item.id} className="py-0">
-                <CardContent className="grid gap-4 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate font-medium">{item.title}</div>
-                      <div className="mt-1 truncate text-sm text-muted-foreground">{item.subtitle}</div>
-                    </div>
-                    <Badge variant={inboxTone(item.state)}>{item.state}</Badge>
-                  </div>
-
-                  <div className="grid gap-2 text-sm">
-                    <div className="font-medium">{item.label}</div>
-                    <div className="text-muted-foreground">{item.helper}</div>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {item.domain && <Badge variant="outline">{item.domain}</Badge>}
-                      {item.contactEmail && <Badge variant="secondary">{item.contactEmail}</Badge>}
-                      <Badge variant="outline">{formatDate(item.updatedAt)}</Badge>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {item.primaryAction === "Send preview" && item.runId && item.contactEmail ? (
-                      <form action={sendPreviewAccessEmailAction.bind(null, item.runId)}>
-                        <input type="hidden" name="email" value={item.contactEmail} />
-                        <Button type="submit" size="sm">
-                          <Mail className="mr-1 size-4" aria-hidden />
-                          Send preview email
-                        </Button>
-                      </form>
-                    ) : null}
-                    <Button asChild variant={item.primaryAction === "Send preview" ? "outline" : "default"} size="sm">
-                      <Link href={item.href}>
-                        <ExternalLink className="mr-1 size-4" aria-hidden />
-                        Open client
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <ClientQueueItem key={item.id} item={item} />
             ))}
           </div>
         )}
