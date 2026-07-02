@@ -131,6 +131,11 @@ describe("processIntakeSubmission", () => {
       "tailblocks-cta-a",
       "hyperui-newsletter-centered",
     ])
+    const processBlock = store.pages[0]?.blocks.find((block: any) => block.blockType === "processSteps")
+    expect(processBlock?.steps.every((step: any) => !("cta" in step))).toBe(true)
+    const ctaBlock = store.pages[0]?.blocks.find((block: any) => block.blockType === "cta")
+    expect(ctaBlock).not.toHaveProperty("secondary")
+    expect(store["site-settings"][0]?.chrome?.banner).not.toHaveProperty("link")
     expect(JSON.stringify(store.pages[0]?.blocks).toLowerCase()).not.toContain("shadcn")
   })
 

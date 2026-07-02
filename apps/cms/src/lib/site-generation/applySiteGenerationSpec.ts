@@ -613,6 +613,16 @@ const normalizeMediaRef = (value: unknown, mediaIds?: MediaIdMap): unknown => {
   return isPayloadMediaId(value) ? value : undefined
 }
 
+const omitNullishCmsValues = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(omitNullishCmsValues)
+  if (!value || typeof value !== "object") return value
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .flatMap(([key, entry]) => entry == null ? [] : [[key, omitNullishCmsValues(entry)]]),
+  )
+}
+
 const normalizeBlock = (block: Record<string, unknown>, mediaIds?: MediaIdMap): Record<string, unknown> => {
   const { id: _id, source: _source, ...rest } = block
   const normalized: Record<string, unknown> = { ...rest }
@@ -638,13 +648,13 @@ const normalizeBlock = (block: Record<string, unknown>, mediaIds?: MediaIdMap): 
             before: normalizeMediaRef((pair as Record<string, unknown>).before, mediaIds),
             after: normalizeMediaRef((pair as Record<string, unknown>).after, mediaIds),
           }
-        : pair,
+      : pair,
     )
   }
-  return normalized
+  return omitNullishCmsValues(normalized) as Record<string, unknown>
 }
 
-const normalizePageData = (tenantId: string | number, page: GeneratedPageSpec, mediaIds?: MediaIdMap) => ({
+const normalizePageData = (tenantId: string | number, page: GeneratedPageSpec, mediaIds?: MediaIdMap) => omitNullishCmsValues({
   tenant: tenantId,
   title: page.title,
   slug: page.slug,
@@ -656,7 +666,7 @@ const normalizePageData = (tenantId: string | number, page: GeneratedPageSpec, m
         ogImage: normalizeMediaRef(page.seo.ogImage, mediaIds),
       }
     : undefined,
-})
+}) as Record<string, unknown>
 
 const hrefToNavEntry = (href: string, label: string | null | undefined, external: boolean | undefined, pageBySlug: Map<string, ExistingPage>): NavEntry => {
   const sectionMatch = href.match(/^\/?([a-z0-9-]+)?#([A-Za-z0-9_-]+)$/)
@@ -703,7 +713,7 @@ const normalizeSettingsData = (
   settings: GeneratedSiteSettings,
   pageBySlug: Map<string, ExistingPage>,
   mediaIds?: MediaIdMap,
-) => ({
+) => omitNullishCmsValues({
   tenant: tenantId,
   siteName: settings.siteName,
   siteUrl: settings.siteUrl,
@@ -742,7 +752,7 @@ const normalizeSettingsData = (
   serviceArea: settings.serviceArea,
   navHeader: normalizeNav(settings.navHeader, pageBySlug),
   navFooter: normalizeNav(settings.navFooter, pageBySlug),
-})
+}) as GeneratedSiteSettings & Record<string, unknown>
 
 const upsertTenant = async (
   payload: Payload,
