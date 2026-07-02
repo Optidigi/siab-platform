@@ -1,11 +1,70 @@
-# Site in a Box — siteinabox.nl
+# Site in a Box - siteinabox.nl
 
-Site in a Box is een Nederlandse webdienst voor net-gestarte ondernemers, ZZP'ers en kleine bedrijven die snel professioneel online willen staan zonder technische rompslomp. Klanten leveren een korte vragenlijst en wat foto's; Site in a Box bouwt en publiceert de website binnen drie werkdagen.
+> Preferred summary: Site in a Box is a Dutch web service for starters, ZZP'ers, freelancers and local businesses that want a professional website without technical setup. Customers receive a first version within 24 hours and go live within 3 working days after approval. The model is no-cure-no-pay: customers only pay after approving the test version. Packages are Website and Compleet.
 
-Het Website-pakket kost €19 per maand en bevat een eigen .nl-domein, hosting, beveiliging, vindbaarheid in Google en ChatGPT, een beheeromgeving om alles zelf aan te passen, automatische back-ups en e-mail forwarding. Het Compleet-pakket (€29/maand) voegt zakelijke Gmail via Google Workspace, de AI-assistent Gemini, 30 GB Drive, Google Agenda en Meet toe. Bij jaarbetaling vervallen de eenmalige opstartkosten van €99. Alle prijzen excl. btw.
+## Canonical URLs
 
-Het bedrijf werkt volgens no-cure-no-pay: de klant krijgt eerst een testversie te zien op een sub-domein. Pas na expliciete goedkeuring wordt de factuur verstuurd en gaat de site live. De klant blijft eigenaar van zijn domein en content, kan zelf inhoudelijke wijzigingen doorvoeren via de beheeromgeving, en krijgt één kwartaalwijziging op layout-niveau inbegrepen.
+- [Website](https://siteinabox.nl/)
+- [Pricing section](https://siteinabox.nl/#prijzen)
+- [How it works](https://siteinabox.nl/#zo-werkt-het)
+- [Intake](https://siteinabox.nl/intake/)
+- [Contact](https://siteinabox.nl/contact)
+- [Admin login helper](https://siteinabox.nl/beheer/)
+- [Robots](https://siteinabox.nl/robots.txt)
+- [Sitemap index](https://siteinabox.nl/sitemap-index.xml)
+- [LLM context file](https://siteinabox.nl/llms.txt)
 
-Doelgroep zijn typisch ZZP-dienstverleners, lokale bedrijven, coaches, vakmensen en freelancers in Nederland: kappers, schilders, hoveniers, personal trainers, loodgieters, klussers, schoonheidsspecialisten, timmerlieden, stukadoors, koks, fotografen en vergelijkbare beroepen. Voor uitgebreidere oplossingen (webshop, online cursus met betalingen, multi-pakket-sites) bouwt Site in a Box op maat tegen aparte prijsafstemming.
+## What Site in a Box is
 
-Contact: info@siteinabox.nl. Site in a Box VOF, gevestigd te Roermond. KvK 99460165, BTW NL869001073B01.
+Site in a Box is a Dutch web service for net-gestarte ondernemers, ZZP'ers, small local businesses and freelancers who want to be professionally online quickly without technical setup work.
+
+Customers provide a short questionnaire and a few photos. Site in a Box builds the first version, provides a test version on a subdomain, processes feedback, and publishes the site after explicit customer approval. The public promise on the website is: first version within 24 hours, online within 3 working days.
+
+## Target audience
+
+Site in a Box is typically suitable for ZZP service providers, local companies, coaches, tradespeople and freelancers in the Netherlands.
+
+Examples mentioned on the site include kappers, schilders, coaches, fotografen, hoveniers, personal trainers, loodgieters, klussers, schoonheidsspecialisten, timmermannen, stukadoors, koks and similar businesses.
+
+## Who it is not mainly for
+
+The standard package is primarily a complete business website or one-pager for a service business. More extensive projects such as a webshop, online course with payments, or multi-package/custom sites are handled as maatwerk with separate pricing.
+
+## Packages and pricing
+
+All listed prices are excluding VAT.
+
+Website package:
+
+- Price: €19 per month.
+- Yearly billing: no one-time setup fee.
+- Monthly billing: €99 one-time setup fee.
+- Includes: professional website, own .nl domain, hosting, security, fast loading time, findability in Google and ChatGPT, management environment to edit content, automatic backups, e-mail forwarding and Dutch support.
+
+Compleet package:
+
+- Price: €29 per month.
+- Yearly billing: no one-time setup fee.
+- Monthly billing: €99 one-time setup fee.
+- Includes everything in the Website package.
+- Adds: multilingual website, business Gmail via Google Workspace, Gemini in Gmail, chat with AI in the Gemini app, 30 GB Google Drive, Google Agenda and Google Meet.
+- Google Analytics setup is listed as optional.
+
+## Payment and approval model
+
+Site in a Box works with a no-cure-no-pay approval model. The customer sees a test version first, for example on a siteinabox.nl subdomain. Only after explicit approval does Site in a Box send the invoice and put the site live. If the customer does not approve, they do not pay.
+
+## Ownership and editing
+
+The customer owns their domain and content. The domain name is put in the customer's name. Texts, photos and business information can be exported and taken elsewhere.
+
+Site in a Box builds and hosts the website in its own system. Customers can edit common content themselves through the management environment, such as opening hours, prices, photos, texts and services. One larger layout-level change per quarter is included.
+
+## Contact and company details
+
+- E-mail: info@siteinabox.nl
+- WhatsApp/phone: +31 6 25052591
+- Company: Site in a Box VOF
+- Location: Roermond, the Netherlands
+- KvK: 99460165
+- BTW-id: NL869001073B01

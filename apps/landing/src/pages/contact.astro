@@ -16,17 +16,9 @@ const phoneDisplay = '+31 6 25052591';
 const phoneHref = site.links.phone;
 // PLACEHOLDER: bevestig openingstijden voor de live-zetting.
 const officeHours = 'Ma–Vr · 09:00–17:00';
-
-const contactPageJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'ContactPage',
-  name: 'Contact — Site in a Box',
-  url: 'https://siteinabox.nl/contact',
-  inLanguage: 'nl',
-};
 ---
 
-<BaseLayout title={pageTitle} description={pageDescription}>
+<BaseLayout title={pageTitle} description={pageDescription} pageType="ContactPage" hasFaq>
   <Header />
   <main>
     <section class="mt-180 lg-mt-80" aria-labelledby="contact-heading">
@@ -126,8 +118,6 @@ const contactPageJsonLd = {
     <FaqSection />
   </main>
   <Footer />
-
-  <script is:inline type="application/ld+json" set:html={JSON.stringify(contactPageJsonLd)} />
 </BaseLayout>
 
 <style>

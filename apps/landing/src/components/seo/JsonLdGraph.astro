@@ -1,0 +1,330 @@
+---
+import { site } from '../../content/site';
+
+type PageType = 'WebPage' | 'ContactPage';
+
+interface Props {
+  title: string;
+  description: string;
+  noindex?: boolean;
+  pageType?: PageType;
+  hasFaq?: boolean;
+}
+
+const {
+  title,
+  description,
+  noindex = false,
+  pageType = 'WebPage',
+  hasFaq = false,
+} = Astro.props;
+
+const baseUrl = `https://${site.primaryDomain}`;
+const pageUrl = new URL(Astro.url.pathname, baseUrl).toString();
+const pageId = Astro.url.pathname === '/' ? `${baseUrl}/#home` : `${pageUrl}#webpage`;
+const organizationId = `${baseUrl}/#organization`;
+const websiteId = `${baseUrl}/#website`;
+const serviceId = `${baseUrl}/#website-service`;
+const offerCatalogId = `${baseUrl}/#website-packages`;
+const llmsDocumentId = `${baseUrl}/llms.txt#document`;
+const pricingUrl = `${baseUrl}/#prijzen`;
+const logoUrl = new URL('/theme/images/logo/siab_logo.svg', baseUrl).toString();
+
+const fullTitle = title === site.brand ? title : `${title} | ${site.brand}`;
+const pageSchemaType = pageType;
+
+const faqItems = [
+  {
+    q: 'Hoe weten jullie wat er op mijn website moet komen?',
+    a: 'Via een korte vragenlijst van ongeveer 15 minuten. Je vertelt ons wat voor bedrijf je hebt, wie je klanten zijn, en welke stijl je aanspreekt. Je levert wat foto’s aan en eventueel je logo. Wij maken op basis daarvan de eerste versie van je website, inclusief teksten. In de feedbackronde stuur jij alles helemaal naar jouw smaak bij.',
+  },
+  {
+    q: 'Wat zit er bij €19 per maand, en wanneer is €29 logischer?',
+    a: 'Voor €19 krijg je het hele Website-pakket: eigen .nl-domein, hosting, beveiliging, contactformulier, vindbaarheid in Google en ChatGPT, beheeromgeving om zelf aan te passen, automatische back-ups, en e-mail forwarding. Wil je ook vanaf je eigen domein verzenden? Dan kies je Compleet (€29 per maand): zakelijke Gmail via Google Workspace, plus de AI-assistent Gemini, 30 GB Drive, Google Agenda en Meet.',
+  },
+  {
+    q: 'Wat betekent “alleen betalen als je tevreden bent” precies?',
+    a: 'Wij bouwen je website eerst. Je krijgt ’m te zien op een testadres (bijvoorbeeld jouwbedrijf.siteinabox.nl). Pas wanneer jij actief akkoord geeft, een klik op de bevestigingslink of een mailtje van jouw kant, sturen we de factuur en gaan we live. Geef je geen akkoord, dan betaal je niets.',
+  },
+  {
+    q: 'Wat als de eerste versie niet helemaal goed is?',
+    a: 'Geen probleem, daar is de feedbackronde voor. Bekijk de eerste versie rustig, noteer alles wat je anders wilt en stuur al je opmerkingen in één keer door. Wij verwerken alles. Komen we er samen niet uit? Dan stoppen we daar, zonder factuur.',
+  },
+  {
+    q: 'Past mijn bedrijf op één pagina?',
+    a: 'Voor de meeste net-gestarte bedrijven: ja. Een one-pager werkt goed als je een dienst aanbiedt waar potentiële klanten vooral willen weten wie je bent, wat je doet, voor wie, en hoe ze je kunnen bereiken. Heb je iets uitgebreiders nodig zoals een webshop of online cursus? Dan bouwen we op maat.',
+  },
+  {
+    q: 'Kan ik per maand opzeggen?',
+    a: 'Bij maandelijkse facturatie kun je vanaf dag één per maand opzeggen, met één maand opzegtermijn. Daar staat éénmalig €99 aan opstartkosten tegenover. Bij jaarbetaling betaal je het eerste jaar in één keer vooruit, zonder opstartkosten. Na dat jaar wordt het maandelijks en kun je elk moment opzeggen.',
+  },
+  {
+    q: 'Wie is eigenaar van mijn domein en website?',
+    a: 'Je domein is van jou. Je content is van jou. Je domeinnaam staat vanaf dag één op jouw naam. Je teksten, foto’s en bedrijfsinformatie kun je op elk moment exporteren en meenemen. De website zelf bouwen en hosten wij in ons eigen systeem.',
+  },
+  {
+    q: 'Kan ik zelf dingen aanpassen na lancering?',
+    a: 'Het meeste doe je zelf in de beheeromgeving: openingstijden, prijzen, foto’s, teksten, nieuwe diensten. Geen technische kennis nodig. Voor grotere aanpassingen (een extra sectie, een layout-wijziging) hebben we één wijziging per kwartaal voor je inbegrepen.',
+  },
+];
+
+const includedWebsiteFeatures = [
+  'Professionele website',
+  'Vindbaar in Google en ChatGPT',
+  'Bliksemsnelle laadtijd',
+  'Veilig en altijd online',
+  'Eigen .nl-domein',
+  'E-mail forwarding',
+  'NL-support',
+  'Beheeromgeving om zelf aan te passen',
+  'Automatische back-ups',
+];
+
+const completeExtraFeatures = [
+  'Meertalige website',
+  'Zakelijke Gmail via Google Workspace',
+  'AI-assistent Gemini in Gmail',
+  'Chat met AI in de Gemini-app',
+  '30 GB Google Drive',
+  'Google Agenda en Meet',
+  'Google Analytics-setup optioneel',
+];
+
+const monthlyPriceSpecification = (price: number) => ({
+  '@type': 'UnitPriceSpecification',
+  price,
+  priceCurrency: 'EUR',
+  unitText: 'MONTH',
+  valueAddedTaxIncluded: false,
+});
+
+const setupFeeProperty = (value: string) => ({
+  '@type': 'PropertyValue',
+  name: 'Eenmalige opstartkosten',
+  value,
+});
+
+const graph = [
+  {
+    '@type': 'Organization',
+    '@id': organizationId,
+    name: site.brand,
+    legalName: 'Site in a Box VOF',
+    url: `${baseUrl}/`,
+    logo: logoUrl,
+    description: site.description,
+    email: 'info@siteinabox.nl',
+    telephone: '+31625052591',
+    areaServed: site.serviceArea ?? ['Nederland'],
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Roermond',
+      addressCountry: 'NL',
+    },
+    identifier: [
+      {
+        '@type': 'PropertyValue',
+        propertyID: 'KvK',
+        value: '99460165',
+      },
+      {
+        '@type': 'PropertyValue',
+        propertyID: 'BTW-id',
+        value: 'NL869001073B01',
+      },
+    ],
+    vatID: 'NL869001073B01',
+    sameAs: Object.values(site.socials).filter(Boolean),
+    contactPoint: [
+      {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        email: 'info@siteinabox.nl',
+        telephone: '+31625052591',
+        areaServed: site.serviceArea ?? ['NL'],
+        availableLanguage: ['Dutch'],
+      },
+    ],
+    subjectOf: [
+      { '@id': websiteId },
+      { '@id': `${baseUrl}/#home` },
+      { '@id': llmsDocumentId },
+    ],
+  },
+  {
+    '@type': 'WebSite',
+    '@id': websiteId,
+    url: `${baseUrl}/`,
+    name: site.brand,
+    description: site.description,
+    inLanguage: 'nl-NL',
+    publisher: { '@id': organizationId },
+    about: { '@id': serviceId },
+  },
+  {
+    '@type': pageSchemaType,
+    '@id': pageId,
+    url: pageUrl,
+    name: fullTitle,
+    description,
+    isPartOf: { '@id': websiteId },
+    inLanguage: 'nl-NL',
+    publisher: { '@id': organizationId },
+    about: [
+      { '@id': organizationId },
+      { '@id': serviceId },
+    ],
+    ...(Astro.url.pathname === '/'
+      ? { mainEntity: { '@id': serviceId } }
+      : {}),
+  },
+  {
+    '@type': 'Service',
+    '@id': serviceId,
+    name: 'Site in a Box website abonnement',
+    alternateName: ['Website pakket', 'Compleet pakket'],
+    serviceType: 'Website laten maken, hosting en beheeromgeving',
+    category: ['Website laten maken', 'Website abonnement', 'Webdesign', 'Hosting'],
+    url: `${baseUrl}/`,
+    description: site.description,
+    provider: { '@id': organizationId },
+    areaServed: {
+      '@type': 'Country',
+      name: 'Nederland',
+    },
+    audience: {
+      '@type': 'BusinessAudience',
+      name: 'Net-gestarte ondernemers, ZZP-dienstverleners, lokale bedrijven en freelancers in Nederland',
+    },
+    mainEntityOfPage: { '@id': `${baseUrl}/#home` },
+    subjectOf: [
+      { '@id': `${baseUrl}/#home` },
+      { '@id': llmsDocumentId },
+    ],
+    additionalProperty: [
+      ...includedWebsiteFeatures.map((feature) => ({
+        '@type': 'PropertyValue',
+        name: 'Inbegrepen in Website',
+        value: feature,
+      })),
+      ...completeExtraFeatures.map((feature) => ({
+        '@type': 'PropertyValue',
+        name: 'Extra inbegrepen in Compleet',
+        value: feature,
+      })),
+    ],
+    hasOfferCatalog: { '@id': offerCatalogId },
+  },
+  {
+    '@type': 'OfferCatalog',
+    '@id': offerCatalogId,
+    name: 'Site in a Box pakketten',
+    itemListElement: [
+      { '@id': `${baseUrl}/#offer-website-yearly` },
+      { '@id': `${baseUrl}/#offer-website-monthly` },
+      { '@id': `${baseUrl}/#offer-complete-yearly` },
+      { '@id': `${baseUrl}/#offer-complete-monthly` },
+    ],
+  },
+  {
+    '@type': 'Offer',
+    '@id': `${baseUrl}/#offer-website-yearly`,
+    name: 'Website - jaarbetaling',
+    url: pricingUrl,
+    price: 19,
+    priceCurrency: 'EUR',
+    priceSpecification: monthlyPriceSpecification(19),
+    availability: 'https://schema.org/InStock',
+    category: 'Website abonnement',
+    description: 'Website-pakket vanaf €19 per maand bij jaarbetaling, zonder opstartkosten. Alle prijzen excl. btw.',
+    additionalProperty: [setupFeeProperty('Geen opstartkosten bij jaarbetaling')],
+    itemOffered: { '@id': serviceId },
+    offeredBy: { '@id': organizationId },
+  },
+  {
+    '@type': 'Offer',
+    '@id': `${baseUrl}/#offer-website-monthly`,
+    name: 'Website - maandelijkse facturatie',
+    url: pricingUrl,
+    price: 19,
+    priceCurrency: 'EUR',
+    priceSpecification: monthlyPriceSpecification(19),
+    availability: 'https://schema.org/InStock',
+    category: 'Website abonnement',
+    description: 'Website-pakket vanaf €19 per maand met €99 eenmalige opstartkosten. Alle prijzen excl. btw.',
+    additionalProperty: [setupFeeProperty('€99 bij maandelijkse facturatie')],
+    itemOffered: { '@id': serviceId },
+    offeredBy: { '@id': organizationId },
+  },
+  {
+    '@type': 'Offer',
+    '@id': `${baseUrl}/#offer-complete-yearly`,
+    name: 'Compleet - jaarbetaling',
+    url: pricingUrl,
+    price: 29,
+    priceCurrency: 'EUR',
+    priceSpecification: monthlyPriceSpecification(29),
+    availability: 'https://schema.org/InStock',
+    category: 'Website abonnement met zakelijke Gmail',
+    description: 'Compleet-pakket vanaf €29 per maand bij jaarbetaling, zonder opstartkosten. Alle prijzen excl. btw.',
+    additionalProperty: [setupFeeProperty('Geen opstartkosten bij jaarbetaling')],
+    itemOffered: { '@id': serviceId },
+    offeredBy: { '@id': organizationId },
+  },
+  {
+    '@type': 'Offer',
+    '@id': `${baseUrl}/#offer-complete-monthly`,
+    name: 'Compleet - maandelijkse facturatie',
+    url: pricingUrl,
+    price: 29,
+    priceCurrency: 'EUR',
+    priceSpecification: monthlyPriceSpecification(29),
+    availability: 'https://schema.org/InStock',
+    category: 'Website abonnement met zakelijke Gmail',
+    description: 'Compleet-pakket vanaf €29 per maand met €99 eenmalige opstartkosten. Alle prijzen excl. btw.',
+    additionalProperty: [setupFeeProperty('€99 bij maandelijkse facturatie')],
+    itemOffered: { '@id': serviceId },
+    offeredBy: { '@id': organizationId },
+  },
+  {
+    '@type': 'DigitalDocument',
+    '@id': llmsDocumentId,
+    url: `${baseUrl}/llms.txt`,
+    name: 'Site in a Box LLM context',
+    encodingFormat: 'text/markdown',
+    inLanguage: 'nl-NL',
+    publisher: { '@id': organizationId },
+    about: [
+      { '@id': organizationId },
+      { '@id': serviceId },
+    ],
+  },
+  ...(hasFaq
+    ? [
+        {
+          '@type': 'FAQPage',
+          '@id': `${pageUrl}#faq`,
+          url: `${pageUrl}#faq`,
+          isPartOf: { '@id': pageId },
+          inLanguage: 'nl-NL',
+          publisher: { '@id': organizationId },
+          mainEntity: faqItems.map((f) => ({
+            '@type': 'Question',
+            name: f.q,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: f.a,
+            },
+          })),
+        },
+      ]
+    : []),
+];
+
+const data = {
+  '@context': 'https://schema.org',
+  '@graph': graph,
+};
+---
+
+{!noindex && <script type="application/ld+json" set:html={JSON.stringify(data)} />}

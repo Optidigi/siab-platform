@@ -22,8 +22,7 @@ import slickUrl from '../scripts/slick.min.js?url';
 // load, which break during Astro's SSR/static build.
 
 import Seo from '../components/seo/Seo.astro';
-import JsonLdOrganization from '../components/seo/JsonLdOrganization.astro';
-import JsonLdLocalBusiness from '../components/seo/JsonLdLocalBusiness.astro';
+import JsonLdGraph from '../components/seo/JsonLdGraph.astro';
 import { site } from '../content/site';
 
 interface Props {
@@ -31,9 +30,11 @@ interface Props {
   description: string;
   ogImage?: string;
   noindex?: boolean;
+  pageType?: 'WebPage' | 'ContactPage';
+  hasFaq?: boolean;
 }
 
-const { title, description, ogImage, noindex } = Astro.props;
+const { title, description, ogImage, noindex, pageType = 'WebPage', hasFaq = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -88,8 +89,13 @@ const { title, description, ogImage, noindex } = Astro.props;
     <link rel="manifest" href="/manifest.json" />
     <meta name="generator" content={Astro.generator} />
     <Seo title={title} description={description} ogImage={ogImage} noindex={noindex} />
-    <JsonLdOrganization />
-    <JsonLdLocalBusiness />
+    <JsonLdGraph
+      title={title}
+      description={description}
+      noindex={noindex}
+      pageType={pageType}
+      hasFaq={hasFaq}
+    />
 
     <!-- Theme CSS is bundled via Vite imports in the frontmatter above; Astro
          emits hashed <link> tags automatically. -->

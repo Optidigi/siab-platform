@@ -1,50 +1,3 @@
----
-const faqs: Array<{ q: string; a: string }> = [
-  {
-    q: 'Hoe weten jullie wat er op mijn website moet komen?',
-    a: 'Via een korte vragenlijst van ongeveer 15 minuten. Je vertelt ons wat voor bedrijf je hebt, wie je klanten zijn, en welke stijl je aanspreekt. Je levert wat foto’s aan en eventueel je logo. Wij maken op basis daarvan de eerste versie van je website, inclusief teksten. In de feedbackronde stuur jij alles helemaal naar jouw smaak bij.',
-  },
-  {
-    q: 'Wat zit er bij €19 per maand, en wanneer is €29 logischer?',
-    a: 'Voor €19 krijg je het hele Website-pakket: eigen .nl-domein, hosting, beveiliging, contactformulier, vindbaarheid in Google en ChatGPT, beheeromgeving om zelf aan te passen, automatische back-ups, en e-mail forwarding. Wil je ook vanaf je eigen domein verzenden? Dan kies je Compleet (€29 per maand): zakelijke Gmail via Google Workspace, plus de AI-assistent Gemini, 30 GB Drive, Google Agenda en Meet.',
-  },
-  {
-    q: 'Wat betekent “alleen betalen als je tevreden bent” precies?',
-    a: 'Wij bouwen je website eerst. Je krijgt ’m te zien op een testadres (bijvoorbeeld jouwbedrijf.siteinabox.nl). Pas wanneer jij actief akkoord geeft, een klik op de bevestigingslink of een mailtje van jouw kant, sturen we de factuur en gaan we live. Geef je geen akkoord, dan betaal je niets.',
-  },
-  {
-    q: 'Wat als de eerste versie niet helemaal goed is?',
-    a: 'Geen probleem, daar is de feedbackronde voor. Bekijk de eerste versie rustig, noteer alles wat je anders wilt en stuur al je opmerkingen in één keer door. Wij verwerken alles. Komen we er samen niet uit? Dan stoppen we daar, zonder factuur.',
-  },
-  {
-    q: 'Past mijn bedrijf op één pagina?',
-    a: 'Voor de meeste net-gestarte bedrijven: ja. Een one-pager werkt goed als je een dienst aanbiedt waar potentiële klanten vooral willen weten wie je bent, wat je doet, voor wie, en hoe ze je kunnen bereiken. Heb je iets uitgebreiders nodig zoals een webshop of online cursus? Dan bouwen we op maat.',
-  },
-  {
-    q: 'Kan ik per maand opzeggen?',
-    a: 'Bij maandelijkse facturatie kun je vanaf dag één per maand opzeggen, met één maand opzegtermijn. Daar staat éénmalig €99 aan opstartkosten tegenover. Bij jaarbetaling betaal je het eerste jaar in één keer vooruit, zonder opstartkosten. Na dat jaar wordt het maandelijks en kun je elk moment opzeggen.',
-  },
-  {
-    q: 'Wie is eigenaar van mijn domein en website?',
-    a: 'Je domein is van jou. Je content is van jou. Je domeinnaam staat vanaf dag één op jouw naam. Je teksten, foto’s en bedrijfsinformatie kun je op elk moment exporteren en meenemen. De website zelf bouwen en hosten wij in ons eigen systeem.',
-  },
-  {
-    q: 'Kan ik zelf dingen aanpassen na lancering?',
-    a: 'Het meeste doe je zelf in de beheeromgeving: openingstijden, prijzen, foto’s, teksten, nieuwe diensten. Geen technische kennis nodig. Voor grotere aanpassingen (een extra sectie, een layout-wijziging) hebben we één wijziging per kwartaal voor je inbegrepen.',
-  },
-];
-
-const faqJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: faqs.map((f) => ({
-    '@type': 'Question',
-    name: f.q,
-    acceptedAnswer: { '@type': 'Answer', text: f.a },
-  })),
-};
----
-
 <section id="faq" class="faq-section-three position-relative mt-180 lg-mt-80 mb-180 lg-mb-80" aria-labelledby="faq-heading">
   <div class="container lg">
     <div class="row">
@@ -161,5 +114,3 @@ const faqJsonLd = {
     </div>
   </div>
 </section>
-
-<script is:inline type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} />
