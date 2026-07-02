@@ -19,6 +19,7 @@ import { Button } from "@siteinabox/ui/components/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { Input } from "@siteinabox/ui/components/input"
 import { cn } from "@siteinabox/ui/lib/utils"
+import { CheckoutStepper } from "@/components/preview/CheckoutStepper"
 import type { DomainRegistrantDetails } from "@/lib/domains/orderState"
 import { previewDomainCandidates } from "@/lib/domains/previewDomainCandidates"
 
@@ -410,7 +411,7 @@ export function PreviewCheckout({
 
       <div className="mx-auto grid w-full max-w-4xl gap-4 p-3 md:p-4">
         <section className="grid gap-4">
-          <CheckoutStepper step={step} />
+          <PreviewCheckoutStepper step={step} />
 
           {step === "domain" && (
             <Card>
@@ -527,36 +528,13 @@ export function PreviewCheckout({
   )
 }
 
-function CheckoutStepper({ step }: { step: CheckoutStep }) {
+function PreviewCheckoutStepper({ step }: { step: CheckoutStep }) {
   const t = useTranslations("preview")
   const steps: Array<{ id: CheckoutStep; label: string; icon: React.ElementType }> = [
     { id: "domain", label: t("checkoutStepDomain"), icon: Globe2 },
     { id: "payment", label: t("checkoutStepPayment"), icon: CreditCard },
   ]
-  const activeIndex = steps.findIndex((entry) => entry.id === step)
-  return (
-    <ol className="grid grid-cols-2 rounded-full border bg-background p-1">
-      {steps.map((entry, index) => {
-        const Icon = entry.icon
-        const active = index === activeIndex
-        const complete = index < activeIndex
-        return (
-          <li
-            key={entry.id}
-            className={cn(
-              "flex h-10 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium text-muted-foreground",
-              (active || complete) && "bg-primary text-primary-foreground",
-              complete && index + 1 === activeIndex && "rounded-r-none",
-              active && index > 0 && "rounded-l-none",
-            )}
-          >
-            <Icon className="size-4" aria-hidden />
-            <span className="hidden sm:inline">{entry.label}</span>
-          </li>
-        )
-      })}
-    </ol>
-  )
+  return <CheckoutStepper steps={steps} activeStep={step} />
 }
 
 function CheckoutActionBar({

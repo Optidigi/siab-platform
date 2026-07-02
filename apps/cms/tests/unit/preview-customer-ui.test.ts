@@ -51,11 +51,14 @@ describe("customer preview UI", () => {
 
   it("renders checkout as a branded two-step flow with domain fee states", () => {
     const checkout = read("src/components/preview/PreviewCheckout.tsx")
+    const stepper = read("src/components/preview/CheckoutStepper.tsx")
     const page = read("src/app/(frontend)/(site-preview)/[clientSlug]/checkout/page.tsx")
 
     expect(checkout).toContain('type CheckoutStep = "domain" | "payment"')
     expect(checkout).toContain("CheckoutStepper")
-    expect(checkout).toContain("grid-cols-2")
+    expect(stepper).toContain("grid-cols-2")
+    expect(stepper).toContain("grid-cols-4")
+    expect(stepper).toContain("bg-primary text-primary-foreground")
     expect(checkout).not.toContain('id: "details"')
     expect(checkout).toContain('src="/logos/logo-light.svg"')
     expect(checkout).toContain('src="/logos/logo-dark.svg"')
@@ -116,9 +119,9 @@ describe("customer preview UI", () => {
     expect(checkout).toContain("grid gap-3 rounded-md border p-4 text-base")
     expect(checkout).toContain("focus-visible:border-success")
     expect(checkout).toContain("size-5 text-success")
-    expect(checkout).toContain('(active || complete) && "bg-primary text-primary-foreground"')
-    expect(checkout).toContain('complete && index + 1 === activeIndex && "rounded-r-none"')
-    expect(checkout).toContain('active && index > 0 && "rounded-l-none"')
+    expect(stepper).toContain('(active || complete) && "bg-primary text-primary-foreground"')
+    expect(stepper).toContain('complete && index + 1 === activeIndex && "rounded-r-none"')
+    expect(stepper).toContain('active && index > 0 && "rounded-l-none"')
     expect(checkout).toContain("bg-background/95")
     expect(checkout).toContain("md:bg-card")
     expect(checkout).toContain("setCheckedDomain(null)")

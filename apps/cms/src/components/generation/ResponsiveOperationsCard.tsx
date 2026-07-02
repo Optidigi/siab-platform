@@ -25,7 +25,7 @@ export function ResponsiveOperationsCard({
   const contentId = React.useId()
 
   return (
-    <Card className={cn("overflow-hidden py-0 md:py-6", className)}>
+    <Card className={cn("h-full overflow-hidden py-0 md:py-6", className)}>
       <CardHeader className="hidden md:flex">
         <CardTitle>{title}</CardTitle>
       </CardHeader>

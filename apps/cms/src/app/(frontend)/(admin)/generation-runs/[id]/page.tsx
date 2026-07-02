@@ -12,6 +12,7 @@ import { JsonSummaryBlock } from "@/components/generation/JsonSummaryBlock"
 import { PreviewAccessShare } from "@/components/generation/PreviewAccessShare"
 import { ResponsiveOperationsCard } from "@/components/generation/ResponsiveOperationsCard"
 import { PageHeader } from "@/components/page-header"
+import { CheckoutStepper } from "@/components/preview/CheckoutStepper"
 import { updateTenantDomainVerificationAction } from "@/lib/actions/domainVerification"
 import { createGenerationRunMollieCheckoutAction, recordGenerationRunPaymentAction } from "@/lib/actions/generationRunPayment"
 import { retryPostPaymentAutomationAction } from "@/lib/actions/postPaymentAutomation"
@@ -40,6 +41,7 @@ import {
   CheckCircle2,
   CreditCard,
   ExternalLink,
+  Globe2,
   PlayCircle,
   RotateCcw,
   ShieldCheck,
@@ -129,18 +131,18 @@ const intakeContactEmail = (value: unknown): string | null => {
   return typeof email === "string" && email ? email : null
 }
 
-type OperationsBadgeVariant = "success" | "default" | "warning"
+type OperationsBadgeVariant = "success" | "outline" | "warning"
 
 const workflowBadgeVariant = (state: string): OperationsBadgeVariant => {
   if (state === "Live") return "success"
   if (state === "Needs attention") return "warning"
-  return "default"
+  return "outline"
 }
 
 const statusBadge = (variant: OperationsBadgeVariant, label: string) => (
   <Badge
     variant={variant}
-    className={variant === "default" ? "bg-foreground text-background" : undefined}
+    className={variant === "outline" ? "border-foreground/35 text-foreground" : undefined}
   >
     {label}
   </Badge>
@@ -211,32 +213,41 @@ export default async function GenerationRunDetailPage({
   const defaultPreviewEmail = intakeContactEmail(run.intakeSubmission)
   const readyToGoLive = Boolean(tenantId) && lifecycle.publishBlockers.length === 0 && lifecycle.blockers.length === 0
   const checkoutComplete = isApproved && paymentSatisfied
-  const statusPanels = [
+  const statusSteps = [
     {
+      id: "preview" as const,
       label: "Preview",
       value: customerPreviewUrl ? "Ready" : "Not ready",
       complete: !previewDisabledReason,
-      badge: statusBadge("default", previewDisabledReason ? "waiting" : "ready"),
+      icon: ExternalLink,
+      badge: statusBadge("outline", previewDisabledReason ? "waiting" : "ready"),
     },
     {
+      id: "checkout" as const,
       label: "Checkout",
       value: displayStatus(payment.status),
       complete: paymentSatisfied,
-      badge: statusBadge(paymentSatisfied ? "success" : "default", paymentSatisfied ? "complete" : displayStatus(payment.status)),
+      icon: CreditCard,
+      badge: statusBadge(paymentSatisfied ? "success" : "outline", paymentSatisfied ? "complete" : displayStatus(payment.status)),
     },
     {
+      id: "provisioning" as const,
       label: "Provisioning",
       value: domainVerified && emailSendingVerified ? "Ready" : displayStatus(domainOrderStatus),
       complete: domainVerified && emailSendingVerified,
-      badge: statusBadge(domainVerified && emailSendingVerified ? "success" : "default", domainVerified && emailSendingVerified ? "ready" : "waiting"),
+      icon: Globe2,
+      badge: statusBadge(domainVerified && emailSendingVerified ? "success" : "outline", domainVerified && emailSendingVerified ? "ready" : "waiting"),
     },
     {
+      id: "live" as const,
       label: "Live",
       value: isLive ? "Live" : "Not live",
       complete: isLive,
-      badge: statusBadge(isLive ? "success" : "default", isLive ? "live" : readyToGoLive ? "ready" : "waiting"),
+      icon: CheckCircle2,
+      badge: statusBadge(isLive ? "success" : "outline", isLive ? "live" : readyToGoLive ? "ready" : "waiting"),
     },
   ]
+  const activeStatusStep = [...statusSteps].reverse().find((step) => step.complete)?.id ?? null
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
@@ -245,7 +256,7 @@ export default async function GenerationRunDetailPage({
           <span className="inline-flex flex-wrap items-center gap-2">
             <Badge
               variant={workflowBadgeVariant(summary.state)}
-              className={summary.state !== "Live" && summary.state !== "Needs attention" ? "bg-foreground text-background" : undefined}
+              className={summary.state !== "Live" && summary.state !== "Needs attention" ? "border-foreground/35 text-foreground" : undefined}
             >
               <span className="size-1.5 rounded-full bg-current" aria-hidden />
               {summary.state}
@@ -273,7 +284,7 @@ export default async function GenerationRunDetailPage({
         </Alert>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] xl:items-start">
+      <div className="grid gap-4 xl:grid-cols-[minmax(280px,0.85fr)_minmax(0,1.15fr)] xl:items-stretch">
         <ResponsiveOperationsCard
           title="Send preview"
           defaultOpen
@@ -317,15 +328,15 @@ export default async function GenerationRunDetailPage({
           <div className="grid gap-2 rounded-md bg-muted/40 p-3">
             <div className="flex items-center justify-between gap-3">
               <span>Payment</span>
-              {statusBadge(paymentSatisfied ? "success" : "default", displayStatus(payment.status))}
+              {statusBadge(paymentSatisfied ? "success" : "outline", displayStatus(payment.status))}
             </div>
             <div className="flex items-center justify-between gap-3">
               <span>Approval</span>
-              {statusBadge(isApproved ? "success" : "default", isApproved ? "approved" : "waiting")}
+              {statusBadge(isApproved ? "success" : "outline", isApproved ? "approved" : "waiting")}
             </div>
             <div className="flex items-center justify-between gap-3">
               <span>Live</span>
-              {statusBadge(isLive ? "success" : "default", isLive ? "live" : "not live")}
+              {statusBadge(isLive ? "success" : "outline", isLive ? "live" : "not live")}
             </div>
           </div>
         </ResponsiveOperationsCard>
@@ -335,22 +346,21 @@ export default async function GenerationRunDetailPage({
         <CardHeader>
           <CardTitle>Status</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-2 text-sm md:grid-cols-4">
-          {statusPanels.map((panel) => (
-            <div
-              key={panel.label}
-              className={cn(
-                "rounded-md border p-3 transition-colors",
-                panel.complete && "border-success/40 bg-success/10",
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-muted-foreground">{panel.label}</div>
-                {panel.badge}
+        <CardContent className="grid gap-4 text-sm">
+          <CheckoutStepper
+            steps={statusSteps.map(({ id, label, icon }) => ({ id, label, icon }))}
+            activeStep={activeStatusStep}
+          />
+          <div className="grid gap-2 md:grid-cols-4">
+            {statusSteps.map((step) => (
+              <div key={step.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
+                <span className={cn("font-medium", step.complete ? "text-foreground" : "text-muted-foreground")}>
+                  {step.value}
+                </span>
+                {step.badge}
               </div>
-              <div className="mt-2 font-medium">{panel.value}</div>
-            </div>
-          ))}
+            ))}
+          </div>
         </CardContent>
       </Card>
 

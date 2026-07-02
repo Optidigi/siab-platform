@@ -59,7 +59,7 @@ const stateForFilter = (filter: GenerationRunFilter): OperationsWorkflowState | 
 const inboxTone = (state: OperationsWorkflowState) => {
   if (state === "Needs attention") return "warning"
   if (state === "Live") return "success"
-  return "default"
+  return "outline"
 }
 
 const jsonObject = (value: unknown): Record<string, unknown> | null =>
@@ -110,7 +110,7 @@ function ClientQueueItem({ item }: { item: InboxItem }) {
             variant={inboxTone(item.state)}
             className={cn(
               "shrink-0",
-              item.state !== "Live" && item.state !== "Needs attention" && "bg-foreground text-background",
+              item.state !== "Live" && item.state !== "Needs attention" && "border-foreground/35 text-foreground",
             )}
           >
             {item.state}
