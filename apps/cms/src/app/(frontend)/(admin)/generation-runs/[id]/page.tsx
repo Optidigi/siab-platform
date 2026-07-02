@@ -7,7 +7,6 @@ import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/a
 import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
 import { Textarea } from "@siteinabox/ui/components/textarea"
-import { cn } from "@siteinabox/ui/lib/utils"
 import { JsonSummaryBlock } from "@/components/generation/JsonSummaryBlock"
 import { PreviewAccessShare } from "@/components/generation/PreviewAccessShare"
 import { ResponsiveOperationsCard } from "@/components/generation/ResponsiveOperationsCard"
@@ -217,34 +216,26 @@ export default async function GenerationRunDetailPage({
     {
       id: "preview" as const,
       label: "Preview",
-      value: customerPreviewUrl ? "Ready" : "Not ready",
       complete: !previewDisabledReason,
       icon: ExternalLink,
-      badge: statusBadge("outline", previewDisabledReason ? "waiting" : "ready"),
     },
     {
       id: "checkout" as const,
       label: "Checkout",
-      value: displayStatus(payment.status),
       complete: paymentSatisfied,
       icon: CreditCard,
-      badge: statusBadge(paymentSatisfied ? "success" : "outline", paymentSatisfied ? "complete" : displayStatus(payment.status)),
     },
     {
       id: "provisioning" as const,
       label: "Provisioning",
-      value: domainVerified && emailSendingVerified ? "Ready" : displayStatus(domainOrderStatus),
       complete: domainVerified && emailSendingVerified,
       icon: Globe2,
-      badge: statusBadge(domainVerified && emailSendingVerified ? "success" : "outline", domainVerified && emailSendingVerified ? "ready" : "waiting"),
     },
     {
       id: "live" as const,
       label: "Live",
-      value: isLive ? "Live" : "Not live",
       complete: isLive,
       icon: CheckCircle2,
-      badge: statusBadge(isLive ? "success" : "outline", isLive ? "live" : readyToGoLive ? "ready" : "waiting"),
     },
   ]
   const activeStatusStep = [...statusSteps].reverse().find((step) => step.complete)?.id ?? null
@@ -284,7 +275,7 @@ export default async function GenerationRunDetailPage({
         </Alert>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(280px,0.85fr)_minmax(0,1.15fr)] xl:items-stretch">
+      <div className="grid gap-4 xl:grid-cols-2 xl:items-stretch">
         <ResponsiveOperationsCard
           title="Send preview"
           defaultOpen
@@ -351,16 +342,6 @@ export default async function GenerationRunDetailPage({
             steps={statusSteps.map(({ id, label, icon }) => ({ id, label, icon }))}
             activeStep={activeStatusStep}
           />
-          <div className="grid gap-2 md:grid-cols-4">
-            {statusSteps.map((step) => (
-              <div key={step.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
-                <span className={cn("font-medium", step.complete ? "text-foreground" : "text-muted-foreground")}>
-                  {step.value}
-                </span>
-                {step.badge}
-              </div>
-            ))}
-          </div>
         </CardContent>
       </Card>
 
