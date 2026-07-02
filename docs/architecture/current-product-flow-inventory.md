@@ -16,7 +16,7 @@ current implementation only; it does not define new product behavior.
 
 | Perspective | Current user-operable surfaces | Current non-UI operations |
 | --- | --- | --- |
-| Public customer | `apps/landing/src/pages/index.astro` and `apps/landing/src/pages/contact.astro`; contact posts to CMS `POST /api/contact` for platform mail. `apps/intake/src/pages/index.astro` owns the public intake scaffold and posts structured submissions to the configured CMS intake API. Signed preview at `apps/cms/src/app/(frontend)/preview/[token]/page.tsx`. | Intake depends on CMS `POST /api/intake`, which stores submissions for SIAB review. Richer KVK-backed intake logic remains future work. |
+| Public customer | `apps/landing/src/pages/index.astro` and `apps/landing/src/pages/contact.astro`; contact posts to CMS `POST /api/contact` for platform mail. `apps/intake/src/pages/index.astro` owns the public intake scaffold and posts structured submissions to the configured CMS intake API. Customer preview lives under `apps/cms/src/app/(frontend)/(site-preview)/[clientSlug]`; the legacy token route is `apps/cms/src/app/(frontend)/(site-preview)/preview/[token]/page.tsx`. | Intake depends on CMS `POST /api/intake`, which stores submissions for SIAB review. Richer KVK-backed intake logic remains future work. |
 | Operator | CMS dashboard, site list/detail/edit, page editor, forms, media, users, settings, analytics, and generation-run operations under `apps/cms/src/app/(frontend)/(admin)`. Payload admin at `apps/cms/src/app/(payload)/admin/[[...segments]]/page.tsx`. | `POST /api/intake`, `POST /api/preview-tokens`, `POST /api/publish`, and direct Payload collection access for operational collections. |
 | CMS admin | Payload collections for tenants, pages, forms, intake submissions, generation runs, and published snapshots. | Generation/import, approval persistence, publish, activation, renderer snapshot lookup, and rollback are implemented in services/routes. |
 | Renderer | `apps/renderer/src/pages/[...path].astro` serves public paths from active snapshots. | `apps/renderer/src/lib/snapshot.ts` fetches CMS snapshots from `GET /api/renderer/snapshot`; fixture mode exists outside production. |
@@ -57,12 +57,18 @@ current implementation only; it does not define new product behavior.
    `clientApproval: { status: "approved" }` and payment
    `{ status: "pending_provider" }` on the latest `preview_ready` generation
    run. It does not publish or activate.
-8. Publishing is available from the super-admin generation-run detail UI and
-   through `apps/cms/src/app/(payload)/api/publish/route.ts`.
+8. Generation-run snapshot publishing is available from the super-admin
+   generation-run detail UI and through
+   `apps/cms/src/app/(payload)/api/publish/route.ts`.
    `publishSiteSnapshot` builds an immutable `PublishedSiteSnapshot` from
    run-linked CMS pages that are already `published`, creates a
    `published-site-snapshots` row with `status: "drafted"`, and optionally
-   activates it.
+   activates it. The same API route also supports the official-tenant
+   current-state publish path used by the CMS page editor: an owner/editor may
+   publish and activate all currently published CMS pages for their own official
+   tenant only. Tenant users cannot publish generation-run snapshots, rollback,
+   operate on another tenant, or use the current-state path for non-official
+   tenants.
 9. Activation is handled by
    `activatePublishedSnapshot` in
    `apps/cms/src/lib/publish/siteSnapshots.ts`. Activation gates require:

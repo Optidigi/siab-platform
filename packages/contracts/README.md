@@ -9,11 +9,11 @@ tenant site snapshots.
   on the same payload.
 - Keep runtime rendering behavior out of this package. Shared CMS/public site
   rendering belongs in `packages/site-renderer`.
-- Future site generation contracts should describe validated tenant, site, page,
+- Site generation contracts should describe validated tenant, site, page,
   theme, SEO, and published snapshot data. They must not describe generated
   source files, per-client folders, workflows, or containers.
 - Prefer additive changes and explicit optional fields for compatibility across
-  CMS, current tenant snapshot consumers, and future renderer consumers.
+  CMS, current tenant snapshot consumers, and renderer consumers.
 
 ## Current Contracts
 
@@ -28,9 +28,11 @@ tenant site snapshots.
 
 ## Validation
 
-This package is currently type-first. Runtime validation is intentionally not
-introduced here until the package adopts a schema dependency; strict validation
-continues to live at the CMS and service boundaries that apply these contracts.
+This package is type-first for authoring contracts and also owns the shared Zod
+runtime schemas used where platform boundaries need contract validation. CMS,
+renderer, and service boundaries should validate untrusted structured data with
+the exported runtime schemas instead of accepting arbitrary source, component, or
+HTML payloads.
 
 ## Checks
 

@@ -3,7 +3,7 @@
 Shared rendering core for contract-driven SIAB pages.
 
 This package holds React-compatible rendering logic used by CMS
-preview/customizer surfaces and the future `apps/renderer` public runtime:
+preview/customizer surfaces and the `apps/renderer` public runtime:
 
 - block registry
 - page rendering

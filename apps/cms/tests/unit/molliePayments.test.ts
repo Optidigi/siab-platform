@@ -525,6 +525,17 @@ describe("Mollie payment flow", () => {
     expect(await okResponse.json()).toEqual({ ok: true })
   })
 
+  it("fails closed without a Mollie webhook signing secret in production", () => {
+    expect(verifyMollieWebhookSignature("id=tr_test_123", null, {
+      NODE_ENV: "production",
+      MOLLIE_WEBHOOK_SIGNING_SECRET: "",
+    } as NodeJS.ProcessEnv)).toBe(false)
+    expect(verifyMollieWebhookSignature("id=tr_test_123", null, {
+      NODE_ENV: "test",
+      MOLLIE_WEBHOOK_SIGNING_SECRET: "",
+    } as NodeJS.ProcessEnv)).toBe(true)
+  })
+
   it("acknowledges unknown or mismatched Mollie webhook ids without leaking internal state", async () => {
     const { payload, update } = createPayloadStub({
       payment: { status: "pending_provider", provider: "mollie", externalReference: "tr_expected" },

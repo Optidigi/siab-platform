@@ -130,8 +130,13 @@ Phase 8 adds snapshot lifecycle controls to the existing super-admin
 
 The UI calls server actions guarded with `requireRole(["super-admin"])`; those
 actions use the publish services rather than editing snapshot records directly.
-The raw `POST /api/publish` route remains super-admin-only and supports publish,
-publish+activate, and rollback bodies for API-level operation.
+Generation-run snapshot publish, publish+activate, and rollback bodies on the
+raw `POST /api/publish` route remain super-admin-only for API-level operation.
+The route also contains a separate official-tenant current-state path used by
+the CMS page editor: owner/editor users may publish and activate all currently
+published CMS pages for their own official tenant only. That path does not allow
+tenant users to publish generation-run snapshots, rollback, operate on another
+tenant, or publish non-official tenants.
 
 The detail route lists tenant snapshots with key, status, version, hash, publish
 time, active-snapshot state, linked-page publication state, tenant status, and

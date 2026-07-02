@@ -54,12 +54,15 @@ super-admin approval.
 
 ### Preview UI Status
 
-The preview/customizer UI exists at `apps/cms/src/app/(frontend)/preview/[token]`
-and renders directly with `@siteinabox/site-renderer`; it does not use an iframe.
+The current preview/customizer UI exists under
+`apps/cms/src/app/(frontend)/(site-preview)/[clientSlug]` and renders directly
+with `@siteinabox/site-renderer`; it does not use an iframe. The legacy
+`apps/cms/src/app/(frontend)/(site-preview)/preview/[token]` route remains a
+compatibility path and is disabled in production unless explicitly enabled.
 
 It currently supports:
 
-- signed-token preview access;
+- Better Auth magic-link preview access with scoped active grants;
 - tenant/page availability checks;
 - shared-renderer canvas output;
 - style-token changes for palette/color mode, fonts, radius, density, and style

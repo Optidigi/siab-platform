@@ -114,7 +114,7 @@ MOLLIE_SITE_RENEWAL_AMOUNT=19.00
 MOLLIE_SITE_RENEWAL_CURRENCY=EUR
 MOLLIE_SITE_SUBSCRIPTION_INTERVAL=1 month
 MOLLIE_WEBHOOK_BASE_URL=https://admin.siteinabox.nl
-MOLLIE_WEBHOOK_SIGNING_SECRET=
+MOLLIE_WEBHOOK_SIGNING_SECRET=<mollie-webhook-signing-secret-from-secret-store>
 OPENPROVIDER_USERNAME=
 OPENPROVIDER_PASSWORD=
 OPENPROVIDER_API_BASE_URL=
@@ -229,7 +229,7 @@ Current Phase 3 env readiness status:
 | Renderer token | Set `SIAB_RENDERER_API_TOKEN` now for the CMS snapshot endpoint; renderer `.env` is a later separate phase using the same token. |
 | Email | Set `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and `EMAIL_FROM`; keep `CLOUDFLARE_EMAIL_SMTP_TOKEN` only as optional SMTP fallback; remove obsolete `RESEND_API_KEY`. |
 | Rate limits | Keep or tune `SIAB_PUBLIC_POST_RATE_LIMIT_*` and `SIAB_FORM_TARGET_RATE_LIMIT_*` for anonymous public POST and form-target budgets. |
-| Mollie | Set `MOLLIE_API_KEY`, amount, currency, webhook base URL, and optional webhook signing secret. |
+| Mollie | Set `MOLLIE_API_KEY`, amount, currency, webhook base URL, and webhook signing secret. Production webhooks fail closed when `MOLLIE_WEBHOOK_SIGNING_SECRET` is unset. |
 | OpenProvider | Set username/password, SIAB technical/billing handles, and max allowed provider domain cost before enabling paid customer domain registration. |
 | Cloudflare DNS/Email Sending API | Set API token, account id, optional API base URL, and renderer target host or IP before enabling paid customer domain registration and tenant sender verification. |
 | Bootstrap/debug gates | Keep `BOOTSTRAP_TOKEN`, `ENABLE_GRAPHQL_PLAYGROUND`, and `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE` unset unless there is a temporary operator-approved reason. |
