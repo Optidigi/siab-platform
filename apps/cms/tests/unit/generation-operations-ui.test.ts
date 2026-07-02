@@ -328,10 +328,14 @@ describe("generation operations route access", () => {
     expect(detail).toContain("Domain verification controls")
     expect(detail).toContain("DNS remains manual")
     expect(detail).toContain("updateTenantDomainVerificationAction")
-    expect(detail).not.toMatch(/cloudflare|route53|dnsimple/i)
+    const verificationPanel = detail.slice(
+      detail.indexOf("Domain verification controls"),
+      detail.indexOf("Launch site"),
+    )
+    expect(verificationPanel).not.toMatch(/cloudflare|route53|dnsimple/i)
   })
 
-  it("exposes manager-facing intake review and guarded deletion without public auto-generation", () => {
+  it("exposes manager-facing intake review and guarded deletion while public intake auto-generates", () => {
     const action = read("src/lib/actions/reviewIntakeSubmission.ts")
     const detail = read("src/app/(frontend)/(admin)/generation-runs/submissions/[id]/page.tsx")
     const intakeRoute = read("src/app/(payload)/api/intake/route.ts")
@@ -360,16 +364,25 @@ describe("generation operations route access", () => {
     expect(detail).not.toContain("Idempotency key")
     expect(detail).not.toContain("Normalized hash")
     expect(detail).toContain("defaultReviewedGenerationInput")
-    expect(intakeRoute).not.toContain("processIntakeSubmission(")
+    expect(intakeRoute).toContain("processStoredIntakeSubmission")
   })
 
-  it("does not expose a retry mutation in the operations UI", () => {
+  it("exposes post-payment automation recovery only in Advanced", () => {
     const list = read("src/app/(frontend)/(admin)/generation-runs/page.tsx")
     const detail = read("src/app/(frontend)/(admin)/generation-runs/[id]/page.tsx")
+    const action = read("src/lib/actions/postPaymentAutomation.ts")
 
     expect(list).not.toContain("processIntakeSubmission(")
     expect(detail).not.toContain("processIntakeSubmission(")
-    expect(detail).toContain("Retry follow-up")
+    expect(action).toContain('requireRole(["super-admin"])')
+    expect(action).toContain("retryPostPaymentAutomation")
+    expect(detail).toContain("Automation recovery")
+    expect(detail).toContain("Post-payment automation")
+    expect(detail).toContain("Retry subscription")
+    expect(detail).toContain("Retry domain provisioning")
+    expect(detail).toContain("Refresh provisioning")
+    expect(detail).toContain("Retry publish + activation")
+    expect(detail.indexOf("Advanced")).toBeLessThan(detail.indexOf("Post-payment automation"))
   })
 
   it("exposes Better Auth preview access from the generation-run detail without adding review comments", () => {

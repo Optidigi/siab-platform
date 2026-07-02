@@ -335,6 +335,7 @@ export async function applyMollieWebhookPayment(
     depth: 0,
     overrideAccess: true,
   }) as SiteGenerationRun
+  let canAttemptActivation = next.status === "completed"
   if (next.status === "completed" && next.mollieCustomerId && !next.mollieSubscriptionId) {
     try {
       const renewalAmount = mollieRenewalAmountFromEnv()
@@ -370,11 +371,12 @@ export async function applyMollieWebhookPayment(
         overrideAccess: true,
       }) as SiteGenerationRun
     } catch (error) {
+      canAttemptActivation = false
       updatedRun = await recordGenerationRunPostPaymentAutomationState(payload, updatedRun, {
         status: "failed",
         step: "mollie_subscription",
         at: new Date().toISOString(),
-        message: error,
+        message: error instanceof Error ? error.message : String(error),
       })
     }
   }
@@ -383,12 +385,13 @@ export async function applyMollieWebhookPayment(
       const provisioned = await provisionPaidDomainOrder(payload, updatedRun, { selectedDomain: next.selectedDomain })
       updatedRun = provisioned.run
     } catch (error) {
+      canAttemptActivation = false
       const failedRun = error && typeof error === "object" && "run" in error ? (error as { run?: SiteGenerationRun }).run : null
       updatedRun = await recordGenerationRunPostPaymentAutomationState(payload, failedRun ?? updatedRun, {
         status: "failed",
         step: "domain_provisioning",
         at: new Date().toISOString(),
-        message: error,
+        message: error instanceof Error ? error.message : String(error),
       })
     }
   } else if (next.status === "completed" && next.selectedDomain) {
@@ -405,7 +408,7 @@ export async function applyMollieWebhookPayment(
       overrideAccess: true,
     }) as SiteGenerationRun
   }
-  if (next.status === "completed") {
+  if (canAttemptActivation) {
     await publishAndActivateAfterCompletedPayment(payload, updatedRun)
   }
   return { ok: true, runId: run.id, status: next.status, duplicate }

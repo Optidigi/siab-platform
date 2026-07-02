@@ -12,6 +12,7 @@ import { PreviewAccessShare } from "@/components/generation/PreviewAccessShare"
 import { PageHeader } from "@/components/page-header"
 import { updateTenantDomainVerificationAction } from "@/lib/actions/domainVerification"
 import { createGenerationRunMollieCheckoutAction, recordGenerationRunPaymentAction } from "@/lib/actions/generationRunPayment"
+import { retryPostPaymentAutomationAction } from "@/lib/actions/postPaymentAutomation"
 import {
   activateSnapshotAction,
   publishGenerationRunSnapshotAction,
@@ -68,10 +69,50 @@ const jsonField = (value: unknown, key: string): unknown =>
 const displayValue = (value: unknown, fallback = "-") =>
   typeof value === "string" && value.trim() ? value : fallback
 
+const jsonObject = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+
 const domainVerification = (value: unknown) =>
   value && typeof value === "object" && !Array.isArray(value)
     ? value as { status?: unknown; checkedAt?: unknown; checkedBy?: unknown; notes?: unknown }
     : null
+
+const postPaymentAutomationState = (value: unknown) => {
+  const errors = jsonObject(value)
+  const state = jsonObject(errors?.postPaymentAutomation)
+  if (!state) return null
+  const status = displayValue(state.status, "unknown")
+  const step = displayValue(state.step, "unknown")
+  const message = displayValue(state.message, "No message recorded")
+  const at = displayValue(state.at, "-")
+  const snapshotId = state.snapshotId == null ? null : String(state.snapshotId)
+  return { status, step, message, at, snapshotId }
+}
+
+const retrySteps = [
+  {
+    step: "mollie_subscription" as const,
+    label: "Retry subscription",
+    helper: "Creates the missing Mollie renewal subscription when payment is complete.",
+  },
+  {
+    step: "domain_provisioning" as const,
+    label: "Retry domain provisioning",
+    helper: "Retries OpenProvider registration plus Cloudflare DNS and sender setup.",
+  },
+  {
+    step: "refresh_provisioning" as const,
+    label: "Refresh provisioning",
+    helper: "Refreshes tenant sender state and re-checks activation gates.",
+  },
+  {
+    step: "publish_activate" as const,
+    label: "Retry publish + activation",
+    helper: "Reuses an existing run snapshot or publishes and activates a new one.",
+  },
+]
 
 const promotionSummary = (value: unknown) => {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null
@@ -111,6 +152,7 @@ export default async function GenerationRunDetailPage({
   const applyIssueCount = extractIssueCount(run.applyResult)
   const isApproved = approvalStatus(run.clientApproval) === "approved"
   const payment = normalizeGenerationRunPaymentState(run.payment)
+  const automationState = postPaymentAutomationState(run.errors)
   const paymentSatisfied = payment.status === "completed" || payment.status === "waived"
   const promoted = promotionSummary(run.applyResult)
   const lifecycle = await getSnapshotLifecycleForGenerationRun(run)
@@ -385,11 +427,76 @@ export default async function GenerationRunDetailPage({
             <div className="mt-4 grid gap-4">
               <Alert>
                 <RotateCcw className="size-4" aria-hidden />
-                <AlertTitle>Retry follow-up</AlertTitle>
+                <AlertTitle>Automation recovery</AlertTitle>
                 <AlertDescription>
-                  No retry action is exposed here because the current intake service only retries during initial draft preparation.
+                  Failed post-payment automation can be retried here. Normal preview sending remains manual.
                 </AlertDescription>
               </Alert>
+
+              <div className="grid gap-3 rounded-md border p-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="font-medium">Post-payment automation</div>
+                    <div className="text-muted-foreground">
+                      Subscription, domain provisioning, sender refresh, and publish/activation recovery.
+                    </div>
+                  </div>
+                  <Badge variant={automationState?.status === "activated" ? "success" : automationState?.status === "failed" ? "destructive" : "secondary"}>
+                    {automationState ? displayStatus(automationState.status) : "not recorded"}
+                  </Badge>
+                </div>
+
+                {automationState ? (
+                  <div className="grid gap-2 rounded-md bg-muted/40 p-3 text-xs md:grid-cols-2">
+                    <div>
+                      <div className="text-muted-foreground">Step</div>
+                      <div className="font-medium">{displayStatus(automationState.step)}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Updated</div>
+                      <div className="font-medium">{formatDate(automationState.at)}</div>
+                    </div>
+                    {automationState.snapshotId && (
+                      <div>
+                        <div className="text-muted-foreground">Snapshot</div>
+                        <div className="font-medium">{automationState.snapshotId}</div>
+                      </div>
+                    )}
+                    <div className="md:col-span-2">
+                      <div className="text-muted-foreground">Message</div>
+                      <div className="font-medium">{automationState.message}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
+                    No post-payment automation status has been recorded for this run yet.
+                  </div>
+                )}
+
+                <div className="grid gap-2 md:grid-cols-2">
+                  {retrySteps.map((item) => (
+                    <form
+                      key={item.step}
+                      action={retryPostPaymentAutomationAction.bind(null, run.id, item.step)}
+                      className="grid gap-2 rounded-md border p-3"
+                    >
+                      <div>
+                        <div className="font-medium">{item.label}</div>
+                        <div className="text-xs text-muted-foreground">{item.helper}</div>
+                      </div>
+                      <Button type="submit" variant="outline" size="sm" disabled={!paymentSatisfied}>
+                        <RotateCcw className="mr-1 size-4" aria-hidden />
+                        {item.label}
+                      </Button>
+                    </form>
+                  ))}
+                </div>
+                {!paymentSatisfied && (
+                  <div className="text-xs text-muted-foreground">
+                    Payment must be completed or waived before automation recovery can run.
+                  </div>
+                )}
+              </div>
 
               <div id="checkout" className="grid gap-3 rounded-md border p-3 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3">

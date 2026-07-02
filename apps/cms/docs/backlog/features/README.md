@@ -71,6 +71,11 @@ depended on command-run site generation are no longer current source of truth.
   submission status control that the server rejects, but this should be solved
   as part of the planned full forms UI redesign so read-only and management
   states are modeled deliberately rather than hidden with a small conditional.
+- Production-smoke-test the live intake-to-live flow with real Mollie,
+  OpenProvider, and Cloudflare credentials plus a disposable `.nl` domain
+  before trusting unattended production activation. Capture provider ids, DNS
+  records, sender status, active snapshot, renderer response, and final handoff
+  mail log. `.nl` is the only offered TLD for now.
 
 ## Implemented Foundation
 
@@ -161,12 +166,11 @@ omits hidden or empty announcement banner shells from the published projection.
 The generation-run payment gate now has a Mollie checkout and webhook path in
 CMS. Approved preview/customer flows and super-admin operator flows can create a
 Mollie hosted checkout scoped to the generation run, tenant, customer email, and
-preview client slug. Mollie webhooks update only the generation-run payment JSON
-state after fetching the payment from Mollie; they do not publish snapshots or
-activate tenants. Live-key paid checkout can continue into approved
-OpenProvider/Cloudflare domain provisioning and Cloudflare Email Sending
-subdomain setup, but those provider actions still do not publish or activate a
-site by themselves.
+preview client slug. Mollie webhooks update the generation-run payment JSON
+state after fetching the payment from Mollie. Live-key paid checkout can
+continue into approved OpenProvider/Cloudflare domain provisioning, Cloudflare
+Email Sending subdomain setup, and automatic snapshot publish/activation when
+all activation gates pass.
 
 Manual waiver remains available to super-admins. Activation continues to require
 client approval plus either completed Mollie payment or manual waiver unless a
@@ -208,6 +212,9 @@ contact email, with no platform fallback for normal tenant mail.
 Generated-site activation sends a non-blocking `site.live_notice` handoff email
 after first activation of a run-linked drafted snapshot. Rollbacks, current
 state activations, and reactivations skip the normal live-site handoff.
+The final live handoff intentionally uses the platform sender for reliability;
+tenant senders remain for generated-site customer/contact mail after sender
+verification.
 
 ### 2026-07-02 — Operations UI simplification
 
@@ -221,3 +228,13 @@ tenant sender provisioning, and live status, and keeps checkout, domain
 verification, snapshot publish/activation, provider/model, hashes, validation,
 and manual override controls behind Advanced. Backend generation, payment,
 publish, and activation behavior was not changed.
+
+### 2026-07-02 — Post-payment recovery controls
+
+**Status:** Applied.
+
+Operations Advanced exposes post-payment automation recovery for failed
+subscription creation, domain provisioning, sender/provisioning refresh, and
+publish/activation. Provider-step failures remain recorded until that step is
+retried successfully, and publish/activation retries reuse existing drafted or
+active snapshots for the generation run.
