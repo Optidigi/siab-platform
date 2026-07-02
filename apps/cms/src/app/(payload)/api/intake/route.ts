@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { getPayload } from "payload"
 import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { parsePublicIntakeSubmission } from "@/lib/intake/publicIntakeValidation"
+import { processStoredIntakeSubmission } from "@/lib/intake/processIntakeSubmission"
 import { storeIntakeSubmission } from "@/lib/intake/storeIntakeSubmission"
 import config from "@/payload.config"
 
@@ -47,7 +48,10 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const result = await storeIntakeSubmission(payload, validated.intake)
+  const storageResult = await storeIntakeSubmission(payload, validated.intake)
+  const result = storageResult.ok && storageResult.intakeSubmissionId
+    ? await processStoredIntakeSubmission(payload, storageResult.intakeSubmissionId)
+    : storageResult
 
   return NextResponse.json(
     {
@@ -55,6 +59,10 @@ export async function POST(req: NextRequest) {
       reused: result.reused,
       status: result.status,
       intakeSubmissionId: result.intakeSubmissionId,
+      generationRunId: "generationRunId" in result ? result.generationRunId : undefined,
+      tenantId: "tenantId" in result ? result.tenantId : undefined,
+      pageIds: "pageIds" in result ? result.pageIds : undefined,
+      settingsId: "settingsId" in result ? result.settingsId : undefined,
       error: result.error,
     },
     { status: result.ok ? 202 : 422 },

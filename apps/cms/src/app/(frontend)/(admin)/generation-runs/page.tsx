@@ -2,7 +2,6 @@ import Link from "next/link"
 import type { ComponentType } from "react"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { Button, buttonVariants } from "@siteinabox/ui/components/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import {
   Table,
   TableBody,
@@ -153,29 +152,6 @@ export default async function GenerationRunsPage({
       }
     }),
   ].sort((a, b) => new Date(b.updatedAt ?? 0).getTime() - new Date(a.updatedAt ?? 0).getTime())
-  const summaryCards = [
-    {
-      label: "Intake",
-      count: (workflowCounts.get("New requests") ?? 0) + (workflowCounts.get("Ready for AI") ?? 0),
-      helper: "Review intake and send approved briefs to AI.",
-    },
-    {
-      label: "Preview",
-      count: (workflowCounts.get("Drafts to preview") ?? 0) + (workflowCounts.get("Waiting for checkout") ?? 0),
-      helper: "Open drafts, send previews, and wait for checkout.",
-    },
-    {
-      label: "Launch",
-      count: (workflowCounts.get("Launch needed") ?? 0) + (workflowCounts.get("Live") ?? 0),
-      helper: "Register domains, launch sites, and hand off access.",
-    },
-    {
-      label: "Needs attention",
-      count: workflowCounts.get("Needs attention") ?? 0,
-      helper: "Requests or drafts that need operator review.",
-    },
-  ]
-
   const hrefForFilter = (next: GenerationRunFilter) => {
     const params = new URLSearchParams()
     if (q) params.set("q", q)
@@ -188,47 +164,54 @@ export default async function GenerationRunsPage({
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Operations"
-        subtitle="Track intake review, AI drafts, preview checkout, domain launch, and handoff."
+        subtitle="One queue for intake, preview send, client checkout, provisioning, and live handoff."
       />
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <ListSearch placeholder="Search business, contact, or site..." />
-        <div className="flex flex-wrap gap-2">
-          {filters.map((item) => {
-            const Icon = item.icon
-            const active = item.value === filter
-            return (
-              <Link
-                key={item.value}
-                href={hrefForFilter(item.value)}
-                className={cn(buttonVariants({ variant: active ? "default" : "outline", size: "sm" }), "gap-1.5")}
-                aria-current={active ? "page" : undefined}
-              >
-                <Icon className="size-4" aria-hidden />
-                {item.label}
-              </Link>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-4">
-        {summaryCards.map((card) => (
-          <Card key={card.label}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{card.label}</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-2">
-              <span className="text-2xl font-semibold">{card.count}</span>
-              <p className="text-sm text-muted-foreground">{card.helper}</p>
-            </CardContent>
-          </Card>
-        ))}
+        {filter !== "all" && (
+          <Button asChild variant="outline" size="sm">
+            <Link href={hrefForFilter("all")}>Clear filter</Link>
+          </Button>
+        )}
       </div>
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Task inbox</h2>
+          <div>
+            <h2 className="text-lg font-semibold">Task queue</h2>
+            <p className="text-sm text-muted-foreground">
+              {filter === "all" ? "Showing the next required action for every active workflow." : `Filtered to ${selectedState}.`}
+            </p>
+          </div>
+          <details className="relative">
+            <summary className={cn(buttonVariants({ variant: "outline", size: "sm" }), "cursor-pointer list-none")}>
+              Advanced filters
+            </summary>
+            <div className="absolute right-0 z-10 mt-2 grid w-72 gap-2 rounded-md border bg-background p-3 shadow-lg">
+              {filters.map((item) => {
+                const Icon = item.icon
+                const active = item.value === filter
+                const count = item.value === "all"
+                  ? inboxItems.length
+                  : workflowCounts.get(stateForFilter(item.value) ?? "Needs attention") ?? 0
+                return (
+                  <Link
+                    key={item.value}
+                    href={hrefForFilter(item.value)}
+                    className={cn(buttonVariants({ variant: active ? "default" : "ghost", size: "sm" }), "justify-between gap-2")}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      <Icon className="size-4" aria-hidden />
+                      {item.label}
+                    </span>
+                    <span>{count}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          </details>
         </div>
         {inboxItems.length === 0 ? (
           q ? (
@@ -241,7 +224,7 @@ export default async function GenerationRunsPage({
             <EmptyState
               icon={<Inbox className="h-10 w-10 text-muted-foreground" aria-hidden />}
               title="No tasks"
-              description="Requests, drafts, checkout, launch, and handoff tasks appear here."
+              description="Intake, preview, checkout, provisioning, launch, and handoff tasks appear here."
             />
           )
         ) : (
@@ -249,9 +232,9 @@ export default async function GenerationRunsPage({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Stage</TableHead>
                   <TableHead>Client / site</TableHead>
                   <TableHead>Next action</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Updated</TableHead>
                   <TableHead className="text-right">Open</TableHead>
                 </TableRow>
@@ -260,18 +243,18 @@ export default async function GenerationRunsPage({
                 {inboxItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <Badge variant={inboxTone(item.state)}>
-                        <span className="size-1.5 rounded-full bg-current" aria-hidden />
-                        {item.state}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
                       <div className="font-medium">{item.title}</div>
                       <div className="text-xs text-muted-foreground">{item.subtitle}</div>
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">{item.label}</div>
                       <div className="text-xs text-muted-foreground">{item.helper}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={inboxTone(item.state)}>
+                        <span className="size-1.5 rounded-full bg-current" aria-hidden />
+                        {item.state}
+                      </Badge>
                     </TableCell>
                     <TableCell>{formatDate(item.updatedAt)}</TableCell>
                     <TableCell className="text-right">

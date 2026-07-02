@@ -6,9 +6,11 @@ import { provisionPaidDomainOrder } from "@/lib/domains/provisioning"
 import { domainCheckoutPrice, maxDomainProviderPriceFromEnv, normalizeDomainOrderState } from "@/lib/domains/orderState"
 import {
   normalizeGenerationRunPaymentState,
+  recordGenerationRunPostPaymentAutomationState,
   type GenerationRunPaymentState,
   type GenerationRunPaymentStatus,
 } from "@/lib/payments/generationRunPayment"
+import { publishAndActivateAfterCompletedPayment } from "@/lib/payments/postPaymentActivation"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
 import { previewClientSlugFromDomain } from "@/lib/preview/previewAccess"
 import {
@@ -334,41 +336,61 @@ export async function applyMollieWebhookPayment(
     overrideAccess: true,
   }) as SiteGenerationRun
   if (next.status === "completed" && next.mollieCustomerId && !next.mollieSubscriptionId) {
-    const renewalAmount = mollieRenewalAmountFromEnv()
-    const subscription = await createMollieSubscription({
-      customerId: next.mollieCustomerId,
-      amount: renewalAmount,
-      interval: mollieSubscriptionInterval(),
-      startDate: oneYearFromNowDate(),
-      description: `Site in a Box monthly renewal ${next.selectedDomain ?? ""}`.trim(),
-      webhookUrl: `${publicCmsOrigin()}/api/payments/mollie/webhook`,
-      idempotencyKey: `siab-run-${run.id}-subscription`,
-      metadata: {
-        generationRunId: run.id,
-        tenantId,
-        customerEmail: next.customerEmail,
-        clientSlug: next.clientSlug,
-        selectedDomain: next.selectedDomain,
+    try {
+      const renewalAmount = mollieRenewalAmountFromEnv()
+      const subscription = await createMollieSubscription({
+        customerId: next.mollieCustomerId,
+        amount: renewalAmount,
+        interval: mollieSubscriptionInterval(),
+        startDate: oneYearFromNowDate(),
+        description: `Site in a Box monthly renewal ${next.selectedDomain ?? ""}`.trim(),
+        webhookUrl: `${publicCmsOrigin()}/api/payments/mollie/webhook`,
+        idempotencyKey: `siab-run-${run.id}-subscription`,
+        metadata: {
+          generationRunId: run.id,
+          tenantId,
+          customerEmail: next.customerEmail,
+          clientSlug: next.clientSlug,
+          selectedDomain: next.selectedDomain,
+          renewalInterval: mollieSubscriptionInterval(),
+        },
+      })
+      const subscribedPayment = {
+        ...next,
+        mollieSubscriptionId: subscription.id,
         renewalInterval: mollieSubscriptionInterval(),
-      },
-    })
-    const subscribedPayment = {
-      ...next,
-      mollieSubscriptionId: subscription.id,
-      renewalInterval: mollieSubscriptionInterval(),
-      note: "Mollie payment completed and monthly renewal subscription created.",
-      updatedAt: new Date().toISOString(),
+        note: "Mollie payment completed and monthly renewal subscription created.",
+        updatedAt: new Date().toISOString(),
+      }
+      updatedRun = await payload.update({
+        collection: "site-generation-runs",
+        id: run.id,
+        data: { payment: subscribedPayment } as any,
+        depth: 0,
+        overrideAccess: true,
+      }) as SiteGenerationRun
+    } catch (error) {
+      updatedRun = await recordGenerationRunPostPaymentAutomationState(payload, updatedRun, {
+        status: "failed",
+        step: "mollie_subscription",
+        at: new Date().toISOString(),
+        message: error,
+      })
     }
-    updatedRun = await payload.update({
-      collection: "site-generation-runs",
-      id: run.id,
-      data: { payment: subscribedPayment } as any,
-      depth: 0,
-      overrideAccess: true,
-    }) as SiteGenerationRun
   }
   if (next.status === "completed" && next.selectedDomain && mollieDomainProvisioningEnabled()) {
-    await provisionPaidDomainOrder(payload, updatedRun, { selectedDomain: next.selectedDomain })
+    try {
+      const provisioned = await provisionPaidDomainOrder(payload, updatedRun, { selectedDomain: next.selectedDomain })
+      updatedRun = provisioned.run
+    } catch (error) {
+      const failedRun = error && typeof error === "object" && "run" in error ? (error as { run?: SiteGenerationRun }).run : null
+      updatedRun = await recordGenerationRunPostPaymentAutomationState(payload, failedRun ?? updatedRun, {
+        status: "failed",
+        step: "domain_provisioning",
+        at: new Date().toISOString(),
+        message: error,
+      })
+    }
   } else if (next.status === "completed" && next.selectedDomain) {
     const skippedProvisioningPayment = {
       ...normalizeGenerationRunPaymentState(updatedRun.payment),
@@ -382,6 +404,9 @@ export async function applyMollieWebhookPayment(
       depth: 0,
       overrideAccess: true,
     }) as SiteGenerationRun
+  }
+  if (next.status === "completed") {
+    await publishAndActivateAfterCompletedPayment(payload, updatedRun)
   }
   return { ok: true, runId: run.id, status: next.status, duplicate }
 }

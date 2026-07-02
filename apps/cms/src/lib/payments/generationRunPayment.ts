@@ -1,6 +1,7 @@
 import "server-only"
 import type { Payload } from "payload"
 import type { SiteGenerationRun } from "@/payload-types"
+import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 
 export const generationRunPaymentStatuses = [
   "not_started",
@@ -44,6 +45,19 @@ export type GenerationRunPaymentInput = {
   externalReference?: string | null
   note?: string | null
   now?: string
+}
+
+export type GenerationRunPostPaymentAutomationStatus =
+  | "blocked"
+  | "failed"
+  | "activated"
+
+export type GenerationRunPostPaymentAutomationState = {
+  status: GenerationRunPostPaymentAutomationStatus
+  at: string
+  message: string
+  step: string
+  snapshotId?: string | number | null
 }
 
 const isPaymentStatus = (status: unknown): status is GenerationRunPaymentStatus =>
@@ -154,5 +168,30 @@ export async function recordGenerationRunPaymentState(
     depth: 0,
     overrideAccess: true,
     user: { id: input.actor } as any,
+  }) as Promise<SiteGenerationRun>
+}
+
+const readRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
+
+export async function recordGenerationRunPostPaymentAutomationState(
+  payload: Payload,
+  run: Pick<SiteGenerationRun, "id" | "errors">,
+  state: Omit<GenerationRunPostPaymentAutomationState, "message"> & { message: unknown },
+): Promise<SiteGenerationRun> {
+  const errors = {
+    ...readRecord(run.errors),
+    postPaymentAutomation: {
+      ...state,
+      message: redactOperationalMessage(state.message),
+    },
+  }
+
+  return payload.update({
+    collection: "site-generation-runs",
+    id: run.id as any,
+    data: { errors } as any,
+    depth: 0,
+    overrideAccess: true,
   }) as Promise<SiteGenerationRun>
 }

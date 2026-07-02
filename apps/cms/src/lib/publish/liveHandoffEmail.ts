@@ -1,9 +1,9 @@
 import "server-only"
 
+import crypto from "node:crypto"
 import type { Payload } from "payload"
 import type { SiteGenerationRun, Tenant } from "@/payload-types"
-import { getPlatformMailSender, sendEmail, type MailLogPayload } from "@/lib/email/sendEmail"
-import { siteLiveNoticeTemplate } from "@/lib/email/templates/siteLiveNotice"
+import { auth } from "@/lib/betterAuth"
 import { relationshipId } from "@/lib/relationshipId"
 
 type SnapshotDoc = {
@@ -65,6 +65,17 @@ function emailFromRun(run: SiteGenerationRun | null): string | null {
   return emailFromNormalizedIntake(generationInput?.normalizedIntake)
 }
 
+function customerNameFromRun(run: SiteGenerationRun | null): string | null {
+  if (!run) return null
+  const normalized = asRecord(run.normalizedIntake)
+  const contact = asRecord(normalized?.contact)
+  return cleanText(contact?.name)
+    ?? cleanText(contact?.contactName)
+    ?? cleanText(contact?.fullName)
+    ?? cleanText(normalized?.contactName)
+    ?? cleanText(normalized?.name)
+}
+
 async function emailFromLinkedIntake(payload: Payload, run: SiteGenerationRun): Promise<string | null> {
   const intakeId = relationshipId(run.intakeSubmission)
   if (!intakeId) return null
@@ -109,6 +120,100 @@ export function buildTenantAdminUrl(tenant: Pick<Tenant, "domain">): string | nu
   return domain ? `https://admin.${domain}` : null
 }
 
+function authHeadersForAdminUrl(adminUrl: string): Headers {
+  const url = new URL(adminUrl)
+  return new Headers({
+    host: url.host,
+    "x-forwarded-host": url.host,
+    "x-forwarded-proto": url.protocol.replace(":", "") || "https",
+  })
+}
+
+async function ensureLiveHandoffCustomerUser(payload: Payload, input: {
+  email: string
+  name?: string | null
+  tenantId: string | number
+}): Promise<string | number> {
+  const existing = await payload.find({
+    collection: "users",
+    where: { email: { equals: input.email } },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  } as any) as { docs?: any[] }
+
+  const docs = existing.docs ?? []
+  if (docs.length > 1) throw new Error("Multiple CMS users match live handoff recipient.")
+
+  const desiredTenants = [{ tenant: input.tenantId }]
+  const user = docs[0]
+  if (!user) {
+    const created = await payload.create({
+      collection: "users",
+      data: {
+        email: input.email,
+        ...(input.name ? { name: input.name } : {}),
+        role: "owner",
+        tenants: desiredTenants,
+        password: crypto.randomBytes(16).toString("hex"),
+      },
+      depth: 0,
+      overrideAccess: true,
+    } as any) as unknown as { id: string | number }
+    return created.id
+  }
+
+  if (user.role === "super-admin") {
+    throw new Error("Live handoff recipient is a super-admin user, not a tenant user.")
+  }
+
+  const existingTenant = relationshipId(user.tenants?.[0]?.tenant)
+  if (!existingTenant || String(existingTenant) !== String(input.tenantId)) {
+    throw new Error("Live handoff recipient already belongs to another tenant.")
+  }
+
+  if (user.role !== "owner" || (input.name && !cleanText(user.name))) {
+    const updated = await payload.update({
+      collection: "users",
+      id: user.id,
+      data: {
+        role: "owner",
+        tenants: desiredTenants,
+        ...(input.name && !cleanText(user.name) ? { name: input.name } : {}),
+      },
+      depth: 0,
+      overrideAccess: true,
+    } as any) as unknown as { id: string | number }
+    return updated.id
+  }
+
+  return user.id
+}
+
+async function sendLiveHandoffMagicLink(input: {
+  email: string
+  name?: string | null
+  siteUrl: string
+  adminUrl: string
+  tenantId: string | number
+}) {
+  await (auth.api as any).signInMagicLink({
+    body: {
+      email: input.email,
+      ...(input.name ? { name: input.name } : {}),
+      callbackURL: input.adminUrl,
+      errorCallbackURL: `${input.adminUrl}/login`,
+      metadata: {
+        intent: "site_live_handoff",
+        siteUrl: input.siteUrl,
+        adminUrl: input.adminUrl,
+        tenantId: String(input.tenantId),
+      },
+    },
+    headers: authHeadersForAdminUrl(input.adminUrl),
+  })
+}
+
 export async function sendLiveHandoffEmailAfterActivation(
   payload: Payload,
   input: {
@@ -131,6 +236,7 @@ export async function sendLiveHandoffEmailAfterActivation(
     return "skipped"
   }
 
+  const customerName = customerNameFromRun(input.run)
   const siteUrl = buildLiveSiteUrl(input.snapshotDoc)
   const adminUrl = buildTenantAdminUrl(input.tenant)
   if (!siteUrl || !adminUrl) {
@@ -143,18 +249,18 @@ export async function sendLiveHandoffEmailAfterActivation(
     return "skipped"
   }
 
-  const message = siteLiveNoticeTemplate({ siteUrl, adminUrl })
-
   try {
-    await sendEmail({
-      intent: "site.live_notice",
-      to: recipient,
-      from: getPlatformMailSender(),
-      tenant: input.tenant.id,
-      subject: message.subject,
-      html: message.html,
-      text: message.text,
-      payload: payload as MailLogPayload,
+    await ensureLiveHandoffCustomerUser(payload, {
+      email: recipient,
+      name: customerName,
+      tenantId: input.tenant.id,
+    })
+    await sendLiveHandoffMagicLink({
+      email: recipient,
+      name: customerName,
+      siteUrl,
+      adminUrl,
+      tenantId: input.tenant.id,
     })
     return "sent"
   } catch (error) {

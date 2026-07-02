@@ -1,5 +1,6 @@
 import {
   GenerationInputSchema,
+  NormalizedIntakeSchema,
   SiteGenerationSpecSchema,
   type PublicIntakeSubmission,
 } from "@siteinabox/contracts/generation"
@@ -334,6 +335,62 @@ export async function processIntakeSubmission(
   } as any) as PayloadDoc
 
   intake = await setIntakeStatus(payload, intake, "normalized", { normalized, normalizedHash })
+
+  return processStoredIntakeGeneration(payload, {
+    intake,
+    normalized,
+    normalizedHash,
+    providerRequest,
+    idempotencyKey,
+    provider,
+    mockFixture,
+    maxGenerationAttempts,
+  })
+}
+
+export async function processStoredIntakeSubmission(
+  payload: Payload,
+  intakeSubmissionId: string | number,
+  options: {
+    mockFixture?: MockGenerationFixture
+    provider?: SiteGenerationProvider
+    providerConfig?: SiteGenerationProviderConfig
+    maxGenerationAttempts?: number
+  } = {},
+): Promise<IntakeProcessingResult> {
+  const mockFixture = options.mockFixture ?? "generic"
+  const provider = options.provider ?? resolveSiteGenerationProvider({
+    ...options.providerConfig,
+    mockFixture,
+  })
+  const maxGenerationAttempts = Math.max(1, options.maxGenerationAttempts ?? (provider.name === "mock" ? 1 : 2))
+
+  let intake = await payload.findByID({
+    collection: "intake-submissions",
+    id: intakeSubmissionId,
+    depth: 0,
+    overrideAccess: true,
+  } as any) as PayloadDoc
+
+  const normalized = NormalizedIntakeSchema.parse(intake.normalized)
+  const normalizedHash = hashStableValue(normalized)
+  if (intake.normalizedHash && intake.normalizedHash !== normalizedHash) {
+    throw new Error("Stored intake normalized hash does not match the normalized intake payload.")
+  }
+
+  const providerRequest = createSiteGenerationProviderRequest(normalized)
+  const idempotencyKey = [
+    "stored",
+    intake.id,
+    provider.name,
+    provider.model,
+    provider.promptVersion,
+    providerRequest.inputHash,
+  ].join(":")
+
+  if (intake.status !== "normalized") {
+    intake = await setIntakeStatus(payload, intake, "normalized", { normalized, normalizedHash })
+  }
 
   return processStoredIntakeGeneration(payload, {
     intake,

@@ -55,4 +55,15 @@ describe("passwordless auth surface", () => {
     expect(src("src/lib/betterAuth.ts")).toContain("rateLimit: getMagicLinkRateLimit()")
     expect(src("src/lib/preview/betterAuth.ts")).toContain("rateLimit: getMagicLinkRateLimit()")
   })
+
+  it("sends live handoff magic links through the final site.live_notice email", () => {
+    const auth = src("src/lib/betterAuth.ts")
+    const template = src("src/lib/email/templates/siteLiveNotice.ts")
+
+    expect(auth).toContain('intent === "site_live_handoff"')
+    expect(auth).toContain("siteLiveNoticeTemplate({ siteUrl, adminUrl, magicLoginUrl: url })")
+    expect(auth).toContain('intent: "site.live_notice"')
+    expect(auth).toContain("tenant: metadataTenant(metadata)")
+    expect(template).toContain("Magic login:")
+  })
 })

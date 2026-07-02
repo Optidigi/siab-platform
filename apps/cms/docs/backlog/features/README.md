@@ -66,18 +66,6 @@ depended on command-run site generation are no longer current source of truth.
   chrome model is simplified around one rule: hovering a section/header/footer
   shows only that section's badge, leaving that area hides it, and badge
   placement remains visually anchored to its owner.
-- Simplify the CMS Operations dashboard further. The current manager-facing
-  language is better than the original generation-run terminology, but the
-  screen is still too dense. Next pass should make the dashboard feel like one
-  task queue with only the next required action visible by default. Align the
-  UI to the intended product workflow: client submits intake; SIAB reviews the
-  brief and uses AI to create the draft site; SIAB sends preview; client
-  approves and pays in the preview UI while choosing/filling domain details;
-  payment triggers deployment/domain registration and tenant sender verification;
-  deployment completion sends the client the live site and CMS/admin access
-  email. Keep technical snapshot,
-  publish, activation, provider/model, hashes, validation, and manual override
-  details behind Advanced controls.
 - Refactor the Forms/submissions management UI instead of patching the current
   sheet in place. The current `/forms` surface can show viewer users a
   submission status control that the server rejects, but this should be solved
@@ -110,6 +98,13 @@ hooks, and made draft import writes skip projection/source-file hooks.
 
 Follow-up on 2026-07-02 connected the public `apps/intake` form UI to CMS
 `POST /api/intake` through the intake app submission client and CMS route.
+
+Same-day follow-up made CMS `POST /api/intake` store the normalized intake and
+start provider-backed draft generation from that stored intake automatically.
+The generated output remains validated CMS data only, using the generic
+one-page Tailwind/Tailwind-based source-backed mock section set. Preview access
+and customer email sending remain manually gated from the generation-run detail
+screen.
 
 ### Phase 7 — AI generation service
 
@@ -213,3 +208,16 @@ contact email, with no platform fallback for normal tenant mail.
 Generated-site activation sends a non-blocking `site.live_notice` handoff email
 after first activation of a run-linked drafted snapshot. Rollbacks, current
 state activations, and reactivations skip the normal live-site handoff.
+
+### 2026-07-02 — Operations UI simplification
+
+**Status:** Applied.
+
+The CMS Operations overview now presents `/generation-runs` as one task queue
+with search and Advanced filters instead of prominent dashboard cards. The
+generation-run detail view keeps manual preview send visible, surfaces
+automatic generation, client feedback, payment/subscription, domain order,
+tenant sender provisioning, and live status, and keeps checkout, domain
+verification, snapshot publish/activation, provider/model, hashes, validation,
+and manual override controls behind Advanced. Backend generation, payment,
+publish, and activation behavior was not changed.

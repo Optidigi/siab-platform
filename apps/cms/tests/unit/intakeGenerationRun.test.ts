@@ -5,6 +5,7 @@ import { buildGenerationInput, hashStableValue, normalizeIntakeSubmission } from
 import {
   processIntakeSubmission,
   processReviewedIntakeSubmission,
+  processStoredIntakeSubmission,
 } from "@/lib/intake/processIntakeSubmission"
 
 const matchesWhere = (doc: any, where: any): boolean => {
@@ -112,6 +113,25 @@ describe("processIntakeSubmission", () => {
     expect(JSON.stringify(store["site-generation-runs"][0]?.parsedOutput).toLowerCase()).not.toMatch(/amicare|ami-care/)
     expect(store["site-generation-runs"][0]?.normalizedIntake?.requestedPages[0]?.slug).toBe("index")
     expect(store["site-generation-runs"][0]?.statusTransitions.map((entry: any) => entry.status)).toContain("applying")
+    expect(store.pages).toHaveLength(1)
+    expect(store.pages[0]?.slug).toBe("index")
+    expect(store.pages[0]?.blocks.map((block: any) => `${block.blockType}:${block.variant}`)).toEqual([
+      "hero:tailwindPlusSimpleCentered",
+      "featureList:tailwindPlusCentered2x2",
+      "processSteps:mambaSteps",
+      "faq:mambaFaq1",
+      "cta:tailblocksCtaA",
+      "contactSection:hyperUiNewsletterCentered",
+    ])
+    expect(store.pages[0]?.blocks.map((block: any) => block.analytics?.sectionVariant)).toEqual([
+      "tailwind-plus-simple-centered",
+      "tailwind-plus-centered-2x2",
+      "mamba-process-steps",
+      "mamba-faq-1",
+      "tailblocks-cta-a",
+      "hyperui-newsletter-centered",
+    ])
+    expect(JSON.stringify(store.pages[0]?.blocks).toLowerCase()).not.toContain("shadcn")
   })
 
   it("records failed state when mocked generation produces an invalid spec", async () => {
@@ -291,6 +311,73 @@ describe("processIntakeSubmission", () => {
     expect(store.tenants).toHaveLength(1)
     expect(store["site-settings"]).toHaveLength(1)
     expect(new Set(store.pages.map((page) => page.slug)).size).toBe(store.pages.length)
+  })
+})
+
+describe("processStoredIntakeSubmission", () => {
+  it("starts provider-backed generation from an existing stored intake without duplicating intake records", async () => {
+    const { payload, store } = createPayloadStub()
+    const normalized = normalizeIntakeSubmission(rawIntake())
+    const intake = await payload.create({
+      collection: "intake-submissions",
+      data: {
+        businessName: normalized.businessName,
+        contactName: normalized.contact?.name,
+        contactEmail: normalized.contact?.email,
+        source: "public-intake",
+        status: "normalized",
+        idempotencyKey: `public-intake:normalized:${hashStableValue({ raw: rawIntake(), normalized })}`,
+        raw: rawIntake(),
+        normalized,
+        normalizedHash: hashStableValue(normalized),
+        statusTransitions: [{ status: "submitted", at: "2026-07-02T09:00:00.000Z" }, { status: "normalized", at: "2026-07-02T09:00:01.000Z" }],
+      },
+    })
+
+    const result = await processStoredIntakeSubmission(payload, intake.id)
+
+    expect(result.ok).toBe(true)
+    expect(result.status).toBe("preview_ready")
+    expect(result.intakeSubmissionId).toBe(intake.id)
+    expect(store["intake-submissions"]).toHaveLength(1)
+    expect(store["site-generation-runs"]).toHaveLength(1)
+    expect(store["site-generation-runs"][0]?.intakeSubmission).toBe(intake.id)
+    expect(store["site-generation-runs"][0]?.idempotencyKey).toContain(`stored:${intake.id}:mock:fixture:generic`)
+    expect(store.tenants).toHaveLength(1)
+    expect(store.pages).toHaveLength(1)
+    expect(store["site-settings"]).toHaveLength(1)
+  })
+
+  it("reuses the stored generation run on repeated calls", async () => {
+    const { payload, store } = createPayloadStub()
+    const normalized = normalizeIntakeSubmission(rawIntake())
+    const intake = await payload.create({
+      collection: "intake-submissions",
+      data: {
+        businessName: normalized.businessName,
+        contactName: normalized.contact?.name,
+        contactEmail: normalized.contact?.email,
+        source: "public-intake",
+        status: "normalized",
+        idempotencyKey: "public-intake:normalized:stored-reuse",
+        raw: rawIntake(),
+        normalized,
+        normalizedHash: hashStableValue(normalized),
+        statusTransitions: [{ status: "normalized", at: "2026-07-02T09:00:00.000Z" }],
+      },
+    })
+
+    const first = await processStoredIntakeSubmission(payload, intake.id)
+    const second = await processStoredIntakeSubmission(payload, intake.id)
+
+    expect(first.ok).toBe(true)
+    expect(second.ok).toBe(true)
+    expect(second.reused).toBe(true)
+    expect(second.generationRunId).toBe(first.generationRunId)
+    expect(store["intake-submissions"]).toHaveLength(1)
+    expect(store["site-generation-runs"]).toHaveLength(1)
+    expect(store.tenants).toHaveLength(1)
+    expect(store.pages).toHaveLength(1)
   })
 })
 

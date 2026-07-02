@@ -60,6 +60,14 @@ const approvalStatus = (value: unknown) =>
 
 const displayStatus = (value: string) => value.replace(/_/g, " ")
 
+const jsonField = (value: unknown, key: string): unknown =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)[key]
+    : undefined
+
+const displayValue = (value: unknown, fallback = "-") =>
+  typeof value === "string" && value.trim() ? value : fallback
+
 const domainVerification = (value: unknown) =>
   value && typeof value === "object" && !Array.isArray(value)
     ? value as { status?: unknown; checkedAt?: unknown; checkedBy?: unknown; notes?: unknown }
@@ -79,11 +87,9 @@ const intakeContactEmail = (value: unknown): string | null => {
   return typeof email === "string" && email ? email : null
 }
 
-const checklistBadge = (done: boolean, next: boolean) => {
-  if (done) return <Badge variant="success">Done</Badge>
-  if (next) return <Badge variant="default">Next</Badge>
-  return <Badge variant="secondary">Waiting</Badge>
-}
+const statusBadge = (variant: "success" | "default" | "secondary" | "destructive", label: string) => (
+  <Badge variant={variant}>{label}</Badge>
+)
 
 export const dynamic = "force-dynamic"
 
@@ -110,6 +116,17 @@ export default async function GenerationRunDetailPage({
   const lifecycle = await getSnapshotLifecycleForGenerationRun(run)
   const domainCheck = domainVerification(lifecycle.tenant?.domainVerification)
   const domainVerified = domainCheck?.status === "verified"
+  const emailSending = lifecycle.tenant?.emailSending
+  const emailSendingStatus = displayValue(jsonField(emailSending, "status"), "not_configured")
+  const emailSendingVerified = emailSendingStatus === "verified"
+  const domainOrderStatus = displayValue(jsonField(run.domainOrder, "status"), "not_started")
+  const domainOrderDomain = displayValue(
+    jsonField(run.domainOrder, "domain")
+      ?? jsonField(run.domainOrder, "requestedDomain")
+      ?? lifecycle.tenant?.domain,
+    "No domain selected",
+  )
+  const paymentProvider = displayValue(payment.provider, "manual/provider")
   const isLive = Boolean(lifecycle.activeSnapshotId)
   const summary = workflowSummaryForGenerationRun(run)
   const previewPages = pageRecords
@@ -143,51 +160,50 @@ export default async function GenerationRunDetailPage({
   const pagesNeedPrepared = pageRecords.length > 0 && preparedPageCount < pageRecords.length
   const readyToGoLive = Boolean(tenantId) && lifecycle.publishBlockers.length === 0 && lifecycle.blockers.length === 0
   const checkoutComplete = isApproved && paymentSatisfied
-  const checklist = [
+  const statusPanels = [
     {
-      label: "Intake",
-      done: true,
-      next: false,
-      helper: "Request details are linked to this draft site.",
+      label: "Automatic generation",
+      value: summary.state === "Needs attention" ? "Needs attention" : draftReady ? "Draft ready" : displayStatus(run.status),
+      helper: draftReady ? "Draft pages are linked to this run." : "The AI draft pipeline is still running.",
+      badge: statusBadge(summary.state === "Needs attention" ? "destructive" : draftReady ? "success" : "secondary", draftReady ? "ready" : displayStatus(run.status)),
     },
     {
-      label: "AI draft",
-      done: draftReady,
-      next: nextAction === "Open draft" || nextAction === "Open site",
-      helper: draftReady ? "Draft pages are available for review." : "The draft site is still being prepared.",
+      label: "Preview send",
+      value: customerPreviewUrl ? "Preview link available" : "Preview not ready",
+      helper: previewDisabledReason ?? "Send the preview manually when the draft is ready.",
+      badge: statusBadge(previewDisabledReason ? "secondary" : "default", previewDisabledReason ? "waiting" : "send manually"),
     },
     {
-      label: "Preview",
-      done: isApproved || checkoutComplete || domainVerified || isLive,
-      next: nextAction === "Send preview",
-      helper: isApproved ? "Client approval is recorded." : "Share the preview and wait for approval.",
+      label: "Client feedback",
+      value: isApproved ? "Approved" : "Waiting for approval",
+      helper: isApproved ? "Client approval is recorded from the preview UI." : "Client approval and feedback happen in the preview UI.",
+      badge: statusBadge(isApproved ? "success" : "secondary", isApproved ? "approved" : "waiting"),
     },
     {
-      label: "Client checkout",
-      done: checkoutComplete,
-      next: nextAction === "Waiting for checkout",
-      helper: checkoutComplete ? "Approval and payment are complete." : "Collect approval and complete or waive payment.",
+      label: "Payment/subscription",
+      value: displayStatus(payment.status),
+      helper: paymentSatisfied ? `Satisfied through ${paymentProvider}.` : "Payment or subscription checkout is still open.",
+      badge: statusBadge(paymentSatisfied ? "success" : "secondary", paymentSatisfied ? "complete" : displayStatus(payment.status)),
     },
     {
-      label: "Prepare pages",
-      done: !pagesNeedPrepared,
-      next: nextAction === "Prepare pages",
-      helper: pagesNeedPrepared ? "Prepare the approved pages for launch." : "Pages are ready for launch.",
+      label: "Domain order",
+      value: domainOrderDomain,
+      helper: `Order/provisioning status: ${displayStatus(domainOrderStatus)}.`,
+      badge: statusBadge(domainOrderStatus === "completed" || domainOrderStatus === "provisioned" ? "success" : "secondary", displayStatus(domainOrderStatus)),
     },
     {
-      label: "Domain + launch",
-      done: domainVerified || isLive,
-      next: nextAction === "Register domain" || nextAction === "Launch site",
-      helper: domainVerified ? "Domain check is marked verified." : "Confirm DNS before going live.",
+      label: "Provisioning",
+      value: `Domain ${String(domainCheck?.status ?? "not_checked")}`,
+      helper: emailSendingVerified ? "Tenant sender is verified." : `Tenant sender is ${displayStatus(emailSendingStatus)}.`,
+      badge: statusBadge(domainVerified && emailSendingVerified ? "success" : "secondary", domainVerified && emailSendingVerified ? "ready" : "waiting"),
     },
     {
-      label: "Handoff/live",
-      done: isLive,
-      next: nextAction === "Send handoff email",
-      helper: isLive ? "The live site is ready for visitors." : "Finish launch before handoff.",
+      label: "Live status",
+      value: isLive ? "Live" : "Not live",
+      helper: isLive ? "An active snapshot is serving visitors." : "Activation is still pending.",
+      badge: statusBadge(isLive ? "success" : readyToGoLive ? "default" : "secondary", isLive ? "live" : readyToGoLive ? "ready" : "waiting"),
     },
   ]
-
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
@@ -287,244 +303,36 @@ export default async function GenerationRunDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Launch checklist</CardTitle>
+          <CardTitle>Operations status</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {checklist.map((step) => (
-            <div key={step.label} className="rounded-md border p-3 text-sm">
+          {statusPanels.map((panel) => (
+            <div key={panel.label} className="rounded-md border p-3 text-sm">
               <div className="flex items-center justify-between gap-3">
-                <div className="font-medium">{step.label}</div>
-                {checklistBadge(step.done, !step.done && step.next)}
+                <div className="font-medium">{panel.label}</div>
+                {panel.badge}
               </div>
-              <div className="mt-2 text-muted-foreground">{step.helper}</div>
+              <div className="mt-2 font-medium">{panel.value}</div>
+              <div className="mt-1 text-muted-foreground">{panel.helper}</div>
             </div>
           ))}
 
-          <div id="checkout" className="grid gap-3 rounded-md border p-3 text-sm md:col-span-2 xl:col-span-3">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
-              <div>
-                <div className="font-medium">Client checkout status</div>
-                <div className="text-muted-foreground">
-                  Client approval plus Mollie completion or a manual waiver satisfies checkout. Checkout does not make the site live.
-                </div>
-              </div>
-              <Badge variant={checkoutComplete ? "success" : "secondary"}>
-                {checkoutComplete ? "approved and paid" : isApproved ? displayStatus(payment.status) : "waiting for approval"}
-              </Badge>
-            </div>
-
-            <form action={createGenerationRunMollieCheckoutAction.bind(null, run.id)} className="grid gap-3 rounded-md border p-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="mollie-customer-email">Customer email</Label>
-                <Input
-                  id="mollie-customer-email"
-                  name="customerEmail"
-                  type="email"
-                  defaultValue={payment.customerEmail ?? defaultPreviewEmail ?? ""}
-                  placeholder="customer@example.com"
-                />
-              </div>
-              <Button type="submit" variant="outline" disabled={!isApproved || paymentSatisfied}>
-                <CreditCard className="mr-1 size-4" aria-hidden />
-                Create checkout link
-              </Button>
-            </form>
-
-            <form action={recordGenerationRunPaymentAction.bind(null, run.id, "completed")} className="grid gap-3 rounded-md border p-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="payment-note">Note</Label>
-                <Textarea id="payment-note" name="note" defaultValue={payment.note ?? ""} rows={3} />
-              </div>
-              <input type="hidden" name="provider" value={payment.provider ?? "manual"} />
-              <input type="hidden" name="externalReference" value={payment.externalReference ?? ""} />
-              <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={payment.status === "completed"}>
-                  <CreditCard className="mr-1 size-4" aria-hidden />
-                  Payment received
-                </Button>
-                <Button
-                  type="submit"
-                  variant="outline"
-                  formAction={recordGenerationRunPaymentAction.bind(null, run.id, "waived")}
-                  disabled={payment.status === "waived"}
-                >
-                  <ShieldCheck className="mr-1 size-4" aria-hidden />
-                  Waive payment
-                </Button>
-              </div>
-            </form>
-          </div>
-
-          <div id="launch-domain" className="grid gap-3 rounded-md border p-3 text-sm md:col-span-2 xl:col-span-3">
-            {tenantId && lifecycle.tenant ? (
-              <form
-                action={updateTenantDomainVerificationAction.bind(null, run.id, tenantId)}
-                className="grid gap-3 rounded-md border p-3"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="font-medium">Register/check domain</div>
-                    <div className="text-muted-foreground">
-                      DNS remains manual. Confirm the customer domain and any aliases point at the renderer before marking verified.
-                    </div>
-                  </div>
-                  <Badge variant={domainVerified ? "success" : "secondary"}>
-                    {String(domainCheck?.status ?? "not_checked")}
-                  </Badge>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Primary domain</div>
-                  <div className="font-medium break-all">{lifecycle.tenant.domain}</div>
-                </div>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="domain-verification-status">Status</Label>
-                    <select
-                      id="domain-verification-status"
-                      name="status"
-                      defaultValue={String(domainCheck?.status ?? "not_checked")}
-                      className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                      <option value="not_checked">Not checked</option>
-                      <option value="verified">Verified</option>
-                      <option value="failed">Failed</option>
-                    </select>
-                  </div>
-                  <div className="grid gap-1.5 md:col-span-2">
-                    <Label htmlFor="domain-verification-notes">Notes</Label>
-                    <Textarea
-                      id="domain-verification-notes"
-                      name="notes"
-                      defaultValue={typeof domainCheck?.notes === "string" ? domainCheck.notes : ""}
-                      rows={2}
-                      placeholder="Observed DNS target, proxy route, alias check, or failure reason"
-                    />
-                  </div>
-                </div>
-                <Button type="submit" variant="outline">
-                  <ShieldCheck className="mr-1 size-4" aria-hidden />
-                  Check domain
-                </Button>
-              </form>
-            ) : (
-              <div className="rounded-md border p-3 text-muted-foreground">Link a tenant before checking the domain.</div>
-            )}
-          </div>
-
-          <div className="grid gap-3 md:col-span-2 xl:col-span-3">
-            <div className="rounded-md border p-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="font-medium">Client approval</div>
-                  <div className="text-muted-foreground">
-                    {isApproved ? "The customer has approved this site." : "Send the preview and wait for customer approval."}
-                  </div>
-                </div>
-                <Badge variant={isApproved ? "success" : "secondary"}>{isApproved ? "Done" : "Waiting"}</Badge>
-              </div>
-              {!isApproved && customerPreviewUrl && (
-                <div className="mt-3">
-                  <Button asChild variant="outline">
-                    <a href={customerPreviewUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="mr-1 size-4" aria-hidden />
-                      Open preview
-                    </a>
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-md border p-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="font-medium">Prepare pages</div>
-                  <div className="text-muted-foreground">
-                    {pagesNeedPrepared
-                      ? isApproved
-                        ? "Prepare the approved pages for launch."
-                        : "Customer approval is required before pages can be prepared."
-                      : "Pages are ready for launch."}
-                  </div>
-                </div>
-                <Badge variant={!pagesNeedPrepared ? "success" : "secondary"}>{!pagesNeedPrepared ? "Done" : "Waiting"}</Badge>
-              </div>
-              {pagesNeedPrepared && (
-                <form action={promoteGenerationRunPagesAction.bind(null, run.id)} className="mt-3">
-                  <Button type="submit" variant="outline" disabled={!isApproved || pageRecords.length === 0}>
-                    <CheckCircle2 className="mr-1 size-4" aria-hidden />
-                    Prepare pages
-                  </Button>
-                </form>
-              )}
-            </div>
-
-            <div className="rounded-md border p-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="font-medium">Client checkout</div>
-                  <div className="text-muted-foreground">
-                    {checkoutComplete ? "Approval and payment are complete." : "Complete client checkout before launch."}
-                  </div>
-                </div>
-                <Badge variant={checkoutComplete ? "success" : "secondary"}>{checkoutComplete ? "Done" : "Waiting"}</Badge>
-              </div>
-              {!checkoutComplete && (
-                <div className="mt-3">
-                  <Button asChild variant="outline">
-                    <a href="#checkout">
-                      <CreditCard className="mr-1 size-4" aria-hidden />
-                      Open checkout
-                    </a>
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-md border p-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="font-medium">Register/check domain</div>
-                  <div className="text-muted-foreground">
-                    {domainVerified ? "The customer domain has been checked." : "Check the customer domain before launch."}
-                  </div>
-                </div>
-                <Badge variant={domainVerified ? "success" : "secondary"}>{domainVerified ? "Done" : "Waiting"}</Badge>
-              </div>
-              {!domainVerified && (
-                <div className="mt-3">
-                  <Button asChild variant="outline">
-                    <a href="#launch-domain">
-                      <ShieldCheck className="mr-1 size-4" aria-hidden />
-                      Check domain
-                    </a>
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-
           {!readyToGoLive && !isLive && (
             <div className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground md:col-span-2 xl:col-span-3">
-              Finish the waiting checks above before going live. Details are in Advanced.
+              Finish the waiting checks before going live. Technical controls and manual overrides are in Advanced.
             </div>
           )}
 
-          <form action={publishGenerationRunSnapshotAction.bind(null, run.id, tenantId ?? "")} className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-3">
-            <input type="hidden" name="reason" value="go live from manager dashboard" />
-            <input type="hidden" name="activate" value="on" />
-            <Button type="submit" disabled={!readyToGoLive || isLive}>
-              <UploadCloud className="mr-1 size-4" aria-hidden />
-              Launch site
-            </Button>
-            {isLive && liveUrl && (
-              <Button asChild variant="outline">
+          {isLive && liveUrl && (
+            <div className="md:col-span-2 xl:col-span-3">
+              <Button asChild>
                 <a href={liveUrl} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="mr-1 size-4" aria-hidden />
-                  Live
+                  Open live site
                 </a>
               </Button>
-            )}
-          </form>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -533,6 +341,10 @@ export default async function GenerationRunDetailPage({
           <CardTitle>Preview</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 text-sm">
+          <div>
+            <div className="font-medium">Send preview</div>
+            <div className="text-muted-foreground">Manual preview send stays available when the draft is ready.</div>
+          </div>
           <PreviewAccessShare
             generationRunId={run.id}
             defaultEmail={defaultPreviewEmail}
@@ -578,6 +390,134 @@ export default async function GenerationRunDetailPage({
                   No retry action is exposed here because the current intake service only retries during initial draft preparation.
                 </AlertDescription>
               </Alert>
+
+              <div id="checkout" className="grid gap-3 rounded-md border p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="font-medium">Client checkout controls</div>
+                    <div className="text-muted-foreground">
+                      Client approval plus Mollie completion or a manual waiver satisfies checkout. Checkout does not make the site live.
+                    </div>
+                  </div>
+                  <Badge variant={checkoutComplete ? "success" : "secondary"}>
+                    {checkoutComplete ? "approved and paid" : isApproved ? displayStatus(payment.status) : "waiting for approval"}
+                  </Badge>
+                </div>
+
+                <form action={createGenerationRunMollieCheckoutAction.bind(null, run.id)} className="grid gap-3 rounded-md border p-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="mollie-customer-email">Customer email</Label>
+                    <Input
+                      id="mollie-customer-email"
+                      name="customerEmail"
+                      type="email"
+                      defaultValue={payment.customerEmail ?? defaultPreviewEmail ?? ""}
+                      placeholder="customer@example.com"
+                    />
+                  </div>
+                  <Button type="submit" variant="outline" disabled={!isApproved || paymentSatisfied}>
+                    <CreditCard className="mr-1 size-4" aria-hidden />
+                    Create checkout link
+                  </Button>
+                </form>
+
+                <form action={recordGenerationRunPaymentAction.bind(null, run.id, "completed")} className="grid gap-3 rounded-md border p-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="payment-note">Note</Label>
+                    <Textarea id="payment-note" name="note" defaultValue={payment.note ?? ""} rows={3} />
+                  </div>
+                  <input type="hidden" name="provider" value={payment.provider ?? "manual"} />
+                  <input type="hidden" name="externalReference" value={payment.externalReference ?? ""} />
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="submit" disabled={payment.status === "completed"}>
+                      <CreditCard className="mr-1 size-4" aria-hidden />
+                      Payment received
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      formAction={recordGenerationRunPaymentAction.bind(null, run.id, "waived")}
+                      disabled={payment.status === "waived"}
+                    >
+                      <ShieldCheck className="mr-1 size-4" aria-hidden />
+                      Waive payment
+                    </Button>
+                  </div>
+                </form>
+              </div>
+
+              <div id="launch-domain" className="grid gap-3 rounded-md border p-3 text-sm">
+                {tenantId && lifecycle.tenant ? (
+                  <form
+                    action={updateTenantDomainVerificationAction.bind(null, run.id, tenantId)}
+                    className="grid gap-3 rounded-md border p-3"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium">Domain verification controls</div>
+                        <div className="text-muted-foreground">
+                          DNS remains manual. Confirm the customer domain and any aliases point at the renderer before marking verified.
+                        </div>
+                      </div>
+                      <Badge variant={domainVerified ? "success" : "secondary"}>
+                        {String(domainCheck?.status ?? "not_checked")}
+                      </Badge>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Primary domain</div>
+                      <div className="font-medium break-all">{lifecycle.tenant.domain}</div>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="domain-verification-status">Status</Label>
+                        <select
+                          id="domain-verification-status"
+                          name="status"
+                          defaultValue={String(domainCheck?.status ?? "not_checked")}
+                          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                        >
+                          <option value="not_checked">Not checked</option>
+                          <option value="verified">Verified</option>
+                          <option value="failed">Failed</option>
+                        </select>
+                      </div>
+                      <div className="grid gap-1.5 md:col-span-2">
+                        <Label htmlFor="domain-verification-notes">Notes</Label>
+                        <Textarea
+                          id="domain-verification-notes"
+                          name="notes"
+                          defaultValue={typeof domainCheck?.notes === "string" ? domainCheck.notes : ""}
+                          rows={2}
+                          placeholder="Observed DNS target, proxy route, alias check, or failure reason"
+                        />
+                      </div>
+                    </div>
+                    <Button type="submit" variant="outline">
+                      <ShieldCheck className="mr-1 size-4" aria-hidden />
+                      Check domain
+                    </Button>
+                  </form>
+                ) : (
+                  <div className="rounded-md border p-3 text-muted-foreground">Link a tenant before checking the domain.</div>
+                )}
+              </div>
+
+              <form action={publishGenerationRunSnapshotAction.bind(null, run.id, tenantId ?? "")} className="flex flex-wrap gap-2 rounded-md border p-3">
+                <input type="hidden" name="reason" value="go live from manager dashboard" />
+                <input type="hidden" name="activate" value="on" />
+                <Button type="submit" disabled={!readyToGoLive || isLive}>
+                  <UploadCloud className="mr-1 size-4" aria-hidden />
+                  Launch site
+                </Button>
+                {isLive && liveUrl && (
+                  <Button asChild variant="outline">
+                    <a href={liveUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="mr-1 size-4" aria-hidden />
+                      Live
+                    </a>
+                  </Button>
+                )}
+              </form>
 
               <div className="grid gap-3 md:grid-cols-4">
                 <div className="rounded-md border p-3">

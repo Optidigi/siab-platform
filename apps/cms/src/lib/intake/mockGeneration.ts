@@ -179,6 +179,58 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
           ],
         },
         {
+          blockType: "processSteps",
+          variant: "mambaSteps",
+          anchor: "process",
+          analytics: { sectionVariant: "mamba-process-steps" },
+          title: inlineText("Van intake naar live site"),
+          intro: blockText("Een korte route van bewerkbare draft naar gecontroleerde publicatie."),
+          steps: [
+            {
+              title: inlineText("Intake verwerkt"),
+              description: blockText("De aanvraag wordt opgeslagen als CMS-data en omgezet naar een gestructureerde draft."),
+              icon: "clipboard-list",
+              image: null,
+              cta: null,
+            },
+            {
+              title: inlineText("Draft gecontroleerd"),
+              description: blockText("SIAB bekijkt de gegenereerde pagina en stuurt daarna pas de preview naar de klant."),
+              icon: "search-check",
+              image: null,
+              cta: null,
+            },
+            {
+              title: inlineText("Preview en akkoord"),
+              description: blockText("De klant kan de preview beoordelen, akkoord geven en de checkout afronden."),
+              icon: "send",
+              image: null,
+              cta: null,
+            },
+          ],
+        },
+        {
+          blockType: "faq",
+          variant: "mambaFaq1",
+          anchor: "faq",
+          analytics: { sectionVariant: "mamba-faq-1" },
+          title: inlineText("Veelgestelde vragen"),
+          items: [
+            {
+              question: inlineText("Kan de tekst later worden aangepast?"),
+              answer: blockText("Ja. De draft bestaat uit normale CMS-pagina's, blokken en instellingen."),
+            },
+            {
+              question: inlineText("Wordt er broncode per klant gemaakt?"),
+              answer: blockText("Nee. De generieke renderer gebruikt gepubliceerde tenantdata uit het CMS."),
+            },
+            {
+              question: inlineText("Wanneer krijgt de klant de preview?"),
+              answer: blockText("Pas nadat SIAB de draft handmatig heeft gecontroleerd en gedeeld."),
+            },
+          ],
+        },
+        {
           blockType: "cta",
           variant: "tailblocksCtaA",
           anchor: "start",
@@ -223,6 +275,8 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
   blocks: [
     { slug: "hero", label: "Hero", defaultAnchor: "top" },
     { slug: "featureList", label: "Services", defaultAnchor: "services" },
+    { slug: "processSteps", label: "Proces", defaultAnchor: "process" },
+    { slug: "faq", label: "FAQ", defaultAnchor: "faq" },
     { slug: "cta", label: "Call to action", defaultAnchor: "start" },
     { slug: "contactSection", label: "Contact", defaultAnchor: "contact" },
   ],
@@ -269,6 +323,9 @@ export const loadMockSiteGenerationSpec = (
       serviceArea: normalized.serviceArea.map((name) => ({ name })),
       navHeader: [
         { label: "Home", href: "/" },
+        { label: "Diensten", href: "/#services" },
+        { label: "Proces", href: "/#process" },
+        { label: "FAQ", href: "/#faq" },
         { label: "Contact", href: "/#contact" },
       ],
       navFooter: [

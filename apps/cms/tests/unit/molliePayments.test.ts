@@ -32,6 +32,18 @@ const registrant = {
   locale: "nl_NL",
 }
 
+const inlineText = (text: string) => ({
+  t: "root",
+  variant: "inline",
+  children: [{ t: "text", v: text }],
+})
+
+const blockText = (text: string) => ({
+  t: "root",
+  variant: "block",
+  children: [{ t: "paragraph", children: [{ t: "text", v: text }] }],
+})
+
 const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
   const tenant = {
     id: 1,
@@ -58,13 +70,47 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     model: "fixture",
     promptVersion: "site-generation-v1",
     generationInputHash: "input",
+    errors: null,
     createdAt: "2026-06-26T10:00:00.000Z",
     updatedAt: "2026-06-26T10:00:00.000Z",
     ...overrides,
   }
-  const update = vi.fn(async ({ collection, data }: any) => {
+  const page = {
+    id: 100,
+    tenant: 1,
+    title: "Home",
+    slug: "index",
+    status: "published",
+    blocks: [{
+      blockType: "hero",
+      anchor: "top",
+      analytics: { sectionVariant: null },
+      eyebrow: null,
+      headline: inlineText("Acme Studio"),
+      subheadline: blockText("A compact published page."),
+      pills: [],
+      cta: null,
+      image: null,
+    }],
+    updatedAt: "2026-06-26T10:00:00.000Z",
+  }
+  const settings = {
+    id: 300,
+    tenant: 1,
+    siteName: "Acme Studio",
+    siteUrl: "https://clientsite.nl",
+    language: "nl",
+    updatedAt: "2026-06-26T10:00:00.000Z",
+  }
+  const snapshots: any[] = []
+  const update = vi.fn(async ({ collection, id, data }: any) => {
     if (collection === "site-generation-runs") Object.assign(run, data)
     if (collection === "tenants") Object.assign(tenant, data)
+    if (collection === "published-site-snapshots") {
+      const snapshot = snapshots.find((entry) => String(entry.id) === String(id)) ?? snapshots[0]
+      Object.assign(snapshot, data)
+      return { ...snapshot }
+    }
     if (collection === "tenants") return { ...tenant }
     return { ...run }
   })
@@ -72,11 +118,40 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     findByID: vi.fn(async ({ collection, id }: any) => {
       if (collection === "site-generation-runs" && String(id) === "500") return run
       if (collection === "tenants" && String(id) === "1") return tenant
+      if (collection === "published-site-snapshots") {
+        const snapshot = snapshots.find((entry) => String(entry.id) === String(id))
+        if (snapshot) return snapshot
+      }
       throw new Error(`Missing ${collection} ${id}`)
+    }),
+    find: vi.fn(async ({ collection, where }: any) => {
+      if (collection === "published-site-snapshots") {
+        if (where?.sourceGenerationRun?.equals != null) {
+          return { docs: snapshots.filter((snapshot) => String(snapshot.sourceGenerationRun) === String(where.sourceGenerationRun.equals)) }
+        }
+        if (where?.tenant?.equals != null) {
+          return { docs: snapshots.filter((snapshot) => String(snapshot.tenant) === String(where.tenant.equals)) }
+        }
+        if (where?.and) return { docs: [] }
+        return { docs: snapshots }
+      }
+      if (collection === "pages") return { docs: [page] }
+      if (collection === "site-settings") return { docs: [settings] }
+      return { docs: [] }
+    }),
+    create: vi.fn(async ({ collection, data }: any) => {
+      if (collection === "published-site-snapshots") {
+        const snapshot = { id: snapshots.length + 10, ...data }
+        snapshots.unshift(snapshot)
+        return snapshot
+      }
+      if (collection === "site-settings") return settings
+      throw new Error(`Unexpected create ${collection}`)
     }),
     update,
   }
-  return { payload: payload as any, run, tenant, update }
+  vi.mocked(getPayload).mockResolvedValue(payload as any)
+  return { payload: payload as any, run, tenant, update, snapshots }
 }
 
 describe("Mollie payment flow", () => {
@@ -233,7 +308,7 @@ describe("Mollie payment flow", () => {
     ["pending", "pending_provider"],
     ["failed", "failed"],
     ["expired", "expired"],
-  ])("maps webhook Mollie status %s to local status %s without publishing or activating", async (mollieStatus, expectedStatus) => {
+  ])("maps webhook Mollie status %s to local status %s", async (mollieStatus, expectedStatus) => {
     const { payload, run, update } = createPayloadStub({
       payment: { status: "pending_provider", provider: "mollie", externalReference: "tr_test_123" },
     })
@@ -259,6 +334,15 @@ describe("Mollie payment flow", () => {
     })
     expect(update).not.toHaveBeenCalledWith(expect.objectContaining({ collection: "tenants" }))
     expect(update).not.toHaveBeenCalledWith(expect.objectContaining({ collection: "published-site-snapshots" }))
+    if (expectedStatus === "completed") {
+      expect(run.errors).toMatchObject({
+        postPaymentAutomation: {
+          status: "blocked",
+          step: "activation_gate",
+          message: "Activation requires verified domain ownership.",
+        },
+      })
+    }
   })
 
   it("reports duplicate webhook delivery while keeping the operation idempotent", async () => {
@@ -327,6 +411,13 @@ describe("Mollie payment flow", () => {
       mollieSubscriptionId: "sub_test_123",
       note: "Mollie payment completed in non-live mode; domain provisioning was skipped.",
     })
+    expect(run.errors).toMatchObject({
+      postPaymentAutomation: {
+        status: "blocked",
+        step: "activation_gate",
+        message: "Activation requires verified domain ownership.",
+      },
+    })
     expect(run.domainOrder).toMatchObject({
       status: "ready_to_register",
       domain: "clientsite.nl",
@@ -346,7 +437,7 @@ describe("Mollie payment flow", () => {
     vi.stubEnv("CLOUDFLARE_API_TOKEN", "cf-token")
     vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "cf-account")
     vi.stubEnv("SIAB_RENDERER_TARGET_HOST", "renderer.siteinabox.nl")
-    const { payload, run, tenant } = createPayloadStub({
+    const { payload, run, tenant, snapshots } = createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
@@ -366,6 +457,18 @@ describe("Mollie payment flow", () => {
         return new Response(JSON.stringify({ id: "sub_test_123", status: "active" }), { status: 201 })
       }
       if (url.includes("/email/sending/subdomains")) {
+        if (url.endsWith("/email/sending/subdomains/subdomain_123")) {
+          return new Response(JSON.stringify({
+            success: true,
+            result: {
+              enabled: true,
+              name: "mail.clientsite.nl",
+              tag: "subdomain_123",
+              dkim_selector: "cf-bounce",
+              return_path_domain: "cf-bounce.mail.clientsite.nl",
+            },
+          }), { status: 200 })
+        }
         if (url.endsWith("/email/sending/subdomains")) {
           return new Response(JSON.stringify({
             success: true,
@@ -452,8 +555,18 @@ describe("Mollie payment flow", () => {
         lastError: null,
       },
     })
+    expect(run.errors).toMatchObject({
+      postPaymentAutomation: {
+        status: "activated",
+        step: "publish_activate",
+        message: "Published and activated automatically after completed payment and provisioning.",
+        snapshotId: 10,
+      },
+    })
     expect(tenant).toMatchObject({
       domain: "clientsite.nl",
+      status: "active",
+      activeSnapshot: 10,
       domainVerification: expect.objectContaining({ status: "verified" }),
       emailSending: expect.objectContaining({
         provider: "cloudflare",
@@ -467,6 +580,13 @@ describe("Mollie payment flow", () => {
         dkimSelector: "cf-bounce",
         lastError: null,
       }),
+    })
+    expect(snapshots[0]).toMatchObject({
+      id: 10,
+      status: "active",
+      tenant: 1,
+      sourceGenerationRun: 500,
+      domain: "clientsite.nl",
     })
     const subscriptionCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/subscriptions"))
     expect(subscriptionCall).toBeDefined()

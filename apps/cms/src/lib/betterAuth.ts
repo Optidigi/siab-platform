@@ -7,8 +7,9 @@ import { getEnabledSocialAuthProviders } from "@/lib/socialAuth/providers"
 import { resolvePayloadUserForMagicLink, resolvePayloadUserForSocialSignup } from "@/lib/socialAuth/payloadUser"
 import { getBetterAuthBaseURL, getTrustedSocialAuthOrigins } from "@/lib/socialAuth/hosts"
 import { getMagicLinkRateLimit } from "@/lib/auth/magicLinkRateLimit"
-import { sendEmail } from "@/lib/email/sendEmail"
+import { getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
 import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
+import { siteLiveNoticeTemplate } from "@/lib/email/templates/siteLiveNotice"
 import { CMS_SESSION_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from "@/lib/auth/sessionDurations"
 
 async function getMailPayload() {
@@ -82,6 +83,19 @@ const providerConfig = {
     : {}),
 }
 
+const metadataText = (metadata: unknown, key: string): string | null => {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null
+  const value = (metadata as Record<string, unknown>)[key]
+  return typeof value === "string" && value.trim() ? value.trim() : null
+}
+
+const metadataTenant = (metadata: unknown): string | number | null => {
+  const value = metadataText(metadata, "tenantId")
+  if (!value) return null
+  const numeric = Number(value)
+  return Number.isSafeInteger(numeric) && String(numeric) === value ? numeric : value
+}
+
 export const auth = betterAuth({
   appName: "SiteInABox",
   baseURL: getBetterAuthBaseURL(),
@@ -141,10 +155,30 @@ export const auth = betterAuth({
     magicLink({
       expiresIn: 300,
       rateLimit: getMagicLinkRateLimit(),
-      sendMagicLink: async ({ email, url }) => {
+      sendMagicLink: async ({ email, url, metadata }) => {
         await resolvePayloadUserForMagicLink(email)
-        const message = magicLinkTemplate({ loginUrl: url })
         const payload = await getMailPayload()
+        const intent = metadataText(metadata, "intent")
+        if (intent === "site_live_handoff") {
+          const siteUrl = metadataText(metadata, "siteUrl")
+          const adminUrl = metadataText(metadata, "adminUrl")
+          if (!siteUrl || !adminUrl) {
+            throw new Error("Live handoff magic-link metadata is missing siteUrl or adminUrl.")
+          }
+          const message = siteLiveNoticeTemplate({ siteUrl, adminUrl, magicLoginUrl: url })
+          await sendEmail({
+            to: email,
+            from: getPlatformMailSender(),
+            subject: message.subject,
+            html: message.html,
+            text: message.text,
+            intent: "site.live_notice",
+            tenant: metadataTenant(metadata),
+            payload: payload as any,
+          })
+          return
+        }
+        const message = magicLinkTemplate({ loginUrl: url })
         await sendEmail({
           to: email,
           subject: message.subject,

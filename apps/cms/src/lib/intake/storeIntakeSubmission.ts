@@ -59,7 +59,7 @@ const findOne = async (payload: Payload, collection: string, where: Record<strin
 }
 
 const storedResult = (doc: PayloadDoc, reused: boolean): IntakeStorageResult => ({
-  ok: doc.status === "normalized",
+  ok: doc.status !== "failed",
   reused,
   status: doc.status as WorkflowStatus,
   intakeSubmissionId: doc.id,
