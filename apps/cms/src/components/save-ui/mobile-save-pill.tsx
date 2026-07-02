@@ -50,6 +50,7 @@ export const MobileSavePill: React.FC<MobileSavePillProps> = ({ status, dirtyCou
   const isError = displayStatus === "error"
   const hasValidationErrors = isError && errorCount > 0
   const badgeCount = hasValidationErrors ? errorCount : isError ? 0 : displayStatus === "dirty" ? (dirtyCount ?? 0) : 0
+  const disabled = displayStatus === "idle" || displayStatus === "saved" || displayStatus === "saving"
   const ariaLabel =
     displayStatus === "saving" ? t("saving") :
     displayStatus === "error" && hasValidationErrors ? t("saveBlocked", { count: errorCount }) :
@@ -64,6 +65,7 @@ export const MobileSavePill: React.FC<MobileSavePillProps> = ({ status, dirtyCou
       onClick={onSave}
       ariaLabel={ariaLabel}
       variant={STATUS_TO_VARIANT[displayStatus]}
+      disabled={disabled}
       badgeCount={badgeCount}
       badgeTone={isError ? "destructive" : "warning"}
       dataAttrs={{

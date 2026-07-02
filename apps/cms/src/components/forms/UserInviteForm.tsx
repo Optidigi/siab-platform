@@ -14,20 +14,31 @@ import { Plus } from "lucide-react"
 import { inviteUser } from "@/lib/actions/inviteUser"
 import { useStatusFeedback } from "@/components/status-feedback"
 
-const createSchema = (t: (key: string) => string) => z.object({
+const createSchema = (t: (key: string) => string, canInviteOwners: boolean) => z.object({
   email: z.string().email(t("validation.email")),
   confirmEmail: z.string().email(t("validation.confirmEmail")),
   name: z.string().min(1, t("validation.name")),
   role: z.enum(["owner", "editor", "viewer"], {
     message: t("validation.role")
   })
-}).refine((value) => value.email.trim().toLowerCase() === value.confirmEmail.trim().toLowerCase(), {
-  path: ["confirmEmail"],
-  message: t("validation.emailMatch")
 })
+  .refine((value) => canInviteOwners || value.role !== "owner", {
+    path: ["role"],
+    message: t("validation.role")
+  })
+  .refine((value) => value.email.trim().toLowerCase() === value.confirmEmail.trim().toLowerCase(), {
+    path: ["confirmEmail"],
+    message: t("validation.emailMatch")
+  })
 type V = z.infer<ReturnType<typeof createSchema>>
 
-export function UserInviteForm({ tenantId }: { tenantId: number | string }) {
+export function UserInviteForm({
+  tenantId,
+  canInviteOwners = false,
+}: {
+  tenantId: number | string
+  canInviteOwners?: boolean
+}) {
   const t = useTranslations("users")
   const tTable = useTranslations("table")
   const tCommon = useTranslations("common")
@@ -35,7 +46,8 @@ export function UserInviteForm({ tenantId }: { tenantId: number | string }) {
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const router = useRouter()
-  const schema = createSchema(t)
+  const schema = createSchema(t, canInviteOwners)
+  const roleOptions: V["role"][] = canInviteOwners ? ["owner", "editor", "viewer"] : ["editor", "viewer"]
   const form = useForm<V>({
     resolver: zodResolver(schema),
     defaultValues: { email: "", confirmEmail: "", name: "", role: "editor" }
@@ -138,9 +150,9 @@ export function UserInviteForm({ tenantId }: { tenantId: number | string }) {
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                   <SelectContent>
-                    <SelectItem value="owner">{tCommon("role.owner")}</SelectItem>
-                    <SelectItem value="editor">{tCommon("role.editor")}</SelectItem>
-                    <SelectItem value="viewer">{tCommon("role.viewer")}</SelectItem>
+                    {roleOptions.map((role) => (
+                      <SelectItem key={role} value={role}>{tCommon(`role.${role}`)}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />

@@ -64,64 +64,67 @@ export function CreateUserForm() {
 
   const onSubmit = async (v: FormValues) => {
     setPending(true)
-    // Step 1: create the user. Payload silently ignores `apiKey` on create
-    // (verified during production API-key user setup), so we set it via PATCH
-    // immediately afterward when needed.
-    const createBody: any = {
-      email: v.email, name: v.name, password: v.password, role: v.role
-    }
-    if (v.role !== "super-admin" && v.tenantId) {
-      const tenantId = isNaN(Number(v.tenantId)) ? v.tenantId : Number(v.tenantId)
-      createBody.tenants = [{ tenant: tenantId }]
-    }
-    if (v.enableAPIKey) {
-      createBody.enableAPIKey = true
-    }
-    const createRes = await fetch("/api/users", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(createBody)
-    })
-    if (!createRes.ok) {
-      setPending(false)
-      // FN-2026-0048 — surface parsed Payload error message instead of
-      // raw JSON envelope. If the error is field-tied, set inline.
-      const detail = await parsePayloadError(createRes)
-      if (detail.field === "email" || detail.field === "name" || detail.field === "password") {
-        form.setError(detail.field as "email" | "name" | "password", { message: detail.message })
-        status.error(`${detail.field}: ${detail.message}`)
-      } else {
-        status.error(t("createFailed", { message: detail.message }))
+    try {
+      // Step 1: create the user. Payload silently ignores `apiKey` on create
+      // (verified during production API-key user setup), so we set it via PATCH
+      // immediately afterward when needed.
+      const createBody: any = {
+        email: v.email, name: v.name, password: v.password, role: v.role
       }
-      return
-    }
-    const createJson = await createRes.json()
-    const newId = createJson?.doc?.id ?? createJson?.id
-
-    if (v.enableAPIKey && newId != null) {
-      // Step 2: PATCH the new user with a generated API key.
-      const apiKey = crypto.randomUUID()
-      const patchRes = await fetch(`/api/users/${newId}`, {
-        method: "PATCH",
+      if (v.role !== "super-admin" && v.tenantId) {
+        const tenantId = isNaN(Number(v.tenantId)) ? v.tenantId : Number(v.tenantId)
+        createBody.tenants = [{ tenant: tenantId }]
+      }
+      if (v.enableAPIKey) {
+        createBody.enableAPIKey = true
+      }
+      const createRes = await fetch("/api/users", {
+        method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ apiKey })
+        body: JSON.stringify(createBody)
       })
-      setPending(false)
-      if (!patchRes.ok) {
-        // FN-2026-0048 — parsed message instead of raw text slice.
-        const detail = await parsePayloadError(patchRes)
-        status.error(t("apiKeySetFailed", { message: detail.message }))
-        // Still show what we tried so the operator can retry the PATCH manually
-        setCreatedKey({ apiKey: "(failed to set — open the user record and regenerate)", email: v.email })
+      if (!createRes.ok) {
+        // FN-2026-0048 — surface parsed Payload error message instead of
+        // raw JSON envelope. If the error is field-tied, set inline.
+        const detail = await parsePayloadError(createRes)
+        if (detail.field === "email" || detail.field === "name" || detail.field === "password") {
+          form.setError(detail.field as "email" | "name" | "password", { message: detail.message })
+          status.error(`${detail.field}: ${detail.message}`)
+        } else {
+          status.error(t("createFailed", { message: detail.message }))
+        }
         return
       }
-      setCreatedKey({ apiKey, email: v.email })
-    } else {
+      const createJson = await createRes.json()
+      const newId = createJson?.doc?.id ?? createJson?.id
+
+      if (v.enableAPIKey && newId != null) {
+        // Step 2: PATCH the new user with a generated API key.
+        const apiKey = crypto.randomUUID()
+        const patchRes = await fetch(`/api/users/${newId}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ apiKey })
+        })
+        if (!patchRes.ok) {
+          // FN-2026-0048 — parsed message instead of raw text slice.
+          const detail = await parsePayloadError(patchRes)
+          status.error(t("apiKeySetFailed", { message: detail.message }))
+          // Still show what we tried so the operator can retry the PATCH manually
+          setCreatedKey({ apiKey: "(failed to set - open the user record and regenerate)", email: v.email })
+          return
+        }
+        setCreatedKey({ apiKey, email: v.email })
+      } else {
+        status.success(t("created"))
+        setOpen(false)
+        form.reset()
+        router.refresh()
+      }
+    } catch {
+      status.error(tCommon("networkError"))
+    } finally {
       setPending(false)
-      status.success(t("created"))
-      setOpen(false)
-      form.reset()
-      router.refresh()
     }
   }
 

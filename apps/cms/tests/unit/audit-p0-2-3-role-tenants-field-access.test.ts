@@ -18,6 +18,9 @@ import { Users } from "@/collections/Users"
 const reqFor = (role: string | null, id: string = "u1") =>
   ({ req: { user: role ? { id, role } : null } }) as any
 
+const ownerReqFor = (tenant: unknown, id: string = "owner-1") =>
+  ({ req: { user: { id, role: "owner", tenants: [{ tenant }] } } }) as any
+
 describe("audit-p0 #2/#3 — field-level access blocks role/tenants escalation", () => {
   describe("`role` field", () => {
     const roleField = (Users.fields as any[]).find((f) => f.name === "role")
@@ -38,6 +41,22 @@ describe("audit-p0 #2/#3 — field-level access blocks role/tenants escalation",
 
     it("rejects role updates from owner (Finding #3 — owner self-promote)", () => {
       expect(roleField.access.update(reqFor("owner"))).toBe(false)
+    })
+
+    it("permits owner role updates that keep the user in the owner's tenant with a tenant role", () => {
+      expect(roleField.access.update({
+        ...ownerReqFor(1),
+        data: { role: "editor", tenants: [{ tenant: 1 }] },
+        doc: { role: "viewer", tenants: [{ tenant: 1 }] },
+      })).toBe(true)
+    })
+
+    it("rejects owner role updates to super-admin even when tenants are cleared", () => {
+      expect(roleField.access.update({
+        ...ownerReqFor(1),
+        data: { role: "super-admin", tenants: [] },
+        doc: { role: "editor", tenants: [{ tenant: 1 }] },
+      })).toBe(false)
     })
 
     it("rejects role updates from anonymous callers", () => {
@@ -90,6 +109,22 @@ describe("audit-p0 #2/#3 — field-level access blocks role/tenants escalation",
       expect(tenantsField.access.update(reqFor("viewer"))).toBe(false)
       expect(tenantsField.access.update(reqFor("owner"))).toBe(false)
       expect(tenantsField.access.update(reqFor(null))).toBe(false)
+    })
+
+    it("permits owner tenant-field updates only for the owner's own tenant", () => {
+      expect(tenantsField.access.update({
+        ...ownerReqFor({ id: 1 }),
+        data: { role: "viewer", tenants: [{ tenant: "1" }] },
+        doc: { role: "editor", tenants: [{ tenant: 1 }] },
+      })).toBe(true)
+    })
+
+    it("rejects owner tenant-field updates that move a user to another tenant", () => {
+      expect(tenantsField.access.update({
+        ...ownerReqFor(1),
+        data: { role: "viewer", tenants: [{ tenant: 2 }] },
+        doc: { role: "editor", tenants: [{ tenant: 1 }] },
+      })).toBe(false)
     })
 
     it("permits tenants updates from super-admin (positive control)", () => {

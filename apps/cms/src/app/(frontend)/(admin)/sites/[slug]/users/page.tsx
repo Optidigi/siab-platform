@@ -36,12 +36,13 @@ export default async function TenantUsersPage({
       <PageHeader
         title={t("team.title")}
         beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} href={ctx.mode === "tenant" ? "/" : undefined} />}
-        action={canManage ? <UserInviteForm tenantId={tenant.id} /> : undefined}
+        action={canManage ? <UserInviteForm tenantId={tenant.id} canInviteOwners={user.role === "super-admin"} /> : undefined}
       />
       <ListSearch placeholder={t("filterTeam")} />
       <UsersTable
         data={result.docs as any}
         canManage={canManage}
+        currentUserId={user.id}
         emptyState={
           q ? (
             <EmptyState
@@ -54,7 +55,7 @@ export default async function TenantUsersPage({
               icon={<Users className="h-10 w-10 text-muted-foreground" aria-hidden />}
               title={t("team.none")}
               description={t("team.noneDescription")}
-              action={canManage ? <UserInviteForm tenantId={tenant.id} /> : undefined}
+              action={canManage ? <UserInviteForm tenantId={tenant.id} canInviteOwners={user.role === "super-admin"} /> : undefined}
             />
           )
         }

@@ -12,6 +12,7 @@ import { useStatusFeedback } from "@/components/status-feedback"
 
 export function ApiKeyManager({ user }: { user: User }) {
   const t = useTranslations("apiKey")
+  const tCommon = useTranslations("common")
   const status = useStatusFeedback()
   const [pending, setPending] = useState(false)
   const [revealedKey, setRevealedKey] = useState<string | null>(null)
@@ -23,54 +24,71 @@ export function ApiKeyManager({ user }: { user: User }) {
     const newKey = crypto.randomUUID()
     const body: Record<string, unknown> = { apiKey: newKey }
     if (alsoEnable) body.enableAPIKey = true
-    const res = await fetch(`/api/users/${user.id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body)
-    })
-    setPending(false)
-    if (!res.ok) {
-      // FN-2026-0054 — parsed Payload error message instead of raw text slice
-      const detail = await parsePayloadError(res)
-      status.error(t("generateFailed", { message: detail.message }))
-      return
+    try {
+      const res = await fetch(`/api/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body)
+      })
+      if (!res.ok) {
+        // FN-2026-0054 — parsed Payload error message instead of raw text slice
+        const detail = await parsePayloadError(res)
+        status.error(t("generateFailed", { message: detail.message }))
+        return
+      }
+      // FN-2026-0001/0002 fix — surface the generated key IMMEDIATELY before
+      // any further server interaction. The previous shape called
+      // `router.refresh()` here, which re-fetched the /api-key server
+      // component; Payload's apiKey rotation can invalidate the active
+      // session JWT, so the refresh would redirect to /login mid-flight
+      // and the revealedKey state was lost — the user never saw the key
+      // they were supposed to copy. Now: we render the key-reveal card and
+      // wait for the user to dismiss; the dismiss handler then does a full
+      // `window.location.reload()` which re-validates auth cleanly (lands
+      // on /login if the session is gone, otherwise re-renders /api-key
+      // with the new enabled state).
+      setRevealedKey(newKey)
+    } catch {
+      status.error(tCommon("networkError"))
+    } finally {
+      setPending(false)
     }
-    // FN-2026-0001/0002 fix — surface the generated key IMMEDIATELY before
-    // any further server interaction. The previous shape called
-    // `router.refresh()` here, which re-fetched the /api-key server
-    // component; Payload's apiKey rotation can invalidate the active
-    // session JWT, so the refresh would redirect to /login mid-flight
-    // and the revealedKey state was lost — the user never saw the key
-    // they were supposed to copy. Now: we render the key-reveal card and
-    // wait for the user to dismiss; the dismiss handler then does a full
-    // `window.location.reload()` which re-validates auth cleanly (lands
-    // on /login if the session is gone, otherwise re-renders /api-key
-    // with the new enabled state).
-    setRevealedKey(newKey)
   }
 
   const disable = async () => {
     setPending(true)
-    const res = await fetch(`/api/users/${user.id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ enableAPIKey: false, apiKey: null })
-    })
-    setPending(false)
-    if (!res.ok) {
-      // FN-2026-0054 — parsed Payload error message instead of raw text slice
-      const detail = await parsePayloadError(res)
-      const msg = t("disableFailed", { message: detail.message })
+    try {
+      const res = await fetch(`/api/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ enableAPIKey: false, apiKey: null })
+      })
+      if (!res.ok) {
+        // FN-2026-0054 — parsed Payload error message instead of raw text slice
+        const detail = await parsePayloadError(res)
+        const msg = t("disableFailed", { message: detail.message })
+        status.error(msg)
+        const error = new Error(msg)
+        error.name = "ApiKeyDisableError"
+        throw error
+      }
+      status.success(t("disabledStatus"))
+      // FN-2026-0003 fix — same reasoning as generate(): a hard reload
+      // re-validates auth state from scratch. If Payload invalidated the
+      // session JWT during this PATCH, the requireAuth() server check
+      // redirects to /login; otherwise we get a clean /api-key page with
+      // the disabled-state card.
+      window.location.reload()
+    } catch (error) {
+      if (error instanceof Error && error.name === "ApiKeyDisableError") {
+        throw error
+      }
+      const msg = tCommon("networkError")
       status.error(msg)
       throw new Error(msg)
+    } finally {
+      setPending(false)
     }
-    status.success(t("disabledStatus"))
-    // FN-2026-0003 fix — same reasoning as generate(): a hard reload
-    // re-validates auth state from scratch. If Payload invalidated the
-    // session JWT during this PATCH, the requireAuth() server check
-    // redirects to /login; otherwise we get a clean /api-key page with
-    // the disabled-state card.
-    window.location.reload()
   }
 
   const dismiss = () => {

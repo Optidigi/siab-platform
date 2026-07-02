@@ -6,6 +6,11 @@ import { getPayload } from "payload"
 import config from "@/payload.config"
 import type { User } from "@/payload-types"
 
+const relationshipId = (value: unknown): number | string | null => {
+  if (value == null) return null
+  return typeof value === "object" ? ((value as { id?: number | string }).id ?? null) : (value as number | string)
+}
+
 export default async function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
   // Super-admin OR owner can reach this page; the API access layer
   // (canManageUsers in src/access/canManageUsers.ts) further restricts what
@@ -36,7 +41,12 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
   // Tenant list for the role-conditional tenant select. listTenants returns
   // already-unwrapped docs (limit: 200) — fine since real tenant counts stay
   // small and the select is a flat shadcn dropdown.
-  const tenants = await listTenants()
+  const allTenants = await listTenants() as Array<{ id: number | string; name: string; slug: string }>
+  const operatorTenantId = relationshipId(operator.tenants?.[0]?.tenant)
+  const tenants =
+    operator.role === "super-admin" || operatorTenantId == null
+      ? allTenants
+      : allTenants.filter((tenant) => String(tenant.id) === String(operatorTenantId))
 
   return (
     <UserEditForm
@@ -44,7 +54,8 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
       // in depth — the route segment unmounts on its own today).
       key={user.id}
       user={user}
-      tenants={tenants as Array<{ id: number | string; name: string; slug: string }>}
+      tenants={tenants}
+      operator={{ id: operator.id, role: operator.role }}
     />
   )
 }

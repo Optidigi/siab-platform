@@ -1,5 +1,14 @@
 import { timingSafeEqual } from "crypto"
-import type { ArrayFieldValidation, CollectionBeforeOperationHook, CollectionBeforeValidateHook, CollectionConfig, FieldAccess } from "payload"
+import type {
+  Access,
+  ArrayFieldValidation,
+  CollectionBeforeDeleteHook,
+  CollectionBeforeOperationHook,
+  CollectionBeforeValidateHook,
+  CollectionConfig,
+  FieldAccess,
+  Where,
+} from "payload"
 import { Forbidden } from "payload"
 import { canManageUsers } from "@/access/canManageUsers"
 import { isSuperAdminField } from "@/access/isSuperAdmin"
@@ -41,6 +50,39 @@ const ownerTenantIdOf = (user: any): unknown => {
   const first = user?.tenants?.[0]?.tenant
   if (first == null) return null
   return typeof first === "object" ? first.id : first
+}
+
+const relationshipId = (value: unknown): unknown => {
+  if (value == null) return null
+  return typeof value === "object" ? (value as { id?: unknown }).id : value
+}
+
+const tenantRowsMatchOnly = (rows: unknown, tenantId: unknown): boolean => {
+  if (tenantId == null || !Array.isArray(rows) || rows.length !== 1) return false
+  const target = relationshipId((rows[0] as { tenant?: unknown } | undefined)?.tenant)
+  return target != null && String(target) === String(tenantId)
+}
+
+const isTenantRole = (role: unknown): role is "owner" | "editor" | "viewer" =>
+  role === "owner" || role === "editor" || role === "viewer"
+
+// Owners can manage team roles inside their own tenant, but they must never
+// assemble the super-admin shape (`role: "super-admin"` + `tenants: []`) or
+// move a user into another tenant. Row-level update access already scopes the
+// target row to the owner's tenant; this field gate constrains the incoming
+// role/tenant values that field-level access would otherwise strip.
+const canOwnerUpdateRoleTenantField: FieldAccess = ({ data, doc, req }) => {
+  if (req.user?.role === "super-admin") return true
+  if (req.user?.role !== "owner") return false
+
+  const ownTenantId = ownerTenantIdOf(req.user)
+  if (ownTenantId == null) return false
+
+  const nextRole = "role" in (data ?? {}) ? data?.role : doc?.role
+  if (!isTenantRole(nextRole)) return false
+
+  const nextTenants = "tenants" in (data ?? {}) ? data?.tenants : doc?.tenants
+  return tenantRowsMatchOnly(nextTenants, ownTenantId)
 }
 
 // Field-access gate for `role.access.create` AND `tenants.access.create` ONLY.
@@ -225,6 +267,41 @@ const rejectNonSuperAdminCredentialWrites: CollectionBeforeOperationHook = ({ ar
   return args
 }
 
+export const canDeleteUsers: Access = ({ req }) => {
+  const user = req.user as any
+  if (!user) return false
+  if (user.role === "super-admin") return true
+  if (user.role !== "owner") return false
+
+  const tenantId = ownerTenantIdOf(user)
+  if (tenantId == null) return false
+  return { "tenants.tenant": { equals: tenantId } } as unknown as Where
+}
+
+export const preventUnsafeUserDelete: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  const currentUserId = req.user?.id
+  if (currentUserId != null && String(currentUserId) === String(id)) {
+    throw new Forbidden(req.t)
+  }
+
+  const target = await req.payload.findByID({
+    collection: "users",
+    id,
+    overrideAccess: true,
+    depth: 0,
+  })
+
+  if (target?.role !== "super-admin") return
+
+  const { totalDocs } = await req.payload.count({
+    collection: "users",
+    overrideAccess: true,
+    where: { role: { equals: "super-admin" } },
+  })
+
+  if (totalDocs <= 1) throw new Forbidden(req.t)
+}
+
 // Audit-p1 #7 sub-fix B (T5) — invalidate all sessions on password change.
 //
 // Pairs with `useSessions: true` on Users.auth (below). Payload's session-
@@ -401,6 +478,7 @@ export const Users: CollectionConfig = {
     // rotation signature, invalidating every pre-rotation JWT for the user
     // (audit-p1 #7 sub-fix B).
     beforeValidate: [clearSessionsOnPasswordChange],
+    beforeDelete: [preventUnsafeUserDelete],
     // FN-2026-0049 — `sessions` is auto-injected by Payload when
     // `useSessions: true`. Field-level overrides via the standard `fields`
     // declaration don't reliably attach (the auto-inject happens AFTER
@@ -502,20 +580,22 @@ export const Users: CollectionConfig = {
     },
     read: canManageUsers,
     update: canManageUsers,
-    delete: ({ req }) => req.user?.role === "super-admin" || req.user?.role === "owner"
+    delete: canDeleteUsers
   },
   admin: { useAsTitle: "email", defaultColumns: ["email", "name", "role"] },
   fields: [
     { name: "name", type: "text" },
     { name: "role", type: "select", required: true, defaultValue: "editor",
-      // Field-level access. Update is super-admin-only — closes Findings
-      // #2/#3 (PATCH /api/users/<self> with role:"super-admin"). Create
+      // Field-level access. Update admits super-admins plus owners who keep
+      // the target in their own tenant with a tenant role; this keeps the
+      // team UI usable without reopening Findings #2/#3 (PATCH
+      // /api/users/<self> with role:"super-admin"). Create
       // is gated by `canCreateUserField`, which admits: super-admin (any),
       // anonymous + bootstrap-token + role=super-admin (audit-p1 #6 seed),
       // and owner inviting editor/viewer into own tenant (AMD-1 owner
       // invite path). Editor / viewer / owner attempting any other shape
       // are blocked, closing the P0 #2/#3 family on POST as well.
-      access: { create: canCreateUserField, update: isSuperAdminField },
+      access: { create: canCreateUserField, update: canOwnerUpdateRoleTenantField },
       options: [
         { label: "Super-admin", value: "super-admin" },
         { label: "Owner", value: "owner" },
@@ -535,10 +615,11 @@ export const Users: CollectionConfig = {
       saveToJWT: true,
       // Field-level access paired with `role`: setting `tenants:[]` while
       // flipping `role:"super-admin"` is the precise self-promotion shape
-      // `validateTenants` accepts. Update remains super-admin-only; create
-      // uses `canCreateUserField` which mirrors the role gate so neither
-      // half of the payload can be assembled in isolation.
-      access: { create: canCreateUserField, update: isSuperAdminField },
+      // `validateTenants` accepts. Update uses the same owner-safe field
+      // gate as `role`; create uses `canCreateUserField` which mirrors the
+      // role gate so neither half of the payload can be assembled in
+      // isolation.
+      access: { create: canCreateUserField, update: canOwnerUpdateRoleTenantField },
       admin: { description: "empty for super-admin; exactly one entry otherwise" },
       fields: [
         {

@@ -5,7 +5,16 @@ import createNextIntlPlugin from "next-intl/plugin"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts")
-const allowedDevOrigins = (process.env.SIAB_ALLOWED_DEV_ORIGINS || "admin.siteinabox.nl")
+const defaultAllowedDevOrigins = [
+  "admin.siteinabox.nl",
+  "t1.test",
+  "*.test",
+  "*.localhost",
+  "*.lvh.me",
+  "*.localtest.me",
+].join(",")
+
+const allowedDevOrigins = (process.env.SIAB_ALLOWED_DEV_ORIGINS || defaultAllowedDevOrigins)
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean)

@@ -66,4 +66,29 @@ describe("publish current tenant state", () => {
     expect(source).toContain("publishCurrentTenantStateAction(")
     expect(source).not.toContain('fetch("/api/publish"')
   })
+
+  it("keeps standalone navigation saves on the same official-tenant current-state publish path", () => {
+    const manager = readFileSync("src/components/navigation/NavigationManager.tsx", "utf8")
+    const route = readFileSync("src/app/(frontend)/(admin)/sites/[slug]/navigation/page.tsx", "utf8")
+
+    expect(manager).toContain("@/lib/actions/publishCurrentTenantState")
+    expect(manager).toContain("await updateNav(")
+    expect(manager).toContain("if (autoPublishLive)")
+    expect(manager).toContain("publishCurrentTenantStateAction(")
+    expect(manager).toContain("auto-publish current CMS state after navigation save")
+    expect(route).toContain("autoPublishLive={isOfficialTenant(tenant)}")
+  })
+
+  it("keeps standalone settings saves on the same official-tenant current-state publish path", () => {
+    const form = readFileSync("src/components/forms/SettingsForm.tsx", "utf8")
+    const tenantRoute = readFileSync("src/app/(frontend)/(admin)/settings/page.tsx", "utf8")
+    const selectedSiteRoute = readFileSync("src/app/(frontend)/(admin)/sites/[slug]/settings/page.tsx", "utf8")
+
+    expect(form).toContain("@/lib/actions/publishCurrentTenantState")
+    expect(form).toContain("if (autoPublishLive && tenantId != null)")
+    expect(form).toContain("publishCurrentTenantStateAction(")
+    expect(form).toContain("auto-publish current CMS state after settings save")
+    expect(tenantRoute).toContain("autoPublishLive={isOfficialTenant(ctx.tenant)}")
+    expect(selectedSiteRoute).toContain("autoPublishLive={isOfficialTenant(tenant)}")
+  })
 })

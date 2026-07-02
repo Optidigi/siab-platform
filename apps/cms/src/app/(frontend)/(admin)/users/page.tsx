@@ -33,6 +33,7 @@ export default async function UsersPage({
         <UsersTable
           data={result.docs as any}
           canManage
+          currentUserId={user.id}
           emptyState={
             q ? (
               <EmptyState
@@ -74,6 +75,7 @@ export default async function UsersPage({
       <UsersTable
         data={result.docs as any}
         canManage
+        currentUserId={user.id}
         emptyState={
           q ? (
             <EmptyState

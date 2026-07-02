@@ -4,7 +4,7 @@ Canonical source of truth for security findings, vulnerability observations, and
 
 ## How this file is used
 
-- IDs use the `OBS-N` scheme inherited from the 2026-05 audit cycle. New security items continue the same sequence (current high water mark: OBS-123 across all backlog files — next OBS = OBS-124).
+- IDs use the `OBS-N` scheme inherited from the 2026-05 audit cycle. New security items continue the same sequence (current high water mark: OBS-125 across all backlog files — next OBS = OBS-126).
 - **Status tiers:** Active (real, deferred), Latent (not exploitable today — trigger documented), Audit-deferred (explicitly punted per audit text), Closed (resolved).
 - **When a trigger condition fires**, promote the item immediately to a fix batch. Do not defer further.
 - **When a PR touches a Payload auth feature** (`useAPIKey`, `verify`, `loginWithUsername`, etc.), check the Doctrine section below and audit auto-injected fields the same day.
@@ -37,6 +37,28 @@ Auth session, minting the Payload session cookie, or redirecting. Regression
 coverage verifies platform admin, current tenant admin, future
 `admin.{tenantdomain}` hosts, internal-origin forwarded requests, and unknown
 host rejection before session lookup.
+
+### OBS-125 — User team role controls and unsafe user deletion
+
+**Status:** Closed 2026-07-02.
+**Discovered in:** owner team management review
+**File:** `src/collections/Users.ts`
+
+#### Description
+Owners could see role and tenant controls on user edit pages, but field-level
+access still stripped those fields on update because only super-admins were
+allowed to mutate `role` and `tenants`. User deletion was also too broad for
+owners and did not explicitly block self-delete or deleting the final
+super-admin account.
+
+#### Resolution — 2026-07-02
+Closed. Owner role/tenant updates now pass only when the resulting user remains
+`owner`, `editor`, or `viewer` with exactly one tenant matching the owner's own
+tenant. Super-admin users still have zero tenants. Owner delete access is scoped
+to users in the owner's tenant, and a before-delete hook blocks self-delete plus
+deletion of the last remaining super-admin. The users/team UI now hides
+self-delete actions and constrains owner tenant choices to the owner's tenant.
+Focused tests cover the owner update gate and deletion safety.
 
 ### OBS-33 — CSP `style-src 'unsafe-inline'` removed
 

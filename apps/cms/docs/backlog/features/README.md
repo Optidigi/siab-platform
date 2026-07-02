@@ -79,6 +79,11 @@ depended on command-run site generation are no longer current source of truth.
   email. Keep technical snapshot,
   publish, activation, provider/model, hashes, validation, and manual override
   details behind Advanced controls.
+- Refactor the Forms/submissions management UI instead of patching the current
+  sheet in place. The current `/forms` surface can show viewer users a
+  submission status control that the server rejects, but this should be solved
+  as part of the planned full forms UI redesign so read-only and management
+  states are modeled deliberately rather than hidden with a small conditional.
 
 ## Implemented Foundation
 

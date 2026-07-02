@@ -231,3 +231,15 @@ export function SiteBanner({ settings }: SiteChromeProps) {
     </aside>
   )
 }
+
+export function SiteMaintenanceBanner({ settings }: SiteChromeProps) {
+  if (!settings.maintenance?.enabled) return null
+
+  const message = settings.maintenance.message?.trim() || "Deze website is tijdelijk in onderhoud."
+
+  return (
+    <aside className="site-chrome site-maintenance-banner" role="status" data-siab-site-maintenance-banner>
+      <p className="site-maintenance-banner__content">{message}</p>
+    </aside>
+  )
+}

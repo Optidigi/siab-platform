@@ -183,7 +183,7 @@ export default async function TenantAnalyticsPage({
           performanceOverview: t("performanceOverview"),
           overallScore: t("overallScore"),
           scoreUnavailable: t("scoreUnavailable"),
-          measuredFromVisitors: t("measuredFromVisitors"),
+          measuredFromVisitors: t.raw("measuredFromVisitors"),
           lowSampleNotice: t("lowSampleNotice"),
           fieldPerformanceExplanation: t("fieldPerformanceExplanation"),
           siteQualityExplanation: t("siteQualityExplanation"),

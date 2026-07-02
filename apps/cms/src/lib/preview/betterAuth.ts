@@ -45,11 +45,23 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export const PREVIEW_ORIGIN = "https://preview.siteinabox.nl"
+const DEV_PREVIEW_HOST_PATTERNS = [
+  "localhost:*",
+  "127.0.0.1:*",
+  "*.localhost:*",
+  "*.lvh.me:*",
+  "*.localtest.me:*",
+]
+
+const DEV_PREVIEW_ORIGIN_PATTERNS = DEV_PREVIEW_HOST_PATTERNS.flatMap((host) => [
+  `http://${host}`,
+  `https://${host}`,
+])
 
 export function getPreviewBetterAuthBaseURL() {
   const allowedHosts = ["preview.siteinabox.nl"]
   if (process.env.NODE_ENV === "development") {
-    allowedHosts.push("localhost:*", "127.0.0.1:*")
+    allowedHosts.push(...DEV_PREVIEW_HOST_PATTERNS)
   }
 
   return {
@@ -62,7 +74,7 @@ export function getPreviewBetterAuthBaseURL() {
 export function getPreviewTrustedOrigins() {
   const origins = [PREVIEW_ORIGIN]
   if (process.env.NODE_ENV === "development") {
-    origins.push("http://localhost:*", "http://127.0.0.1:*")
+    origins.push(...DEV_PREVIEW_ORIGIN_PATTERNS)
   }
   return origins
 }

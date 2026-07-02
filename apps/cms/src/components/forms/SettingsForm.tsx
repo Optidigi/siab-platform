@@ -26,6 +26,7 @@ import { normalizeUploadId } from "@/lib/uploadValues"
 import { DEFAULT_CLIENT_SETTINGS_CONTRACT, type SettingsContract } from "@/lib/settingsContract"
 import { useStatusFeedback } from "@/components/status-feedback"
 import { deriveSaveStatus } from "@/lib/deriveSaveStatus"
+import { publishCurrentTenantStateAction } from "@/lib/actions/publishCurrentTenantState"
 
 // OBS-81 — Settings is client-facing and intentionally slim by default:
 // General, Brand, and Operations. Legal details, opening hours, and
@@ -79,10 +80,14 @@ export function SettingsForm({
   initial,
   canEdit,
   settingsContract = DEFAULT_CLIENT_SETTINGS_CONTRACT,
+  tenantId,
+  autoPublishLive,
 }: {
   initial: any
   canEdit: boolean
   settingsContract?: SettingsContract
+  tenantId?: number | string
+  autoPublishLive?: boolean
 }) {
   const router = useRouter()
   const t = useTranslations("settings")
@@ -138,8 +143,8 @@ export function SettingsForm({
       setSaveFailed(true)
       return
     }
-    setPending(false)
     if (!res.ok) {
+      setPending(false)
       setSaveFailed(true)
       // FN-2026-0034 — surface field-tied errors inline; the registry
       // SaveStatusBar owns failed-save feedback.
@@ -154,6 +159,19 @@ export function SettingsForm({
       }
       return
     }
+    if (autoPublishLive && tenantId != null) {
+      try {
+        await publishCurrentTenantStateAction(
+          tenantId,
+          "auto-publish current CMS state after settings save",
+        )
+      } catch {
+        setPending(false)
+        setSaveFailed(true)
+        return
+      }
+    }
+    setPending(false)
     // FN-2026-0051 — clear dirty baseline post-save so navigationGuard
     // detaches; mirrors PageForm / TenantEditForm post-fix shape.
     form.reset(values)

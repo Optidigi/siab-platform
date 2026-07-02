@@ -46,14 +46,29 @@ describe("preview Better Auth host configuration", () => {
     const { getPreviewBetterAuthBaseURL, getPreviewTrustedOrigins } = await import("@/lib/preview/betterAuth")
 
     expect(getPreviewBetterAuthBaseURL()).toEqual({
-      allowedHosts: ["preview.siteinabox.nl", "localhost:*", "127.0.0.1:*"],
+      allowedHosts: [
+        "preview.siteinabox.nl",
+        "localhost:*",
+        "127.0.0.1:*",
+        "*.localhost:*",
+        "*.lvh.me:*",
+        "*.localtest.me:*",
+      ],
       protocol: "http",
       fallback: "https://preview.siteinabox.nl",
     })
     expect(getPreviewTrustedOrigins()).toEqual([
       "https://preview.siteinabox.nl",
       "http://localhost:*",
+      "https://localhost:*",
       "http://127.0.0.1:*",
+      "https://127.0.0.1:*",
+      "http://*.localhost:*",
+      "https://*.localhost:*",
+      "http://*.lvh.me:*",
+      "https://*.lvh.me:*",
+      "http://*.localtest.me:*",
+      "https://*.localtest.me:*",
     ])
   })
 })

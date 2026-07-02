@@ -30,6 +30,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog"
 import { UnsavedChangesDialog } from "@/components/save-ui/unsaved-changes-dialog"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { updateNav } from "@/lib/actions/updateNav"
+import { publishCurrentTenantStateAction } from "@/lib/actions/publishCurrentTenantState"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { NavEntryRow, describeEntry } from "./NavEntryRow"
 import { NavEntryDialog } from "./NavEntryDialog"
@@ -60,12 +61,14 @@ export function NavigationManager({
   initialNavFooter,
   pages,
   initialZone = "header",
+  autoPublishLive,
 }: {
   tenantId: number | string
   initialNavHeader: NavEntry[]
   initialNavFooter: NavEntry[]
   pages: NavPageOption[]
   initialZone?: NavZone
+  autoPublishLive?: boolean
 }) {
   const t = useTranslations("navigation")
   const tCommon = useTranslations("common")
@@ -132,12 +135,19 @@ export function NavigationManager({
   const deleteTarget = deleteKey ? list.find((k) => k.key === deleteKey) : undefined
 
   const save = async () => {
+    if (!isDirty || saving) return
     setSaving(true)
     setSaveFailed(false)
     try {
       const h = entriesOf(header)
       const f = entriesOf(footer)
       await updateNav(tenantId, { navHeader: h, navFooter: f })
+      if (autoPublishLive) {
+        await publishCurrentTenantStateAction(
+          tenantId,
+          "auto-publish current CMS state after navigation save",
+        )
+      }
       setSavedHeader(h)
       setSavedFooter(f)
       setShowSaved(true)

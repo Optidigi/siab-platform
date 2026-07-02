@@ -21,7 +21,17 @@ import { roleLabel } from "@/lib/i18nLabels"
 import type { User } from "@/payload-types"
 import { useStatusFeedback } from "@/components/status-feedback"
 
-export function UsersTable({ data, canManage, emptyState }: { data: User[]; canManage: boolean; emptyState?: React.ReactNode }) {
+export function UsersTable({
+  data,
+  canManage,
+  currentUserId,
+  emptyState,
+}: {
+  data: User[]
+  canManage: boolean
+  currentUserId?: number | string
+  emptyState?: React.ReactNode
+}) {
   const t = useTranslations("users")
   const tTable = useTranslations("table")
   const tCommon = useTranslations("common")
@@ -85,6 +95,7 @@ export function UsersTable({ data, canManage, emptyState }: { data: User[]; canM
           meta: { mobilePriority: "action" },
           cell: ({ row }: any) => {
             const u = row.original as User
+            const isSelf = currentUserId != null && String(currentUserId) === String(u.id)
             return (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -104,16 +115,20 @@ export function UsersTable({ data, canManage, emptyState }: { data: User[]; canM
                       <Pencil className="mr-2 h-4 w-4" /> {tCommon("edit")}
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onSelect={(e) => {
-                      e.preventDefault()
-                      setTarget(u)
-                    }}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" /> {tCommon("delete")}
-                  </DropdownMenuItem>
+                  {!isSelf && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onSelect={(e) => {
+                          e.preventDefault()
+                          setTarget(u)
+                        }}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> {tCommon("delete")}
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )

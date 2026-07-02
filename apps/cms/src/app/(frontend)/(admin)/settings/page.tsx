@@ -5,6 +5,7 @@ import { SettingsForm } from "@/components/forms/SettingsForm"
 import { PageHeader } from "@/components/page-header"
 import { getAdminTranslations } from "@/i18n/admin"
 import { resolveSettingsContract } from "@/lib/settingsContract"
+import { isOfficialTenant } from "@/lib/officialTenants"
 
 export default async function TenantSettingsPage() {
   const { user, ctx } = await requireAuth()
@@ -19,6 +20,8 @@ export default async function TenantSettingsPage() {
         initial={settings}
         canEdit
         settingsContract={resolveSettingsContract(ctx.tenant.siteManifest as any)}
+        tenantId={ctx.tenant.id}
+        autoPublishLive={isOfficialTenant(ctx.tenant)}
       />
     </div>
   )
